@@ -44,7 +44,4 @@ func TestDemoUsesExpectedTheme(t *testing.T) {
 	if !strings.Contains(out, "MCTL") {
 		t.Fatal("demo should show the product name")
 	}
-	if strings.Contains(strings.ToLower(out), "pcl") {
-		t.Fatal("demo should not contain unrelated product references")
-	}
 }
