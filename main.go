@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -36,6 +38,8 @@ func run() error {
 		demoH       = flag.Int("demo-height", 34, "演示界面高度")
 		printConfig = flag.Bool("print-config", false, "打印配置路径与内容")
 		listJava    = flag.Bool("list-java", false, "列出检测到的 Java 运行时并退出")
+		login       = flag.Bool("login", false, "使用 Microsoft 设备代码登录并保存账户")
+		msClientID  = flag.String("ms-client-id", "", "本次登录使用的 Azure 客户端 ID")
 	)
 	flag.Usage = printHelp
 	args, positionalPage := splitDemoArgs(os.Args[1:])
@@ -92,12 +96,59 @@ func run() error {
 		return nil
 	}
 
-	logs := logbuf.New(6000)
-	tui.ApplyTheme(store.Cfg.Theme)
-	tui.SetLanguage(store.Cfg.Language)
 	if err := minecraft.SetProxy(store.Cfg.Proxy); err != nil {
 		fmt.Fprintln(os.Stderr, "MCTL: 忽略无效代理:", err)
 	}
+
+	if *login {
+		clientID := strings.TrimSpace(*msClientID)
+		if clientID == "" {
+			clientID = strings.TrimSpace(store.Cfg.MicrosoftClientID)
+		}
+		if clientID == "" {
+			return fmt.Errorf("缺少 Azure 客户端 ID：使用 --ms-client-id 或在设置页填写")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+		defer cancel()
+		fmt.Println("正在请求 Microsoft 设备代码…")
+		opened := false
+		res, err := minecraft.LoginMicrosoft(ctx, clientID, func(code minecraft.MicrosoftDeviceCode) {
+			fmt.Printf("\n浏览器打开: %s\n输入代码: %s\n有效期: %d 秒\n\n等待登录完成…\n",
+				code.VerificationURI, code.UserCode, code.ExpiresIn)
+			if !opened {
+				opened = true
+				_ = openURL(code.VerificationURI)
+			}
+		})
+		if err != nil {
+			return fmt.Errorf("Microsoft 登录失败: %w", err)
+		}
+		account := config.Account{
+			Name:         res.Name,
+			UUID:         res.UUID,
+			Type:         "microsoft",
+			AccessToken:  res.AccessToken,
+			RefreshToken: res.RefreshToken,
+			ExpiresAt:    res.ExpiresAt,
+			XUID:         res.XUID,
+			ClientID:     clientID,
+		}
+		if err := store.SetAccount(account); err != nil {
+			return fmt.Errorf("保存账户: %w", err)
+		}
+		_ = store.Update(func(c *config.Config) { c.MicrosoftClientID = clientID })
+		expiry := "未知"
+		if res.ExpiresAt > 0 {
+			expiry = time.Unix(res.ExpiresAt, 0).Local().Format(time.RFC3339)
+		}
+		fmt.Printf("\n登录成功\n账户: %s\nUUID: %s\nXUID: %s\n令牌过期: %s\n",
+			res.Name, res.UUID, res.XUID, expiry)
+		return nil
+	}
+
+	logs := logbuf.New(6000)
+	tui.ApplyTheme(store.Cfg.Theme)
+	tui.SetLanguage(store.Cfg.Language)
 	if dir, err := config.LogDir(); err == nil {
 		if err := os.MkdirAll(dir, 0o755); err == nil {
 			name := "mctl-" + time.Now().Format("20060102") + ".log"
@@ -160,10 +211,22 @@ func splitDemoArgs(args []string) ([]string, string) {
 
 func demoFlagTakesValue(flag string) bool {
 	switch flag {
-	case "--dir", "-dir", "--source", "-source", "--demo-page", "-demo-page", "--demo-width", "-demo-width", "--demo-height", "-demo-height":
+	case "--dir", "-dir", "--source", "-source", "--demo-page", "-demo-page", "--demo-width", "-demo-width", "--demo-height", "-demo-height", "--ms-client-id", "-ms-client-id":
 		return true
 	}
 	return false
+}
+
+// openURL asks the desktop to open a link, ignoring failures.
+func openURL(raw string) error {
+	switch runtime.GOOS {
+	case "windows":
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", raw).Start()
+	case "darwin":
+		return exec.Command("open", raw).Start()
+	default:
+		return exec.Command("xdg-open", raw).Start()
+	}
 }
 
 func isDemoPage(s string) bool {
@@ -185,6 +248,8 @@ func printHelp() {
   --source <名称>       下载源: bmclapi | official
   --print-config        打印配置路径与内容
   --list-java           列出检测到的 Java 运行时并退出
+  --login               使用 Microsoft 设备代码登录并保存账户
+  --ms-client-id <ID>   本次登录使用的 Azure 客户端 ID
   --demo                渲染演示界面并退出
   --demo-page <页面>    home | launch | versions | download | settings | tools | about | logs | all
   --demo-width <列数>   演示界面宽度（默认 118）

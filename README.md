@@ -111,6 +111,8 @@ mctl
 | `--source <名称>` | 下载源：`bmclapi` 或 `official` |
 | `--print-config` | 打印配置文件路径与当前配置 |
 | `--list-java` | 列出所有检测到的 Java 运行时与路径 |
+| `--login` | 使用 Microsoft 设备代码登录并保存账户 |
+| `--ms-client-id <ID>` | 本次登录使用的 Azure 客户端 ID |
 | `--demo [页面]` | 渲染演示界面并退出 |
 | `--demo-page <页面>` | 演示页面：`home`、`launch`、`versions`、`download`、`settings`、`tools`、`about`、`logs`、`all` |
 | `--demo-width <列数>` | 演示界面宽度，默认 `118` |
@@ -168,12 +170,29 @@ mctl
 - 单击条目：编辑文本、切换开关、循环选项或执行操作（检查更新 / 问题反馈）。
 - 文本输入框仍支持键盘，也可以单击输入框或「屏幕键盘」按钮，用屏幕键盘完成纯鼠标输入（字母、数字、符号、大写、空格、退格、清空、左移 / 右移 / 行首 / 行尾）。
 
-在账户弹窗中单击「Microsoft 登录」即可开始设备代码登录。首次使用需要准备一个 Azure 应用：
+### 账户登录
 
-1. 在 Azure Portal 的「应用注册」中新建应用，账户类型选择支持个人 Microsoft 账户。
+在终端里可以直接完成 Microsoft 设备代码登录（不需要进入 TUI）：
+
+```bash
+mctl --login --ms-client-id <Azure 客户端 ID>
+```
+
+启动器会打印验证地址与代码，并尝试打开浏览器：
+
+```text
+浏览器打开: https://www.microsoft.com/link
+输入代码: XXXX-XXXX
+有效期: 900 秒
+```
+
+登录成功后会输出账户名、UUID、XUID 与令牌过期时间，并把账户写入 `config.json`，下次启动自动选中。
+
+首次使用需要在 Azure Portal 注册应用：
+
+1. 新建应用，账户类型选择支持个人 Microsoft 账户。
 2. 在「身份验证」中启用「允许公共客户端流」。
-3. 复制「应用程序（客户端）ID」，填入设置页的「微软客户端 ID」。
-4. 打开账户弹窗，单击「Microsoft 登录」，按提示打开浏览器并输入设备代码。
+3. 复制「应用程序（客户端）ID」，填入设置页「微软客户端 ID」或通过 `--ms-client-id` 传入。
 
 登录成功后，访问令牌、刷新令牌和过期时间保存在本机 `config.json` 中；启动器会在令牌过期前自动刷新。若刷新失败，需要重新执行 Microsoft 登录。
 
