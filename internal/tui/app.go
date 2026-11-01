@@ -62,18 +62,19 @@ type App struct {
 
 	demo bool
 
-	hits        []hitRegion
-	hitOriginX  int
-	hitOriginY  int
-	modalX      int
-	modalY      int
-	modalW      int
-	modalH      int
-	mouseX      int
-	mouseY      int
-	hoverAction string
-	hoverData   any
-	lastClick   clickStamp
+	hits          []hitRegion
+	hitOriginX    int
+	hitOriginY    int
+	modalX        int
+	modalY        int
+	modalW        int
+	modalH        int
+	mouseX        int
+	mouseY        int
+	hoverAction   string
+	hoverData     any
+	lastClick     clickStamp
+	contextReturn *modalState
 }
 
 // New builds the application.

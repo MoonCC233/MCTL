@@ -709,6 +709,15 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 	case action == "news":
 		a.setToast("正在获取更新日志…", 0)
 		a.rt.FetchNews()
+	case action == "modal-context":
+		d, ok := data.(modalContextData)
+		if !ok {
+			return nil
+		}
+		a.contextReturn = nil
+		a.modal = d.Origin
+		_, cmd := a.handleModalKey(keyMsg(item.Value))
+		return cmd
 	case action == "context-action":
 		d, ok := data.(contextMenuData)
 		if !ok {

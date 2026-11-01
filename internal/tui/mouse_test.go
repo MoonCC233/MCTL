@@ -373,6 +373,58 @@ func TestMouseOSKCursorAndInsert(t *testing.T) {
 	}
 }
 
+func TestMouseModalRightClickMenu(t *testing.T) {
+	dir := t.TempDir()
+	a := testApp(t, config.Config{GameDir: dir})
+	a.modal = modalState{
+		Kind:  modalScreenshots,
+		Title: "截图管理",
+		Items: []pickerItem{{Label: "shot.png", Value: "shot.png"}},
+		Data:  dir,
+	}
+	h := findHit(t, a, "modal-item", 0)
+	a.handleMouse(tea.MouseMsg{
+		X: (h.x0 + h.x1) / 2, Y: (h.y0 + h.y1) / 2,
+		Action: tea.MouseActionPress, Button: tea.MouseButtonRight,
+	})
+	if a.modal.Action != "modal-context" {
+		t.Fatalf("context menu = %#v", a.modal)
+	}
+	if a.contextReturn == nil {
+		t.Fatal("context menu should remember the original dialog")
+	}
+	// First item is Delete.
+	clickRegion(a, findHit(t, a, "modal-item", 0))
+	if a.modal.Kind != modalConfirm || a.modal.Action != "delete-screenshot" {
+		t.Fatalf("delete confirm = %#v", a.modal)
+	}
+	if a.contextReturn != nil {
+		t.Fatal("context return should be cleared after an action")
+	}
+}
+
+func TestMouseModalContextCancelRestoresList(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir()})
+	a.modal = modalState{
+		Kind:  modalScreenshots,
+		Title: "截图管理",
+		Items: []pickerItem{{Label: "shot.png", Value: "shot.png"}},
+		Data:  t.TempDir(),
+	}
+	h := findHit(t, a, "modal-item", 0)
+	a.handleMouse(tea.MouseMsg{
+		X: (h.x0 + h.x1) / 2, Y: (h.y0 + h.y1) / 2,
+		Action: tea.MouseActionPress, Button: tea.MouseButtonRight,
+	})
+	clickRegion(a, findHit(t, a, "modal-cancel", nil))
+	if a.modal.Kind != modalScreenshots {
+		t.Fatalf("cancel should restore the list: %#v", a.modal)
+	}
+	if a.contextReturn != nil {
+		t.Fatal("context return should be cleared")
+	}
+}
+
 func TestKeyboardNavigationDisabled(t *testing.T) {
 	a := mouseApp(t)
 	for _, key := range []string{"3", "tab", "q", "?"} {

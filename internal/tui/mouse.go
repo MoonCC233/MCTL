@@ -91,8 +91,81 @@ type contextMenuData struct {
 	Index int
 }
 
+type modalContextData struct {
+	Origin modalState
+}
+
+// openModalContext opens a context menu for the selected row of a list dialog.
+func (a *App) openModalContext(idx int) {
+	origin := a.modal
+	if idx < 0 || idx >= len(origin.Items) {
+		return
+	}
+	origin.Selected = idx
+	var items []pickerItem
+	switch origin.Kind {
+	case modalResources:
+		items = []pickerItem{
+			{Label: "启用 / 停用", Desc: "切换 .disabled 后缀", Value: "t"},
+			{Label: "删除", Desc: "移除该文件", Value: "d"},
+			{Label: "打开目录", Desc: "在文件管理器中打开", Value: "enter"},
+		}
+	case modalScreenshots:
+		items = []pickerItem{
+			{Label: "删除", Desc: "移除该截图", Value: "d"},
+			{Label: "打开目录", Desc: "在文件管理器中打开", Value: "enter"},
+		}
+	case modalServers:
+		items = []pickerItem{
+			{Label: "编辑", Desc: "修改服务器地址", Value: "e"},
+			{Label: "删除", Desc: "从列表移除", Value: "d"},
+			{Label: "添加", Desc: "新增服务器", Value: "a"},
+		}
+	case modalWorlds:
+		items = []pickerItem{
+			{Label: "打开目录", Desc: "在文件管理器中打开", Value: "enter"},
+			{Label: "备份", Desc: "导出为 zip", Value: "b"},
+			{Label: "导入", Desc: "从 zip 导入存档", Value: "i"},
+			{Label: "删除", Desc: "移除该存档", Value: "d"},
+		}
+	case modalMods:
+		items = []pickerItem{
+			{Label: "详情", Desc: "查看元数据与内嵌 jar", Value: "enter"},
+			{Label: "打开目录", Desc: "在文件管理器中打开", Value: "o"},
+		}
+	case modalPicker:
+		if origin.Action != "install-favorite" {
+			return
+		}
+		items = []pickerItem{
+			{Label: "安装", Desc: "安装该收藏项", Value: "enter"},
+			{Label: "取消收藏", Desc: "从收藏中移除", Value: "f"},
+		}
+	default:
+		return
+	}
+	name := origin.Items[idx].Label
+	if len([]rune(name)) > 24 {
+		name = string([]rune(name)[:24]) + "…"
+	}
+	a.contextReturn = &origin
+	a.modal = modalState{
+		Kind:   modalPicker,
+		Title:  tr("操作") + " · " + tr(name),
+		Items:  items,
+		Data:   modalContextData{Origin: origin},
+		Action: "modal-context",
+	}
+}
+
 func (a *App) handleRightClick(x, y int) (tea.Model, tea.Cmd) {
 	if a.modal.Kind != modalNone {
+		h, ok := a.hitAt(x, y)
+		if !ok || h.action != "modal-item" {
+			return a, nil
+		}
+		idx, _ := h.data.(int)
+		a.openModalContext(idx)
 		return a, nil
 	}
 	h, ok := a.hitAt(x, y)
@@ -301,7 +374,12 @@ func (a *App) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 		if a.modal.Kind != modalProgress {
-			a.modal = modalState{}
+			if a.contextReturn != nil {
+				a.modal = *a.contextReturn
+				a.contextReturn = nil
+			} else {
+				a.modal = modalState{}
+			}
 		}
 		return a, nil
 	}
@@ -410,6 +488,11 @@ func (a *App) activateHit(h hitRegion) (tea.Model, tea.Cmd) {
 	case "modal-confirm":
 		return a.handleModalKey(keyMsg("enter"))
 	case "modal-cancel":
+		if a.contextReturn != nil {
+			a.modal = *a.contextReturn
+			a.contextReturn = nil
+			return a, nil
+		}
 		return a.handleModalKey(keyMsg("esc"))
 	case "modal-favorite":
 		a.togglePickerFavorite()
@@ -428,6 +511,11 @@ func (a *App) activateHit(h hitRegion) (tea.Model, tea.Cmd) {
 			return a.handleModalKey(keyMsg(key))
 		}
 	case "modal-close":
+		if a.contextReturn != nil {
+			a.modal = *a.contextReturn
+			a.contextReturn = nil
+			return a, nil
+		}
 		a.modal = modalState{}
 	}
 	return a, nil
