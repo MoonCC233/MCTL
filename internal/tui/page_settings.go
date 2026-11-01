@@ -162,7 +162,7 @@ func (a *App) renderSettingsList(x, y, w, h int, cfg config.Config, items []sett
 	for len(rows) < maxRows {
 		rows = append(rows, "")
 	}
-	return panel(tr("偏好设置")+fmt.Sprintf(" · %d/%d", min(a.settings.idx+1, len(items)), len(items)), w, h, a.page == pageSettings, rows)
+	return panelScroll(tr("偏好设置")+fmt.Sprintf(" · %d/%d", min(a.settings.idx+1, len(items)), len(items)), w, h, a.page == pageSettings, rows, len(all), start)
 }
 
 func (a *App) settingValue(cfg config.Config, it settingItem) string {

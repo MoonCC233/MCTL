@@ -75,6 +75,7 @@ func (a *App) renderVersionList(x, y, w, h int, list []minecraft.InstalledVersio
 	}
 	a.addHit(x, y, x+w-1, y+h-1, "wheel", "versions")
 	var rows []string
+	offset := 0
 	if len(list) == 0 {
 		rows = append(rows, "", "  "+styleFaint.Render(tr("没有已安装的版本")), "  "+styleFaint.Render(tr("按 n 前往下载页安装")))
 	} else {
@@ -85,6 +86,7 @@ func (a *App) renderVersionList(x, y, w, h int, list []minecraft.InstalledVersio
 		if start > len(list)-maxRows {
 			start = max(len(list)-maxRows, 0)
 		}
+		offset = start
 		end := min(start+maxRows, len(list))
 		for i := start; i < end; i++ {
 			v := list[i]
@@ -123,7 +125,7 @@ func (a *App) renderVersionList(x, y, w, h int, list []minecraft.InstalledVersio
 	if len(rows) > panelContentHeight(h) {
 		rows = rows[:panelContentHeight(h)]
 	}
-	return panel(trf("已安装 · %d", len(a.versions.list)), w, h, a.page == pageVersions, rows)
+	return panelScroll(trf("已安装 · %d", len(a.versions.list)), w, h, a.page == pageVersions, rows, len(list), offset)
 }
 
 func lipglossRow(s string, w int) string {

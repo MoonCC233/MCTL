@@ -71,6 +71,12 @@ func min(a, b int) int {
 
 // panel draws a titled rounded box with exactly w columns and h rows.
 func panel(title string, w, h int, focused bool, lines []string) string {
+	return panelScroll(title, w, h, focused, lines, 0, 0)
+}
+
+// panelScroll renders a panel and, when total exceeds the visible height,
+// draws a scrollbar thumb on the right border.
+func panelScroll(title string, w, h int, focused bool, lines []string, total, offset int) string {
 	if w < 6 || h < 2 {
 		return ""
 	}
@@ -93,12 +99,30 @@ func panel(title string, w, h int, focused bool, lines []string) string {
 	top := bs.Render("╭─") + ts.Render(t) + bs.Render(strings.Repeat("─", dashes)+"╮")
 	out := []string{padRight(top, w)}
 	inner := w - 4
-	for i := 0; i < h-2; i++ {
+	visible := h - 2
+	thumbStart, thumbEnd := -1, -1
+	if total > visible && visible > 0 {
+		thumb := max(visible*visible/total, 1)
+		thumb = min(thumb, visible)
+		span := total - visible
+		pos := 0
+		if span > 0 {
+			pos = offset * (visible - thumb) / span
+		}
+		thumbStart = max(pos, 0)
+		thumbEnd = min(thumbStart+thumb, visible)
+	}
+	thumbStyle := lipgloss.NewStyle().Foreground(colorAccent)
+	for i := 0; i < visible; i++ {
 		line := ""
 		if i < len(lines) {
 			line = lines[i]
 		}
-		out = append(out, bs.Render("│")+" "+padRight(line, inner)+" "+bs.Render("│"))
+		right := bs.Render("│")
+		if i >= thumbStart && i < thumbEnd {
+			right = thumbStyle.Render("█")
+		}
+		out = append(out, bs.Render("│")+" "+padRight(line, inner)+" "+right)
 	}
 	out = append(out, bs.Render("╰"+strings.Repeat("─", max(w-2, 0))+"╯"))
 	return strings.Join(out, "\n")

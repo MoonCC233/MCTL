@@ -147,7 +147,7 @@ func (a *App) renderToolList(x, y, w, h int, items []toolItem) string {
 	if len(rows) > maxRows {
 		rows = rows[:maxRows]
 	}
-	return panel(tr("常用工具")+fmt.Sprintf(" · %d/%d", min(a.tools.idx+1, len(items)), len(items)), w, h, a.page == pageTools, rows)
+	return panelScroll(tr("常用工具")+fmt.Sprintf(" · %d/%d", min(a.tools.idx+1, len(items)), len(items)), w, h, a.page == pageTools, rows, len(items), start)
 }
 
 func (a *App) toolsKey(msg tea.KeyMsg) tea.Cmd {

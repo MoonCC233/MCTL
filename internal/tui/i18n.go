@@ -317,6 +317,7 @@ var english = map[string]string{
 	"单击打开帮助":                    "Click to open help",
 	"单击退出":                      "Click to quit",
 	"屏幕键盘":                      "On-screen keyboard",
+	"滚动条":                       "Scrollbar",
 	"大写":                        "Shift",
 	"符号":                        "Symbols",
 	"字母":                        "Letters",

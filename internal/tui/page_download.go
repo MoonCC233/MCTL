@@ -153,6 +153,7 @@ func (a *App) renderDownloadList(x, y, w, h int, list []minecraft.VersionEntry) 
 	maxRows := panelContentHeight(h)
 	a.addHit(x, y, x+w-1, y+h-1, "wheel", "download")
 	var rows []string
+	offset := 0
 	if len(list) == 0 {
 		rows = append(rows, "", "  "+styleFaint.Render("没有匹配的版本"))
 	} else {
@@ -163,6 +164,7 @@ func (a *App) renderDownloadList(x, y, w, h int, list []minecraft.VersionEntry) 
 		if start > len(list)-maxRows {
 			start = max(len(list)-maxRows, 0)
 		}
+		offset = start
 		end := min(start+maxRows, len(list))
 		for i := start; i < end; i++ {
 			v := list[i]
@@ -194,7 +196,7 @@ func (a *App) renderDownloadList(x, y, w, h int, list []minecraft.VersionEntry) 
 	if a.download.mode != 0 {
 		title = tr("选择游戏版本")
 	}
-	return panel(title+fmt.Sprintf(" · %d", len(list)), w, h, a.page == pageDownload, rows)
+	return panelScroll(title+fmt.Sprintf(" · %d", len(list)), w, h, a.page == pageDownload, rows, len(list), offset)
 }
 
 func typeLabel(t string) string {

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -323,6 +324,36 @@ func TestMouseInputFieldOpensKeyboard(t *testing.T) {
 	}
 	if hits < 2 {
 		t.Fatalf("input field and button should both be clickable, hits=%d", hits)
+	}
+}
+
+func TestPanelScrollbar(t *testing.T) {
+	lines := []string{"a", "b", "c", "d", "e"}
+	long := panelScroll("列表", 40, 7, false, lines, 100, 50)
+	if !strings.Contains(long, "█") {
+		t.Fatal("long list should render a scrollbar thumb")
+	}
+	if got := strings.Count(long, "\n") + 1; got != 7 {
+		t.Fatalf("panel height = %d", got)
+	}
+	short := panelScroll("列表", 40, 7, false, lines, len(lines), 0)
+	if strings.Contains(short, "█") {
+		t.Fatal("short list should not render a scrollbar")
+	}
+}
+
+func TestVersionsPageShowsScrollbar(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageVersions
+	var list []minecraft.InstalledVersion
+	for i := 0; i < 40; i++ {
+		list = append(list, minecraft.InstalledVersion{ID: fmt.Sprintf("1.20.%d", i), MCVersion: "1.20", Loader: "Vanilla", Type: "release", Complete: true})
+	}
+	a.versions.list = list
+	a.versions.idx = 10
+	out := a.View()
+	if !strings.Contains(out, "█") {
+		t.Fatal("long version list should show a scrollbar")
 	}
 }
 

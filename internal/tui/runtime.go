@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.37"
+var Version = "1.0.38"
 
 // Repository used for release checks and download links.
 const (
