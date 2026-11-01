@@ -6,8 +6,16 @@ on:
     paths:
       - ".github/workflows/live-check.yml"
       - "internal/minecraft/live_test.go"
+      - "internal/minecraft/curseforge_live_test.go"
+      - "internal/minecraft/forge_install_live_test.go"
+      - "internal/minecraft/loader_install_live_test.go"
       - "internal/minecraft/modrinth.go"
       - "internal/minecraft/curseforge.go"
+      - "internal/minecraft/java.go"
+      - "internal/minecraft/java_scan.go"
+      - "internal/minecraft/labymod.go"
+      - "internal/minecraft/forge.go"
+      - "internal/minecraft/install.go"
 
 permissions:
   contents: read
