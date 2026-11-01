@@ -19,3 +19,6 @@ Thumbs.db
 # Go workspace files
 go.work
 go.work.sum
+
+# Temporary cross-build output
+/dist2/
