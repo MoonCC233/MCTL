@@ -13,7 +13,7 @@ import (
 
 func testApp(t *testing.T, cfg config.Config) *App {
 	t.Helper()
-	store := &config.Store{Cfg: cfg, Path: "test"}
+	store := &config.Store{Cfg: cfg, Path: filepath.Join(t.TempDir(), "config.json")}
 	rt := NewRuntime(store, logbuf.New(50))
 	a := New(store, rt)
 	a.width, a.height = 100, 30
