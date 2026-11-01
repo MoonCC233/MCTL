@@ -31,6 +31,7 @@ const (
 	modalInstanceSettings
 	modalMods
 	modalModDetail
+	modalInstanceWizard
 )
 
 type pickerItem struct {
@@ -118,6 +119,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "环境自检", Desc: "检查 Java、目录、版本与下载源", Value: "cmd-diagnose"},
 		{Label: "检查更新", Desc: "查询最新发布版本", Value: "cmd-update"},
 		{Label: "实例设置", Desc: "内存、JVM 参数、自动进入服务器", Value: "cmd-instance-settings"},
+		{Label: "新建实例", Desc: "名称、目录、版本、加载器与 Java 一步创建", Value: "cmd-new-instance"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
 		{Label: "工具", Desc: "目录、Java、日志与整合包导入", Value: "cmd-page-tools"},
 		{Label: "关于 MCTL", Desc: "版本、路径与项目信息", Value: "cmd-page-about"},
@@ -299,6 +301,35 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		case "r":
 			a.openScreenshots()
+		}
+	case modalInstanceWizard:
+		state, _ := m.Data.(instanceWizardState)
+		switch key {
+		case "esc", "q":
+			a.modal = modalState{}
+		case "up", "k":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected - 1 + len(m.Items)) % len(m.Items)
+			}
+		case "down", "j":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected + 1) % len(m.Items)
+			}
+		case "enter":
+			if len(m.Items) == 0 {
+				return a, nil
+			}
+			field := m.Items[m.Selected].Value
+			if field == "create" {
+				a.wizardStart(state)
+				return a, nil
+			}
+			if field == "loader" {
+				a.modal = modalState{Kind: modalPicker, Title: "选择加载器", Items: wizardLoaderOptions(), Action: "wizard-loader", Data: state}
+				return a, nil
+			}
+			a.openInput("新建实例 · "+m.Items[m.Selected].Label, wizardEditLabel(field), wizardEditValue(state, field), wizardPlaceholder(field), "wizard-edit")
+			a.modal.Data = instanceWizardEdit{State: state, Key: field}
 		}
 	case modalMods:
 		d, ok := m.Data.(modsInspectorData)
@@ -630,6 +661,8 @@ func (a *App) renderModal() string {
 		boxW = 84
 	case modalModDetail:
 		boxW = 80
+	case modalInstanceWizard:
+		boxW = 76
 	case modalPicker:
 		boxW = 66
 	case modalProgress:
@@ -874,6 +907,20 @@ func (a *App) renderModal() string {
 		}
 		add("")
 		add("  " + keyHint("esc", "返回") + "  " + keyHint("o", "模组目录"))
+	case modalInstanceWizard:
+		add("")
+		for i, it := range m.Items {
+			line := "  " + styleText.Render(padRight(it.Label, 20)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-26, 10)))
+			if i == m.Selected {
+				add(lipglossRow("  ▸ "+padRight(it.Label, 20)+"  "+ansiTruncate(it.Desc, max(inner-26, 10)), inner))
+			} else if it.Value == "create" {
+				add("  " + styleAccent.Render("+") + " " + styleText.Render(padRight(it.Label, 19)) + "  " + styleMuted.Render(ansiTruncate(it.Desc, max(inner-26, 10))))
+			} else {
+				add(line)
+			}
+		}
+		add("")
+		add("  " + keyHint("enter", "编辑 / 开始") + "  " + keyHint("↑↓", "选择") + "  " + keyHint("esc", "取消"))
 	case modalAccounts:
 		add("")
 		for i, it := range m.Items {
@@ -1014,6 +1061,7 @@ func helpLines() []string {
 		"  " + accent("w / e / m / s / p") + muted("  整合包 / 在线 / 本地 / 存档 / 截图"),
 		"  " + accent("n") + muted("                服务器列表"),
 		"  " + accent("x / u") + muted("            导出 / 导入实例"),
+		"  " + accent("+") + muted("                新建实例（名称 / 目录 / 版本 / 加载器）"),
 		"  " + accent("d / t") + muted("            环境自检 / 检查更新"),
 		"  " + accent("b") + muted("                模组信息（元数据 / 内嵌 jar）"),
 		"  " + accent("i") + muted("                版本页：实例设置（内存 / JVM / 自动进服）"),

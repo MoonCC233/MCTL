@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.19"
+var Version = "1.0.20"
 
 // Repository used for release checks and download links.
 const (
@@ -108,11 +108,12 @@ type worldDoneMsg struct {
 }
 
 type instanceDoneMsg struct {
-	Action string
-	Name   string
-	Path   string
-	Err    error
-	Warn   error
+	Action   string
+	Name     string
+	Path     string
+	Err      error
+	Warn     error
+	Canceled bool
 }
 
 type diagnoseDoneMsg struct {
@@ -619,6 +620,51 @@ func (r *Runtime) CheckUpdate() {
 			r.Logf("检查更新失败: %v", err)
 		}
 		r.Emit(updateCheckMsg{Info: info, Current: Version, Err: err})
+	}()
+}
+
+// CreateInstance installs a new isolated instance from the wizard options.
+func (r *Runtime) CreateInstance(opts minecraft.InstanceWizardOptions) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "create", Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	ctx, cancel := context.WithCancel(context.Background())
+	r.installCancel = cancel
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		inst := minecraft.NewInstaller(cfg.GameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
+			r.Emit(progressMsg{Scope: "install", P: p})
+		})
+		name := strings.TrimSpace(opts.Name)
+		if name == "" {
+			name = opts.MCVersion
+		}
+		r.Logf("创建实例 %s（%s / %s）", name, opts.MCVersion, wizardLoaderLabel(opts.Loader))
+		id, root, err := inst.CreateInstance(ctx, opts)
+		canceled := ctx.Err() != nil
+		if err == nil {
+			r.Logf("实例已创建: %s", root)
+			_ = r.Store.Update(func(c *config.Config) {
+				c.SelectedVersion = id
+			})
+		} else if canceled {
+			r.Logf("实例创建已取消")
+		} else {
+			r.Logf("实例创建失败: %v", err)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "create", Name: name, Path: root, Err: err, Canceled: canceled})
+		r.ScanVersions()
 	}()
 }
 

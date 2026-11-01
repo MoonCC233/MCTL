@@ -59,7 +59,7 @@ func TestVersionSubdirMapping(t *testing.T) {
 
 func TestToolsDemoListsInstanceTools(t *testing.T) {
 	out := RenderDemo("tools", 118, 34)
-	for _, want := range []string{"服务器列表", "截图管理", "本地资源", "模组信息", "存档管理", "导出实例", "导入实例", "实例设置", "环境自检", "检查更新"} {
+	for _, want := range []string{"服务器列表", "截图管理", "本地资源", "模组信息", "存档管理", "导出实例", "导入实例", "新建实例", "实例设置", "环境自检", "检查更新"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("tools demo is missing %q", want)
 		}

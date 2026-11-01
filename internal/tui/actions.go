@@ -300,6 +300,17 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		}
 		a.setToast("已删除: "+d.Name, 1)
 		a.openResourceFiles(d.Kind)
+	case action == "wizard-edit":
+		d, ok := data.(instanceWizardEdit)
+		if ok {
+			a.buildInstanceWizard(d, value)
+		}
+	case action == "wizard-loader":
+		state, ok := data.(instanceWizardState)
+		if ok {
+			state.Loader = item.Value
+			a.showInstanceWizard(state, instanceWizardIndex("loader"))
+		}
 	case action == "save-instance-setting":
 		d, ok := data.(instanceSettingEdit)
 		if !ok {
@@ -560,6 +571,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openInstanceSettings()
 	case "cmd-mods-info":
 		a.openModsInfo()
+	case "cmd-new-instance":
+		a.openInstanceWizard()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":
