@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/MoonCC233/MCTL/internal/config"
 	"github.com/MoonCC233/MCTL/internal/minecraft"
 )
 
@@ -108,6 +109,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "下载", Desc: "安装原版、Fabric、Forge 或 NeoForge", Value: "cmd-page-download"},
 		{Label: "导入整合包", Desc: "导入本地 Modrinth / CurseForge 整合包", Value: "cmd-import-modpack"},
 		{Label: "在线整合包", Desc: "搜索并安装 Modrinth 整合包", Value: "cmd-online-modpacks"},
+		{Label: "收藏", Desc: "查看收藏的整合包与资源", Value: "cmd-favorites"},
 		{Label: "在线资源", Desc: "搜索 Modrinth 资源包、光影或模组", Value: "cmd-online-resources"},
 		{Label: "存档管理", Desc: "打开、备份、导入或删除存档", Value: "cmd-worlds"},
 		{Label: "本地资源", Desc: "启用、停用或删除模组/资源包/光影", Value: "cmd-local-resources"},
@@ -218,6 +220,41 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "end":
 			if len(m.Items) > 0 {
 				m.Selected = len(m.Items) - 1
+			}
+		case "f":
+			if len(m.Items) > 0 {
+				kind := ""
+				switch m.Action {
+				case "install-online-modpack":
+					kind = "modpack"
+				case "install-resource":
+					kind = a.resources.kind
+				}
+				if kind != "" {
+					it := m.Items[m.Selected]
+					name := strings.TrimPrefix(it.Label, "★ ")
+					on := !a.store.Snapshot().IsFavorite(kind, it.Value)
+					if err := a.store.SetFavorite(config.Favorite{Kind: kind, ID: it.Value, Name: name}, on); err != nil {
+						a.setToast("收藏失败: "+err.Error(), 2)
+					} else if on {
+						m.Items[m.Selected].Label = "★ " + name
+						a.setToast("已收藏 "+name, 1)
+					} else {
+						m.Items[m.Selected].Label = name
+						a.setToast("已取消收藏 "+name, 1)
+					}
+				}
+			}
+		case "d":
+			if m.Action == "install-favorite" && len(m.Items) > 0 {
+				kind, _ := m.Data.(string)
+				id := m.Items[m.Selected].Value
+				if err := a.store.SetFavorite(config.Favorite{Kind: kind, ID: id}, false); err != nil {
+					a.setToast("取消收藏失败: "+err.Error(), 2)
+				} else {
+					a.setToast("已取消收藏", 1)
+					a.openFavoriteList(kind)
+				}
 			}
 		case "enter":
 			if len(m.Items) == 0 {
@@ -714,7 +751,14 @@ func (a *App) renderModal() string {
 			}
 		}
 		add("")
-		add("  " + keyHint("↑↓", "选择") + "  " + keyHint("enter", "确定") + "  " + keyHint("esc", "取消"))
+		hint := "  " + keyHint("↑↓", "选择") + "  " + keyHint("enter", "确定")
+		switch m.Action {
+		case "install-online-modpack", "install-resource":
+			hint += "  " + keyHint("f", "收藏")
+		case "install-favorite":
+			hint += "  " + keyHint("d", "取消收藏")
+		}
+		add(hint + "  " + keyHint("esc", "取消"))
 	case modalWorlds:
 		add("")
 		visible := min(10, max(maxH-12, 3))
@@ -1063,6 +1107,7 @@ func helpLines() []string {
 		"  " + accent("x / u") + muted("            导出 / 导入实例"),
 		"  " + accent("+") + muted("                新建实例（名称 / 目录 / 版本 / 加载器）"),
 		"  " + accent("d / t") + muted("            环境自检 / 检查更新"),
+		"  " + accent("f") + muted("                收藏（整合包 / 资源）"),
 		"  " + accent("b") + muted("                模组信息（元数据 / 内嵌 jar）"),
 		"  " + accent("i") + muted("                版本页：实例设置（内存 / JVM / 自动进服）"),
 		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),

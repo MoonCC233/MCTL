@@ -63,6 +63,46 @@ func TestInstallResource(t *testing.T) {
 	}
 }
 
+func TestSearchModpacksFiltered(t *testing.T) {
+	var facetsSeen []string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/search", func(w http.ResponseWriter, r *http.Request) {
+		facetsSeen = append(facetsSeen, r.URL.Query().Get("facets"))
+		writeTestJSON(t, w, map[string]any{"hits": []any{map[string]any{"project_id": "id", "title": "Pack"}}})
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	old := modrinthAPIBase
+	defer func() { modrinthAPIBase = old }()
+	modrinthAPIBase = server.URL + "/v2"
+	hc := NewHTTPClient(Source{ID: "test"})
+	hc.Client = server.Client()
+
+	projects, err := SearchModpacksFiltered(context.Background(), hc, "pack", ModpackFilter{GameVersion: "1.20.1", Loader: "fabric"}, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(projects) != 1 || projects[0].ID != "id" {
+		t.Fatalf("projects = %#v", projects)
+	}
+	plain, err := SearchModpacks(context.Background(), hc, "pack", 5)
+	if err != nil || len(plain) != 1 {
+		t.Fatalf("unfiltered search = %#v, err = %v", plain, err)
+	}
+	if len(facetsSeen) != 2 {
+		t.Fatalf("facets calls = %#v", facetsSeen)
+	}
+	for _, want := range []string{"project_type:modpack", "versions:1.20.1", "categories:fabric"} {
+		if !strings.Contains(facetsSeen[0], want) {
+			t.Fatalf("filtered facets = %q, missing %q", facetsSeen[0], want)
+		}
+	}
+	if strings.Contains(facetsSeen[1], "versions:") || strings.Contains(facetsSeen[1], "categories:") {
+		t.Fatalf("unfiltered facets = %q", facetsSeen[1])
+	}
+}
+
 func TestSearchModpacksAndLatestVersion(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v2/search", func(w http.ResponseWriter, r *http.Request) {

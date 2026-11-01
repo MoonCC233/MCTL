@@ -1,0 +1,26 @@
+{
+  "game_dir": "C:\\Users\\MoonCC\\AppData\\Local\\Temp\\TestFavoritesList1368452969\\001",
+  "java_path": "",
+  "min_memory": 256,
+  "max_memory": 256,
+  "jvm_args": "",
+  "game_args": "",
+  "width": 854,
+  "height": 480,
+  "fullscreen": false,
+  "download_source": "bmclapi",
+  "selected_version": "",
+  "selected_account": "Steve",
+  "accounts": [
+    {
+      "name": "Steve",
+      "uuid": "",
+      "type": "offline"
+    }
+  ],
+  "auto_java": false,
+  "show_snapshots": false,
+  "isolate_game_dir": false,
+  "last_version_type": "release",
+  "window_size_custom": false
+}

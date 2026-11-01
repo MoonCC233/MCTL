@@ -182,7 +182,66 @@ func (a *App) openWorlds() {
 }
 
 func (a *App) openOnlineModpacks() {
-	a.openInput("在线整合包", "搜索 Modrinth 整合包", "", "例如 Create / Cobblemon", "search-modpacks")
+	cfg := a.store.Snapshot()
+	mcVersion := ""
+	for _, v := range a.launch.versions {
+		if v.ID == cfg.SelectedVersion {
+			mcVersion = v.MCVersion
+			break
+		}
+	}
+	if mcVersion == "" {
+		mcVersion = "1.20.1"
+	}
+	a.openInput("在线整合包 · 游戏版本", "游戏版本（留空表示全部）", mcVersion, "1.20.1", "online-modpack-version")
+}
+
+func (a *App) openModpackLoaderPicker(mcVersion string) {
+	items := []pickerItem{
+		{Label: "任意加载器", Desc: "不限制", Value: ""},
+		{Label: "Fabric", Desc: "fabric", Value: "fabric"},
+		{Label: "Quilt", Desc: "quilt", Value: "quilt"},
+		{Label: "Forge", Desc: "forge", Value: "forge"},
+		{Label: "NeoForge", Desc: "neoforge", Value: "neoforge"},
+	}
+	a.modal = modalState{Kind: modalPicker, Title: "在线整合包 · 加载器", Items: items, Action: "online-modpack-loader", Data: mcVersion}
+}
+
+func favoriteKindLabel(kind string) string {
+	switch kind {
+	case "modpack":
+		return "整合包"
+	case "resourcepack":
+		return "资源包"
+	case "shader":
+		return "光影"
+	case "mod":
+		return "模组"
+	}
+	return kind
+}
+
+func (a *App) openFavorites() {
+	items := []pickerItem{
+		{Label: "整合包", Desc: "Modpacks", Value: "modpack"},
+		{Label: "资源包", Desc: "Resource Packs", Value: "resourcepack"},
+		{Label: "光影", Desc: "Shaders", Value: "shader"},
+		{Label: "模组", Desc: "Mods", Value: "mod"},
+	}
+	a.modal = modalState{Kind: modalPicker, Title: "收藏", Items: items, Action: "favorites-kind"}
+}
+
+func (a *App) openFavoriteList(kind string) {
+	favs := a.store.Snapshot().FavoritesOf(kind)
+	if len(favs) == 0 {
+		a.setToast("没有收藏的"+favoriteKindLabel(kind), 3)
+		return
+	}
+	items := make([]pickerItem, 0, len(favs))
+	for _, f := range favs {
+		items = append(items, pickerItem{Label: f.Name, Desc: favoriteKindLabel(kind), Value: f.ID})
+	}
+	a.modal = modalState{Kind: modalPicker, Title: "收藏 · " + favoriteKindLabel(kind), Items: items, Action: "install-favorite", Data: kind}
 }
 
 func (a *App) openResourceTypePicker() {
@@ -261,10 +320,30 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		a.startModpackImport(strings.TrimSpace(value))
 	case action == "search-modpacks":
 		query := strings.TrimSpace(value)
+		filter, _ := data.(minecraft.ModpackFilter)
 		a.setToast("正在搜索在线整合包…", 0)
-		a.rt.SearchModpacks(query)
+		a.rt.SearchModpacks(query, filter)
+	case action == "online-modpack-version":
+		a.openModpackLoaderPicker(strings.TrimSpace(value))
+	case action == "online-modpack-loader":
+		mcVersion, _ := data.(string)
+		filter := minecraft.ModpackFilter{GameVersion: mcVersion, Loader: item.Value}
+		a.openInput("在线整合包", "搜索 Modrinth 整合包", "", "例如 Create / Cobblemon", "search-modpacks")
+		a.modal.Data = filter
+	case action == "favorites":
+		a.openFavorites()
+	case action == "favorites-kind":
+		a.openFavoriteList(item.Value)
+	case action == "install-favorite":
+		kind, _ := data.(string)
+		name := strings.TrimPrefix(item.Label, "★ ")
+		if kind == "modpack" {
+			a.startOnlineModpack(item.Value, name)
+		} else {
+			a.startResourceInstall(kind, item.Value, name)
+		}
 	case action == "install-online-modpack":
-		a.startOnlineModpack(item.Value, item.Label)
+		a.startOnlineModpack(item.Value, strings.TrimPrefix(item.Label, "★ "))
 	case action == "choose-resource-kind":
 		a.resources.kind = item.Value
 		a.openInput("在线资源 · "+resourceKindLabel(item.Value), "搜索 Modrinth "+resourceKindLabel(item.Value), "", "输入关键词", "search-resources")
@@ -273,7 +352,7 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		a.setToast("正在搜索在线资源…", 0)
 		a.rt.SearchResources(a.resources.kind, query)
 	case action == "install-resource":
-		a.startResourceInstall(a.resources.kind, item.Value, item.Label)
+		a.startResourceInstall(a.resources.kind, item.Value, strings.TrimPrefix(item.Label, "★ "))
 	case action == "delete-world":
 		d, _ := data.(worldDeleteData)
 		if err := minecraft.DeleteWorld(d.GameDir, d.Name); err != nil {
@@ -547,6 +626,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
 	case "cmd-online-modpacks":
 		a.openOnlineModpacks()
+	case "cmd-favorites":
+		a.openFavorites()
 	case "cmd-online-resources":
 		a.openResourceTypePicker()
 	case "cmd-worlds":

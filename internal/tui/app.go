@@ -195,7 +195,7 @@ func (a *App) renderFooter() string {
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
 	case pageTools:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("+", "新建实例"), keyHint("x", "导出"), keyHint("u", "导入"), keyHint("b", "模组")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("+", "新建"), keyHint("f", "收藏"), keyHint("x", "导出"), keyHint("u", "导入")}
 	case pageAbout:
 		parts = []string{keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
 	case pageLogs:
@@ -641,12 +641,17 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			return nil
 		}
 		items := make([]pickerItem, 0, len(m.Projects))
+		cfg := a.store.Snapshot()
 		for _, p := range m.Projects {
 			desc := fmt.Sprintf("%d 次下载", p.Downloads)
 			if p.Author != "" {
 				desc = p.Author + " · " + desc
 			}
-			items = append(items, pickerItem{Label: p.Title, Desc: desc, Value: p.ID})
+			label := p.Title
+			if cfg.IsFavorite(m.Kind, p.ID) {
+				label = "★ " + label
+			}
+			items = append(items, pickerItem{Label: label, Desc: desc, Value: p.ID})
 		}
 		a.modal = modalState{Kind: modalPicker, Title: "在线资源 · " + resourceKindLabel(m.Kind), Items: items, Action: "install-resource"}
 		return nil
@@ -660,12 +665,17 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			return nil
 		}
 		items := make([]pickerItem, 0, len(m.Projects))
+		cfg := a.store.Snapshot()
 		for _, p := range m.Projects {
 			desc := fmt.Sprintf("%d 次下载", p.Downloads)
 			if p.Author != "" {
 				desc = p.Author + " · " + desc
 			}
-			items = append(items, pickerItem{Label: p.Title, Desc: desc, Value: p.ID})
+			label := p.Title
+			if cfg.IsFavorite("modpack", p.ID) {
+				label = "★ " + label
+			}
+			items = append(items, pickerItem{Label: label, Desc: desc, Value: p.ID})
 		}
 		a.modal = modalState{Kind: modalPicker, Title: "在线整合包 · Modrinth", Items: items, Action: "install-online-modpack"}
 		return nil

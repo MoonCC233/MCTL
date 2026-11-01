@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.20"
+var Version = "1.0.21"
 
 // Repository used for release checks and download links.
 const (
@@ -403,12 +403,12 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 }
 
 // SearchModpacks searches the online Modrinth catalogue.
-func (r *Runtime) SearchModpacks(query string) {
+func (r *Runtime) SearchModpacks(query string, filter minecraft.ModpackFilter) {
 	cfg := r.Store.Snapshot()
 	src := minecraft.GetSource(cfg.DownloadSource)
 	go func() {
 		hc := minecraft.NewHTTPClient(src)
-		projects, err := minecraft.SearchModpacks(context.Background(), hc, query, 20)
+		projects, err := minecraft.SearchModpacksFiltered(context.Background(), hc, query, filter, 20)
 		if err != nil {
 			r.Logf("搜索在线整合包失败: %v", err)
 		}

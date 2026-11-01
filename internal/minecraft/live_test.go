@@ -62,6 +62,17 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		t.Logf("Release feed: %s (%s)", info.TagName, info.HTMLURL)
 	})
 
+	t.Run("ModrinthFiltered", func(t *testing.T) {
+		projects, err := SearchModpacksFiltered(ctx, hc, "create", ModpackFilter{GameVersion: "1.20.1", Loader: "fabric"}, 5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(projects) == 0 {
+			t.Fatal("filtered Modrinth search returned no modpacks")
+		}
+		t.Logf("Modrinth filtered: %d projects, first=%q", len(projects), projects[0].Title)
+	})
+
 	t.Run("ModrinthResourcePack", func(t *testing.T) {
 		projects, err := SearchProjects(ctx, hc, "faithful", "resourcepack", 3)
 		if err != nil {

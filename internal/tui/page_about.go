@@ -37,6 +37,7 @@ func (a *App) viewAbout(w, h int) []string {
 		"环境自检、更新检查与下载源连通性测试",
 		"模组元数据与内嵌 jar 查看",
 		"新建实例向导（名称 / 目录 / 版本 / 加载器 / Java）",
+		"在线整合包筛选与收藏列表",
 	}
 	for _, f := range features {
 		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(f))

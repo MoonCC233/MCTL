@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -23,28 +24,36 @@ type Account struct {
 	ClientID     string `json:"client_id,omitempty"`
 }
 
+// Favorite is a saved online project.
+type Favorite struct {
+	Kind string `json:"kind"` // modpack, resourcepack, shader or mod
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // Config is the persisted launcher configuration.
 type Config struct {
-	GameDir           string    `json:"game_dir"`
-	JavaPath          string    `json:"java_path"`
-	MinMemory         int       `json:"min_memory"`
-	MaxMemory         int       `json:"max_memory"`
-	JVMArgs           string    `json:"jvm_args"`
-	GameArgs          string    `json:"game_args"`
-	Width             int       `json:"width"`
-	Height            int       `json:"height"`
-	Fullscreen        bool      `json:"fullscreen"`
-	DownloadSource    string    `json:"download_source"`
-	SelectedVersion   string    `json:"selected_version"`
-	SelectedAccount   string    `json:"selected_account"`
-	Accounts          []Account `json:"accounts"`
-	MicrosoftClientID string    `json:"microsoft_client_id,omitempty"`
-	CurseForgeAPIKey  string    `json:"curseforge_api_key,omitempty"`
-	AutoJava          bool      `json:"auto_java"`
-	ShowSnapshots     bool      `json:"show_snapshots"`
-	IsolateGameDir    bool      `json:"isolate_game_dir"`
-	LastVersionType   string    `json:"last_version_type"`
-	WindowSizeCustom  bool      `json:"window_size_custom"`
+	GameDir           string     `json:"game_dir"`
+	JavaPath          string     `json:"java_path"`
+	MinMemory         int        `json:"min_memory"`
+	MaxMemory         int        `json:"max_memory"`
+	JVMArgs           string     `json:"jvm_args"`
+	GameArgs          string     `json:"game_args"`
+	Width             int        `json:"width"`
+	Height            int        `json:"height"`
+	Fullscreen        bool       `json:"fullscreen"`
+	DownloadSource    string     `json:"download_source"`
+	SelectedVersion   string     `json:"selected_version"`
+	SelectedAccount   string     `json:"selected_account"`
+	Accounts          []Account  `json:"accounts"`
+	Favorites         []Favorite `json:"favorites,omitempty"`
+	MicrosoftClientID string     `json:"microsoft_client_id,omitempty"`
+	CurseForgeAPIKey  string     `json:"curseforge_api_key,omitempty"`
+	AutoJava          bool       `json:"auto_java"`
+	ShowSnapshots     bool       `json:"show_snapshots"`
+	IsolateGameDir    bool       `json:"isolate_game_dir"`
+	LastVersionType   string     `json:"last_version_type"`
+	WindowSizeCustom  bool       `json:"window_size_custom"`
 }
 
 // Store owns the configuration file and serializes writes.
@@ -223,6 +232,7 @@ func (s *Store) Snapshot() Config {
 	defer s.mu.Unlock()
 	c := s.Cfg
 	c.Accounts = append([]Account(nil), s.Cfg.Accounts...)
+	c.Favorites = append([]Favorite(nil), s.Cfg.Favorites...)
 	return c
 }
 
@@ -252,6 +262,50 @@ func (s *Store) SetAccount(a Account) error {
 		c.Accounts = append(c.Accounts, a)
 		c.SelectedAccount = a.Name
 	})
+}
+
+// SetFavorite adds or removes a saved online project.
+func (s *Store) SetFavorite(fav Favorite, on bool) error {
+	fav.Kind = strings.TrimSpace(fav.Kind)
+	fav.ID = strings.TrimSpace(fav.ID)
+	fav.Name = strings.TrimSpace(fav.Name)
+	if fav.Kind == "" || fav.ID == "" {
+		return errors.New("收藏项缺少类型或 ID")
+	}
+	return s.Update(func(c *Config) {
+		out := c.Favorites[:0]
+		for _, f := range c.Favorites {
+			if f.Kind == fav.Kind && f.ID == fav.ID {
+				continue
+			}
+			out = append(out, f)
+		}
+		if on {
+			out = append(out, fav)
+		}
+		c.Favorites = out
+	})
+}
+
+// IsFavorite reports whether a project is saved.
+func (c Config) IsFavorite(kind, id string) bool {
+	for _, f := range c.Favorites {
+		if f.Kind == kind && f.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// FavoritesOf returns saved projects of one kind.
+func (c Config) FavoritesOf(kind string) []Favorite {
+	out := make([]Favorite, 0, len(c.Favorites))
+	for _, f := range c.Favorites {
+		if f.Kind == kind {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // RemoveAccount removes an account, keeping at least one.

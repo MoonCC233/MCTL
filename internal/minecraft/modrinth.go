@@ -49,17 +49,33 @@ type ModrinthFile struct {
 	Hashes   map[string]string `json:"hashes"`
 }
 
+// ModpackFilter narrows an online modpack search.
+type ModpackFilter struct {
+	GameVersion string
+	Loader      string
+}
+
 // SearchProjects searches Modrinth for a project type (modpack, resourcepack,
 // shader or mod).
 func SearchProjects(ctx context.Context, hc *HTTPClient, query, projectType string, limit int) ([]ModrinthProject, error) {
+	return searchProjects(ctx, hc, query, projectType, nil, limit)
+}
+
+func searchProjects(ctx context.Context, hc *HTTPClient, query, projectType string, extra [][]string, limit int) ([]ModrinthProject, error) {
 	if limit <= 0 {
 		limit = 20
+	}
+	facets := [][]string{{"project_type:" + projectType}}
+	facets = append(facets, extra...)
+	facetJSON, err := json.Marshal(facets)
+	if err != nil {
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("query", strings.TrimSpace(query))
 	q.Set("limit", strconv.Itoa(limit))
 	q.Set("index", "downloads")
-	q.Set("facets", fmt.Sprintf(`[["project_type:%s"]]`, projectType))
+	q.Set("facets", string(facetJSON))
 	u := strings.TrimRight(modrinthAPIBase, "/") + "/search?" + q.Encode()
 	data, err := hc.Get(ctx, u)
 	if err != nil {
@@ -81,7 +97,20 @@ func SearchProjects(ctx context.Context, hc *HTTPClient, query, projectType stri
 
 // SearchModpacks searches Modrinth for modpack projects.
 func SearchModpacks(ctx context.Context, hc *HTTPClient, query string, limit int) ([]ModrinthProject, error) {
-	return SearchProjects(ctx, hc, query, "modpack", limit)
+	return SearchModpacksFiltered(ctx, hc, query, ModpackFilter{}, limit)
+}
+
+// SearchModpacksFiltered searches modpacks with an optional game version and
+// loader filter.
+func SearchModpacksFiltered(ctx context.Context, hc *HTTPClient, query string, filter ModpackFilter, limit int) ([]ModrinthProject, error) {
+	var extra [][]string
+	if v := strings.TrimSpace(filter.GameVersion); v != "" {
+		extra = append(extra, []string{"versions:" + v})
+	}
+	if l := strings.TrimSpace(filter.Loader); l != "" {
+		extra = append(extra, []string{"categories:" + l})
+	}
+	return searchProjects(ctx, hc, query, "modpack", extra, limit)
 }
 
 // FetchProjectVersions returns all published versions of a project.
