@@ -22,13 +22,15 @@ const (
 	pageVersions
 	pageDownload
 	pageSettings
+	pageTools
+	pageAbout
 	pageLogs
 	pageCount
 )
 
-var pageNames = []string{"启动", "版本", "下载", "设置", "日志"}
-var pageEnglish = []string{"LAUNCH", "VERSIONS", "DOWNLOAD", "SETTINGS", "LOGS"}
-var pageNumbers = []string{"1", "2", "3", "4", "5"}
+var pageNames = []string{"启动", "版本", "下载", "设置", "工具", "关于", "日志"}
+var pageEnglish = []string{"LAUNCH", "VERSIONS", "DOWNLOAD", "SETTINGS", "TOOLS", "ABOUT", "LOGS"}
+var pageNumbers = []string{"1", "2", "3", "4", "5", "6", "7"}
 
 type toastState struct {
 	Text  string
@@ -52,6 +54,7 @@ type App struct {
 	versions versionsPage
 	download downloadPage
 	settings settingsPage
+	tools    toolsPage
 	logs     logsPage
 
 	demo bool
@@ -189,6 +192,10 @@ func (a *App) renderFooter() string {
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "安装"), keyHint("[ ]", "类型"), keyHint("i", "导入整合包"), keyHint("m", "筛选"), keyHint("/", "搜索"), keyHint("r", "刷新")}
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
+	case pageTools:
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("i", "导入整合包"), keyHint("v", "检测 Java")}
+	case pageAbout:
+		parts = []string{keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
 	case pageLogs:
 		parts = []string{keyHint("↑↓", "滚动"), keyHint("f", "跟随"), keyHint("c", "清空"), keyHint("pgup/pgdn", "翻页")}
 	}
@@ -243,14 +250,45 @@ func (a *App) renderBody(h int) []string {
 }
 
 func (a *App) renderSidebar(h, w int) []string {
-	cfg := a.store.Snapshot()
+	fullTop := a.sidebarTop(w, false)
+	fullBottom := a.sidebarBottom(w, false)
+	top, bottom := fullTop, fullBottom
+	if h < len(fullTop)+len(fullBottom) {
+		top = a.sidebarTop(w, true)
+		bottom = a.sidebarBottom(w, true)
+	}
+	lines := append([]string{}, top...)
+	space := h - len(lines) - len(bottom)
+	if space < 0 {
+		lines = lines[:max(h-len(bottom), 0)]
+		space = h - len(lines) - len(bottom)
+	}
+	for i := 0; i < space; i++ {
+		lines = append(lines, "")
+	}
+	lines = append(lines, bottom...)
+	return fitLines(lines, h, w)
+}
+
+func (a *App) sidebarTop(w int, compact bool) []string {
 	var top []string
-	top = append(top, "")
-	top = append(top, " "+sectionLabel("工作区"))
-	top = append(top, "")
+	if !compact {
+		top = append(top, "", " "+sectionLabel("工作区"), "")
+	}
 	for i := 0; i < int(pageCount); i++ {
 		sel := pageID(i) == a.page
 		label := pageNames[i]
+		if compact {
+			if sel {
+				line := lipgloss.NewStyle().Background(colorPanel2).Foreground(colorAccent).Bold(true).Render(" ▸ " + label)
+				line = padRight(line, w)
+				line = lipgloss.NewStyle().Background(colorPanel2).Render(line)
+				top = append(top, line)
+			} else {
+				top = append(top, " "+styleFaint.Render("·")+" "+styleText.Render(label))
+			}
+			continue
+		}
 		eng := pageEnglish[i]
 		icon := styleFaint.Render("·")
 		if sel {
@@ -268,7 +306,11 @@ func (a *App) renderSidebar(h, w int) []string {
 			top = append(top, "")
 		}
 	}
+	return top
+}
 
+func (a *App) sidebarBottom(w int, compact bool) []string {
+	cfg := a.store.Snapshot()
 	acc := cfg.Account()
 	ver := cfg.SelectedVersion
 	loader := "未安装"
@@ -282,8 +324,20 @@ func (a *App) renderSidebar(h, w int) []string {
 		}
 	}
 	accountKind := "离线账户"
+	shortKind := "离线"
 	if acc.Type == "microsoft" {
 		accountKind = "Microsoft 账户"
+		shortKind = "Microsoft"
+	}
+	if compact {
+		return []string{
+			" " + styleBorder.Render(strings.Repeat("─", max(w-1, 0))),
+			" " + sectionLabel("账户"),
+			" " + dot(colorGreen) + " " + styleText.Render(acc.Name) + " " + styleFaint.Render("· "+shortKind),
+			" " + sectionLabel("当前版本"),
+			" " + styleText.Render(middleEllipsis(ver, w-2)),
+			"   " + styleFaint.Render(middleEllipsis(loader, w-3)),
+		}
 	}
 	bottom := []string{
 		" " + styleBorder.Render(strings.Repeat("─", max(w-1, 0))),
@@ -298,17 +352,7 @@ func (a *App) renderSidebar(h, w int) []string {
 	if a.rt.Launching() {
 		bottom = append(bottom, "", " "+dot(colorGreen)+" "+styleGreen.Render("游戏中"))
 	}
-	lines := append([]string{}, top...)
-	space := h - len(lines) - len(bottom)
-	if space < 0 {
-		lines = lines[:max(h-len(bottom), 0)]
-		space = h - len(lines) - len(bottom)
-	}
-	for i := 0; i < space; i++ {
-		lines = append(lines, "")
-	}
-	lines = append(lines, bottom...)
-	return fitLines(lines, h, w)
+	return bottom
 }
 
 func (a *App) renderPage(w, h int) []string {
@@ -321,6 +365,10 @@ func (a *App) renderPage(w, h int) []string {
 		return a.viewDownload(w, h)
 	case pageSettings:
 		return a.viewSettings(w, h)
+	case pageTools:
+		return a.viewTools(w, h)
+	case pageAbout:
+		return a.viewAbout(w, h)
 	case pageLogs:
 		return a.viewLogs(w, h)
 	}
@@ -357,7 +405,7 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "shift+tab":
 		a.switchPage((a.page - 1 + pageCount) % pageCount)
 		return a, nil
-	case "1", "2", "3", "4", "5":
+	case "1", "2", "3", "4", "5", "6", "7":
 		for i := range pageNumbers {
 			if msg.String() == pageNumbers[i] {
 				a.switchPage(pageID(i))
@@ -385,6 +433,8 @@ func (a *App) switchPage(p pageID) {
 		if a.download.manifest == nil {
 			a.rt.LoadManifest(false)
 		}
+		a.rt.ScanVersions()
+	case pageTools:
 		a.rt.ScanVersions()
 	case pageLogs:
 		a.logs.follow = true
@@ -523,8 +573,11 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 	case loaderVersionsMsg:
 		a.download.loaderLoading = false
 		name := "Forge"
-		if m.Kind == "neoforge" {
+		switch m.Kind {
+		case "neoforge":
 			name = "NeoForge"
+		case "quilt":
+			name = "Quilt"
 		}
 		if m.Err != nil {
 			a.openError("获取 "+name+" 版本失败", m.Err)
@@ -662,6 +715,8 @@ func (a *App) startInstall(kind, id, mc, loader string, entry *minecraft.Version
 	switch kind {
 	case "fabric":
 		title = fmt.Sprintf("安装 Fabric %s · %s", loader, mc)
+	case "quilt":
+		title = fmt.Sprintf("安装 Quilt %s · %s", loader, mc)
 	case "forge":
 		title = fmt.Sprintf("安装 Forge %s · %s", loader, mc)
 	case "neoforge":

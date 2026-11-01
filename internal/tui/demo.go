@@ -71,7 +71,7 @@ func RenderDemo(page string, width, height int) string {
 	}
 	if page == "all" {
 		var b strings.Builder
-		for _, p := range []pageID{pageLaunch, pageVersions, pageDownload, pageSettings, pageLogs} {
+		for _, p := range []pageID{pageLaunch, pageVersions, pageDownload, pageSettings, pageTools, pageAbout, pageLogs} {
 			fmt.Fprintf(&b, "── %s ──\n", pageNames[p])
 			b.WriteString(render(p))
 			b.WriteString("\n\n")
@@ -85,6 +85,10 @@ func RenderDemo(page string, width, height int) string {
 		return render(pageDownload)
 	case "settings":
 		return render(pageSettings)
+	case "tools":
+		return render(pageTools)
+	case "about":
+		return render(pageAbout)
 	case "logs":
 		return render(pageLogs)
 	default:

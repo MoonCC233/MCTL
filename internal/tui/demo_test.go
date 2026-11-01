@@ -15,7 +15,7 @@ func TestRenderDemoPagesFillTerminal(t *testing.T) {
 		{90, 24},
 		{160, 44},
 	} {
-		for _, page := range []string{"launch", "versions", "download", "settings", "logs"} {
+		for _, page := range []string{"launch", "versions", "download", "settings", "tools", "about", "logs"} {
 			out := RenderDemo(page, size.w, size.h)
 			lines := strings.Split(out, "\n")
 			if len(lines) != size.h {

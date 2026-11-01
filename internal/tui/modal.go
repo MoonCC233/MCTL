@@ -98,6 +98,8 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "下载", Desc: "安装原版、Fabric、Forge 或 NeoForge", Value: "cmd-page-download"},
 		{Label: "导入整合包", Desc: "导入 Modrinth .mrpack 到独立实例", Value: "cmd-import-modpack"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
+		{Label: "工具", Desc: "目录、Java、日志与整合包导入", Value: "cmd-page-tools"},
+		{Label: "关于 MCTL", Desc: "版本、路径与项目信息", Value: "cmd-page-about"},
 		{Label: "运行日志", Desc: "查看启动器与游戏输出", Value: "cmd-page-logs"},
 		{Label: "添加离线账户", Desc: "创建新的离线账户", Value: "cmd-account"},
 		{Label: "Microsoft 登录", Desc: "使用设备代码登录微软账户", Value: "cmd-ms-login"},
@@ -533,7 +535,7 @@ func helpLines() []string {
 		"",
 		styleSection.Render("导航"),
 		"  " + accent("tab / shift+tab") + muted("  切换页面"),
-		"  " + accent("1 - 5") + muted("            快速跳转页面"),
+		"  " + accent("1 - 7") + muted("            快速跳转页面"),
 		"  " + accent(":") + muted("                命令面板"),
 		"  " + accent("?") + muted("                帮助"),
 		"  " + accent("q") + muted("                退出"),
@@ -549,8 +551,9 @@ func helpLines() []string {
 		"  " + accent("d / o / / / r") + muted("    删除 / 目录 / 筛选 / 刷新"),
 		"  " + accent("i") + muted("                导入 Modrinth 整合包"),
 		"",
-		styleSection.Render("设置 / 日志"),
+		styleSection.Render("设置 / 工具 / 日志"),
 		"  " + accent("enter / ←→") + muted("       编辑 / 调整"),
+		"  " + accent("i / v / r") + muted("          导入 / Java / 刷新"),
 		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),
 	}
 }

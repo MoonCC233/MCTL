@@ -39,6 +39,7 @@ type Config struct {
 	SelectedAccount   string    `json:"selected_account"`
 	Accounts          []Account `json:"accounts"`
 	MicrosoftClientID string    `json:"microsoft_client_id,omitempty"`
+	CurseForgeAPIKey  string    `json:"curseforge_api_key,omitempty"`
 	AutoJava          bool      `json:"auto_java"`
 	ShowSnapshots     bool      `json:"show_snapshots"`
 	IsolateGameDir    bool      `json:"isolate_game_dir"`

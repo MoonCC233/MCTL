@@ -150,7 +150,7 @@ func demoFlagTakesValue(flag string) bool {
 
 func isDemoPage(s string) bool {
 	switch s {
-	case "launch", "versions", "download", "settings", "logs", "all":
+	case "launch", "versions", "download", "settings", "tools", "about", "logs", "all":
 		return true
 	}
 	return false
@@ -167,13 +167,13 @@ func printHelp() {
   --source <名称>       下载源: bmclapi | official
   --print-config        打印配置路径与内容
   --demo                渲染演示界面并退出
-  --demo-page <页面>    launch | versions | download | settings | logs | all
+  --demo-page <页面>    launch | versions | download | settings | tools | about | logs | all
   --demo-width <列数>   演示界面宽度（默认 118）
   --demo-height <行数>  演示界面高度（默认 34）
   --version             显示版本号
   -h, --help            显示本帮助
 
 快捷键:
-  tab 切换页面 · 1-5 快速跳转 · : 命令面板 · ? 帮助 · q 退出
+  tab 切换页面 · 1-7 快速跳转 · : 命令面板 · ? 帮助 · q 退出
 `, tui.Version)
 }

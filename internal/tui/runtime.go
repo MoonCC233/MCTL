@@ -16,7 +16,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.3"
+var Version = "1.0.4"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -283,6 +283,17 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 				}
 				err = inst.InstallProfile(ctx, actualID, profile)
 			}
+		} else if kind == "quilt" {
+			r.Logf("获取 Quilt %s 配置", loader)
+			var profile []byte
+			profile, err = minecraft.FetchQuiltProfile(ctx, inst.HTTP, mcVersion, loader)
+			if err == nil {
+				var v minecraft.VersionJSON
+				if json.Unmarshal(profile, &v) == nil && v.ID != "" {
+					actualID = v.ID
+				}
+				err = inst.InstallProfile(ctx, actualID, profile)
+			}
 		} else if kind == "forge" || kind == "neoforge" {
 			required := minecraft.InferJavaMajor(mcVersion)
 			r.Logf("准备 %s 安装器（Java %d）", kind, required)
@@ -341,7 +352,7 @@ func (r *Runtime) ImportModpack(path string) {
 		inst := minecraft.NewInstaller(cfg.GameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
 			r.Emit(progressMsg{Scope: "install", P: p})
 		})
-		id, err := inst.ImportModpack(ctx, path, cfg.JavaPath, cfg.AutoJava)
+		id, err := inst.ImportModpack(ctx, path, cfg.JavaPath, cfg.AutoJava, cfg.CurseForgeAPIKey)
 		canceled := ctx.Err() != nil
 		if err == nil {
 			_ = r.Store.Update(func(c *config.Config) {
@@ -392,7 +403,13 @@ func (r *Runtime) FetchLoaderVersions(kind, mcVersion string) {
 	src := minecraft.GetSource(cfg.DownloadSource)
 	go func() {
 		hc := minecraft.NewHTTPClient(src)
-		builds, err := minecraft.FetchLoaderBuilds(context.Background(), hc, kind, mcVersion)
+		var builds []minecraft.LoaderBuild
+		var err error
+		if kind == "quilt" {
+			builds, err = minecraft.FetchQuiltLoaders(context.Background(), hc, mcVersion)
+		} else {
+			builds, err = minecraft.FetchLoaderBuilds(context.Background(), hc, kind, mcVersion)
+		}
 		if err != nil {
 			r.Logf("获取 %s 版本失败: %v", kind, err)
 		}

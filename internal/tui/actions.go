@@ -149,6 +149,10 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.switchPage(pageDownload)
 	case "cmd-page-settings":
 		a.switchPage(pageSettings)
+	case "cmd-page-tools":
+		a.switchPage(pageTools)
+	case "cmd-page-about":
+		a.switchPage(pageAbout)
 	case "cmd-page-logs":
 		a.switchPage(pageLogs)
 	case "cmd-account":
@@ -163,7 +167,7 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.rt.LoadManifest(true)
 		a.setToast("正在刷新版本与列表…", 0)
 	case "cmd-import-modpack":
-		a.openInput("导入整合包", "Modrinth .mrpack 文件路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
+		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":
@@ -189,6 +193,10 @@ func (a *App) handlePageKey(msg tea.KeyMsg) tea.Cmd {
 		return a.downloadKey(msg)
 	case pageSettings:
 		return a.settingsKey(msg)
+	case pageTools:
+		return a.toolsKey(msg)
+	case pageAbout:
+		return a.aboutKey(msg)
 	case pageLogs:
 		return a.logsKey(msg)
 	}

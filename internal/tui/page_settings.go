@@ -49,6 +49,7 @@ func (a *App) settingItems() []settingItem {
 		{key: "game_args", section: "启动", label: "游戏参数", desc: "追加到 Minecraft 主类的参数，例如 --demo。", kind: settingText},
 		{key: "ms_client_id", section: "账户", label: "微软客户端 ID", desc: "Azure 应用的客户端 ID，需要启用公共客户端设备代码流。", kind: settingText},
 		{key: "ms_login", section: "账户", label: "Microsoft 登录", desc: "使用设备代码在浏览器中登录 Microsoft 账户。", kind: settingAction},
+		{key: "cf_api_key", section: "整合包", label: "CurseForge Key", desc: "导入 CurseForge 整合包所需的 API Key，可在 CurseForge 开发者控制台申请。", kind: settingText},
 		{key: "open_game", section: "目录", label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", kind: settingAction},
 		{key: "open_config", section: "目录", label: "打开配置目录", desc: "打开 MCTL 配置与日志所在目录。", kind: settingAction},
 	}
@@ -196,6 +197,11 @@ func (a *App) settingValue(cfg config.Config, it settingItem) string {
 		return middleEllipsis(cfg.MicrosoftClientID, 40)
 	case "ms_login":
 		return "登录"
+	case "cf_api_key":
+		if strings.TrimSpace(cfg.CurseForgeAPIKey) == "" {
+			return "未配置"
+		}
+		return middleEllipsis(cfg.CurseForgeAPIKey, 40)
 	case "detect_java", "open_game", "open_config":
 		return "→"
 	}
@@ -262,6 +268,8 @@ func (a *App) rawSettingValue(cfg config.Config, it settingItem) string {
 		return cfg.GameArgs
 	case "ms_client_id":
 		return cfg.MicrosoftClientID
+	case "cf_api_key":
+		return cfg.CurseForgeAPIKey
 	}
 	return ""
 }
@@ -404,5 +412,8 @@ func (a *App) submitSetting(key, value string) {
 	case "ms_client_id":
 		a.saveCfg(func(c *config.Config) { c.MicrosoftClientID = value })
 		a.setToast("Microsoft 客户端 ID 已保存", 1)
+	case "cf_api_key":
+		a.saveCfg(func(c *config.Config) { c.CurseForgeAPIKey = value })
+		a.setToast("CurseForge API Key 已保存", 1)
 	}
 }

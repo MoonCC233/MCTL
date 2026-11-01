@@ -6,12 +6,13 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 
 ## 特性
 
-- **完整的终端界面**：启动、版本、下载、设置、日志五个页面，支持响应式布局。
+- **完整的终端界面**：启动、版本、下载、设置、工具、关于、日志七个页面，支持响应式布局。
 - **真实安装流程**：读取 Mojang 版本清单，下载客户端、依赖库、natives 和资源文件，校验 SHA-1。
 - **版本继承**：解析 `inheritsFrom`，合并父版本与子版本的库、参数和主类。
-- **加载器支持**：Fabric、Forge 与 NeoForge；Forge/NeoForge 使用官方安装器，并自动补全依赖。
-- **整合包导入**：导入 Modrinth `.mrpack`，创建独立实例目录，下载模组与覆盖文件，并复用已安装的基础版本。
+- **加载器支持**：Fabric、Quilt、Forge 与 NeoForge；Forge/NeoForge 使用官方安装器，并自动补全依赖。
+- **整合包导入**：导入 Modrinth `.mrpack` 或 CurseForge 整合包，创建独立实例目录，下载模组与覆盖文件，并复用已安装的基础版本。CurseForge 下载需要在设置中填写 API Key。
 - **Microsoft 登录**：设备代码流登录 Microsoft 账户，自动完成 Xbox Live、XSTS 与 Minecraft Services 认证；令牌过期时自动刷新。
+- **工具与关于页面**：集中提供整合包导入、目录打开、Java 检测、刷新、日志清理和版本信息。
 - **离线账户**：添加、切换和删除离线账户，自动生成与 Minecraft 一致的离线 UUID。
 - **Java 管理**：扫描常见安装位置与 `JAVA_HOME`，检查版本兼容性；缺少 Java 时可从 Adoptium 下载 JRE。
 - **双下载源**：BMCLAPI 镜像与 Mojang 官方源，可在设置中即时切换。
@@ -101,7 +102,7 @@ mctl
 | 按键 | 功能 |
 | --- | --- |
 | `tab` / `shift+tab` | 下一页 / 上一页 |
-| `1` - `5` | 直接跳转到启动、版本、下载、设置、日志 |
+| `1` - `7` | 直接跳转到启动、版本、下载、设置、工具、关于、日志 |
 | `:` | 打开命令面板 |
 | `?` | 打开帮助 |
 | `q` / `ctrl+c` | 退出 |
@@ -139,7 +140,7 @@ mctl
 | --- | --- |
 | `↑` `↓` | 选择版本 |
 | `enter` | 安装原版，或在加载器模式下选择加载器版本 |
-| `←` `→` / `[` `]` | 切换原版 / Fabric / Forge / NeoForge |
+| `←` `→` / `[` `]` | 切换原版 / Fabric / Quilt / Forge / NeoForge |
 | `i` | 导入 Modrinth `.mrpack` 整合包 |
 | `m` | 切换正式版、快照、全部 |
 | `/` | 搜索版本 |
@@ -165,15 +166,36 @@ mctl
 
 ### 整合包
 
-下载页按 `i`，输入本地 `.mrpack` 路径即可导入。MCTL 会：
+下载页按 `i`，输入本地 `.mrpack` 或 CurseForge 压缩包路径即可导入。MCTL 会：
 
-1. 读取 `modrinth.index.json`。
+1. 读取 `modrinth.index.json` 或 CurseForge `manifest.json`。
 2. 在 `instances/<名称>-<短哈希>` 下创建独立实例。
 3. 安装声明的 Minecraft 版本与加载器。
 4. 下载模组和资源文件，并解压 `overrides/` 与 `client-overrides/`。
 5. 生成 `pack-*` 版本，出现在版本页和启动页中。
 
-当前整合包导入支持 Modrinth 格式；Quilt 与需要 CurseForge API 的格式尚未纳入。
+CurseForge 整合包使用其 API 解析文件下载地址，需要先在设置页填写「CurseForge Key」。Modrinth 格式不需要额外密钥。
+
+### 工具页
+
+| 按键 | 功能 |
+| --- | --- |
+| `↑` `↓` | 选择工具 |
+| `enter` | 执行 |
+| `i` | 导入整合包 |
+| `o` | 打开游戏目录 |
+| `g` | 打开配置目录 |
+| `v` | 检测 Java |
+| `r` | 刷新版本与清单 |
+| `l` | 打开日志页 |
+| `c` | 清空日志 |
+
+### 关于页
+
+| 按键 | 功能 |
+| --- | --- |
+| `o` | 打开游戏目录 |
+| `g` | 打开配置目录 |
 
 ### 日志页
 
@@ -223,11 +245,11 @@ go build ./...
 
 ## 发布
 
-推送形如 `v1.0.3` 的标签会触发 Release 工作流：
+推送形如 `v1.0.4` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.3
-git push origin v1.0.3
+git tag v1.0.4
+git push origin v1.0.4
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

@@ -11,7 +11,7 @@ import (
 )
 
 type downloadPage struct {
-	mode     int // 0 vanilla, 1 fabric, 2 forge, 3 neoforge
+	mode     int // 0 vanilla, 1 fabric, 2 quilt, 3 forge, 4 neoforge
 	manifest *minecraft.VersionManifest
 	err      error
 	loading  bool
@@ -23,7 +23,7 @@ type downloadPage struct {
 	installed     map[string]bool
 }
 
-var loaderModeNames = []string{"Minecraft 原版", "Fabric", "Forge", "NeoForge"}
+var loaderModeNames = []string{"Minecraft 原版", "Fabric", "Quilt", "Forge", "NeoForge"}
 
 func (p *downloadPage) applyManifest(m *minecraft.VersionManifest, err error) {
 	p.loading = false
@@ -80,7 +80,7 @@ func (a *App) viewDownload(w, h int) []string {
 		sub += " · 搜索：" + p.filter
 	}
 	lines := pageHeader("下载", sub, w)
-	lines = append(lines, "  "+a.renderDownloadTabs())
+	lines = append(lines, "  "+a.renderDownloadTabs(w))
 	contentH := h - len(lines)
 	if contentH < 5 {
 		return fitLines(lines, h, w)
@@ -119,7 +119,7 @@ func (a *App) viewDownload(w, h int) []string {
 	return fitLines(lines, h, w)
 }
 
-func (a *App) renderDownloadTabs() string {
+func (a *App) renderDownloadTabs(width int) string {
 	p := &a.download
 	tab := func(label string, selected bool) string {
 		if selected {
@@ -127,8 +127,8 @@ func (a *App) renderDownloadTabs() string {
 		}
 		return lipgloss.NewStyle().Foreground(colorMuted).Padding(0, 2).Render(label)
 	}
-	line := tab("游戏版本", p.mode == 0) + " " + tab("Fabric", p.mode == 1) + " " + tab("Forge", p.mode == 2) + " " + tab("NeoForge", p.mode == 3)
-	if p.mode != 1 {
+	line := tab("游戏版本", p.mode == 0) + " " + tab("Fabric", p.mode == 1) + " " + tab("Quilt", p.mode == 2) + " " + tab("Forge", p.mode == 3) + " " + tab("NeoForge", p.mode == 4)
+	if p.mode != 1 && width >= 76 {
 		show := []string{"正式版", "快照", "全部"}[p.show]
 		line += "   " + styleFaint.Render("筛选: "+show+"  (m 切换)")
 	}
@@ -235,10 +235,14 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render("再写入 Fabric 配置并补全依赖"))
 		case 2:
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Quilt 加载器"))
+			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render("再写入 Quilt 配置并补全依赖"))
+		case 3:
 			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Forge 版本"))
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render("再运行 Forge 安装器并补全依赖"))
-		case 3:
+		case 4:
 			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 NeoForge 版本"))
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render("再运行 NeoForge 安装器并补全依赖"))
@@ -316,16 +320,19 @@ func (a *App) downloadKey(msg tea.KeyMsg) tea.Cmd {
 				return nil
 			}
 			p.loaderLoading = true
-			if p.mode == 1 {
+			switch p.mode {
+			case 1:
 				a.setToast("正在获取 Fabric 加载器…", 0)
 				a.rt.FetchFabricLoaders(v.ID)
-			} else {
-				kind := "forge"
-				if p.mode == 3 {
-					kind = "neoforge"
-				}
-				a.setToast("正在获取 "+loaderModeNames[p.mode]+" 版本…", 0)
-				a.rt.FetchLoaderVersions(kind, v.ID)
+			case 2:
+				a.setToast("正在获取 Quilt 加载器…", 0)
+				a.rt.FetchLoaderVersions("quilt", v.ID)
+			case 3:
+				a.setToast("正在获取 Forge 版本…", 0)
+				a.rt.FetchLoaderVersions("forge", v.ID)
+			case 4:
+				a.setToast("正在获取 NeoForge 版本…", 0)
+				a.rt.FetchLoaderVersions("neoforge", v.ID)
 			}
 			return nil
 		}

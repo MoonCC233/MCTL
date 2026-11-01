@@ -8,9 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type modpackIndex struct {
@@ -30,35 +34,62 @@ type modpackFile struct {
 	FileSize  int64             `json:"fileSize"`
 }
 
-// ImportModpack installs a Modrinth .mrpack into an isolated instance under
-// <gameDir>/instances/<pack>. It returns the generated version ID.
-func (i *Installer) ImportModpack(ctx context.Context, mrpackPath, javaPath string, autoJava bool) (string, error) {
+type curseLoader struct {
+	ID      string `json:"id"`
+	Primary bool   `json:"primary"`
+}
+
+type curseFile struct {
+	ProjectID int  `json:"projectID"`
+	FileID    int  `json:"fileID"`
+	Required  bool `json:"required"`
+}
+
+type curseForgeManifest struct {
+	Minecraft struct {
+		Version    string        `json:"version"`
+		ModLoaders []curseLoader `json:"modLoaders"`
+	} `json:"minecraft"`
+	Name    string      `json:"name"`
+	Version string      `json:"version"`
+	Files   []curseFile `json:"files"`
+}
+
+var (
+	curseForgeAPIBase    = "https://api.curseforge.com/v1"
+	curseForgeHTTPClient = &http.Client{Timeout: 45 * time.Second}
+)
+
+// ImportModpack installs a Modrinth .mrpack or CurseForge zip into an isolated
+// instance under <gameDir>/instances/<pack>. It returns the generated version ID.
+func (i *Installer) ImportModpack(ctx context.Context, mrpackPath, javaPath string, autoJava bool, curseForgeAPIKey string) (string, error) {
 	zr, err := zip.OpenReader(mrpackPath)
 	if err != nil {
 		return "", fmt.Errorf("打开整合包: %w", err)
 	}
 	defer zr.Close()
 
-	var index modpackIndex
-	found := false
+	var modrinthData, curseData []byte
 	for _, f := range zr.File {
-		if f.Name != "modrinth.index.json" {
-			continue
+		switch f.Name {
+		case "modrinth.index.json":
+			modrinthData, err = readZipEntry(f)
+		case "manifest.json":
+			curseData, err = readZipEntry(f)
 		}
-		rc, err := f.Open()
 		if err != nil {
 			return "", err
 		}
-		err = json.NewDecoder(io.LimitReader(rc, 16<<20)).Decode(&index)
-		rc.Close()
-		if err != nil {
-			return "", fmt.Errorf("解析 modrinth.index.json: %w", err)
-		}
-		found = true
-		break
 	}
-	if !found {
-		return "", fmt.Errorf("不是有效的 Modrinth 整合包：缺少 modrinth.index.json")
+	if modrinthData == nil && curseData != nil {
+		return i.importCurseForge(ctx, zr, curseData, javaPath, autoJava, curseForgeAPIKey)
+	}
+	if modrinthData == nil {
+		return "", fmt.Errorf("无法识别的整合包：缺少 modrinth.index.json 或 manifest.json")
+	}
+	var index modpackIndex
+	if err := json.Unmarshal(modrinthData, &index); err != nil {
+		return "", fmt.Errorf("解析 modrinth.index.json: %w", err)
 	}
 	if index.Game != "" && index.Game != "minecraft" {
 		return "", fmt.Errorf("不支持的整合包类型: %s", index.Game)
@@ -130,6 +161,182 @@ func (i *Installer) ImportModpack(ctx context.Context, mrpackPath, javaPath stri
 	return packID, nil
 }
 
+func readZipEntry(f *zip.File) ([]byte, error) {
+	rc, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	return io.ReadAll(io.LimitReader(rc, 32<<20))
+}
+
+func (i *Installer) importCurseForge(ctx context.Context, zr *zip.ReadCloser, data []byte, javaPath string, autoJava bool, apiKey string) (string, error) {
+	if strings.TrimSpace(apiKey) == "" {
+		return "", fmt.Errorf("导入 CurseForge 整合包需要 API Key，请先在设置中填写")
+	}
+	var m curseForgeManifest
+	if err := json.Unmarshal(data, &m); err != nil {
+		return "", fmt.Errorf("解析 CurseForge manifest.json: %w", err)
+	}
+	mcVersion := strings.TrimSpace(m.Minecraft.Version)
+	if mcVersion == "" {
+		return "", fmt.Errorf("CurseForge 整合包没有声明 Minecraft 版本")
+	}
+	kind, loaderVersion := parseCurseLoader(m.Minecraft.ModLoaders)
+	slug := packSlug(m.Name, m.Version)
+	packID := "pack-" + slug
+	instanceRoot := filepath.Join(i.GameDir, "instances", slug)
+	if err := os.MkdirAll(instanceRoot, 0o755); err != nil {
+		return "", err
+	}
+	i.logf("导入 CurseForge 整合包 %s（Minecraft %s）到 instances/%s", m.Name, mcVersion, slug)
+	target := i.forGameDir(instanceRoot)
+
+	target.report(Progress{Stage: "安装基础版本", Current: mcVersion}, true)
+	if err := target.InstallVersion(ctx, mcVersion, nil); err != nil {
+		return "", fmt.Errorf("安装基础版本 %s: %w", mcVersion, err)
+	}
+	loaderID := mcVersion
+	if kind != "" {
+		deps := map[string]string{}
+		switch kind {
+		case "fabric":
+			deps["fabric-loader"] = loaderVersion
+		case "quilt":
+			deps["quilt-loader"] = loaderVersion
+		case "forge":
+			deps["forge"] = loaderVersion
+		case "neoforge":
+			deps["neoforge"] = loaderVersion
+		}
+		var err error
+		loaderID, err = target.installPackLoader(ctx, deps, mcVersion, javaPath, autoJava)
+		if err != nil {
+			return "", err
+		}
+		if loaderID == "" {
+			loaderID = mcVersion
+		}
+	}
+
+	target.report(Progress{Stage: "写入整合包配置", Current: packID}, true)
+	profile, _ := json.Marshal(map[string]any{
+		"id":           packID,
+		"inheritsFrom": loaderID,
+		"type":         "release",
+	})
+	if err := writeVersionJSON(instanceRoot, packID, profile); err != nil {
+		return "", err
+	}
+
+	tasks, err := target.curseForgeTasks(ctx, m.Files, apiKey, instanceRoot)
+	if err != nil {
+		return "", err
+	}
+	target.report(Progress{Stage: "下载 CurseForge 文件", Done: 0, Total: len(tasks)}, true)
+	if err := target.downloadAll(ctx, tasks, "下载 CurseForge 文件"); err != nil {
+		return "", err
+	}
+	target.report(Progress{Stage: "解压整合包覆盖文件", Current: slug}, true)
+	if err := extractModpackOverrides(zr, instanceRoot); err != nil {
+		return "", err
+	}
+	if err := target.EnsureInstalled(ctx, packID); err != nil {
+		return "", fmt.Errorf("补全整合包版本: %w", err)
+	}
+
+	marker, _ := json.Marshal(map[string]any{
+		"name":      m.Name,
+		"versionId": m.Version,
+		"mcVersion": mcVersion,
+		"loader":    loaderID,
+		"source":    "curseforge",
+	})
+	if err := os.WriteFile(filepath.Join(VersionPath(instanceRoot, packID), "mctl-pack.json"), marker, 0o644); err != nil {
+		return "", err
+	}
+	i.report(Progress{Stage: "整合包安装完成", Done: 1, Total: 1, Current: packID}, true)
+	i.logf("整合包安装完成: %s", packID)
+	return packID, nil
+}
+
+func parseCurseLoader(mods []curseLoader) (kind, version string) {
+	for _, m := range mods {
+		id := strings.TrimSpace(m.ID)
+		low := strings.ToLower(id)
+		for _, k := range []string{"neoforge", "forge", "fabric", "quilt"} {
+			if !strings.HasPrefix(low, k+"-") {
+				continue
+			}
+			v := id[len(k)+1:]
+			return k, v
+		}
+	}
+	return "", ""
+}
+
+func (i *Installer) curseForgeTasks(ctx context.Context, files []curseFile, apiKey, root string) ([]fileTask, error) {
+	var tasks []fileTask
+	seen := map[string]bool{}
+	for _, f := range files {
+		raw, err := curseForgeDownloadURL(ctx, apiKey, f.ProjectID, f.FileID)
+		if err != nil {
+			return nil, err
+		}
+		name := fileNameFromURL(raw, f.ProjectID, f.FileID)
+		dest, err := safeJoin(root, path.Join("mods", name))
+		if err != nil {
+			return nil, err
+		}
+		if seen[dest] {
+			continue
+		}
+		seen[dest] = true
+		tasks = append(tasks, fileTask{URL: raw, Dest: dest, Label: name})
+	}
+	return tasks, nil
+}
+
+func curseForgeDownloadURL(ctx context.Context, apiKey string, projectID, fileID int) (string, error) {
+	endpoint := fmt.Sprintf("%s/mods/%d/files/%d/download-url", strings.TrimRight(curseForgeAPIBase, "/"), projectID, fileID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", UserAgent)
+	resp, err := curseForgeHTTPClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("获取 CurseForge 下载地址: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("获取 CurseForge 下载地址: HTTP %d %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var out struct {
+		Data string `json:"data"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return "", fmt.Errorf("解析 CurseForge 下载地址: %w", err)
+	}
+	if strings.TrimSpace(out.Data) == "" {
+		return "", fmt.Errorf("CurseForge 文件 %d/%d 没有可用下载地址", projectID, fileID)
+	}
+	return out.Data, nil
+}
+
+func fileNameFromURL(raw string, projectID, fileID int) string {
+	if u, err := url.Parse(raw); err == nil && (u.Scheme == "http" || u.Scheme == "https") {
+		name := path.Base(u.Path)
+		if name != "" && name != "." && name != "/" {
+			return name
+		}
+	}
+	return fmt.Sprintf("%d-%d.jar", projectID, fileID)
+}
+
 func (i *Installer) forGameDir(dir string) *Installer {
 	return &Installer{
 		GameDir:  dir,
@@ -161,6 +368,25 @@ func (i *Installer) installPackLoader(ctx context.Context, deps map[string]strin
 		return p.ID, nil
 	}
 
+	if v := strings.TrimSpace(deps["quilt-loader"]); v != "" {
+		i.report(Progress{Stage: "安装 Quilt", Current: v}, true)
+		profile, err := FetchQuiltProfile(ctx, i.HTTP, mcVersion, v)
+		if err != nil {
+			return "", err
+		}
+		var p VersionJSON
+		if err := json.Unmarshal(profile, &p); err != nil {
+			return "", fmt.Errorf("解析 Quilt 配置: %w", err)
+		}
+		if p.ID == "" {
+			return "", fmt.Errorf("Quilt 配置缺少版本 ID")
+		}
+		if err := i.InstallProfile(ctx, p.ID, profile); err != nil {
+			return "", err
+		}
+		return p.ID, nil
+	}
+
 	kind := ""
 	loaderVersion := ""
 	if v := strings.TrimSpace(deps["forge"]); v != "" {
@@ -169,8 +395,6 @@ func (i *Installer) installPackLoader(ctx context.Context, deps map[string]strin
 	} else if v := strings.TrimSpace(deps["neoforge"]); v != "" {
 		kind = "neoforge"
 		loaderVersion = v
-	} else if strings.TrimSpace(deps["quilt-loader"]) != "" {
-		return "", fmt.Errorf("暂不支持 Quilt 整合包")
 	}
 	if kind == "" {
 		return "", nil
