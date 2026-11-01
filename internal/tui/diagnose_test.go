@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MoonCC233/MCTL/internal/config"
 	"github.com/MoonCC233/MCTL/internal/minecraft"
@@ -53,6 +54,23 @@ func TestUpdateCheckModal(t *testing.T) {
 	}
 	if !strings.Contains(b.toast.Text, "已是最新版本") {
 		t.Fatalf("toast = %q", b.toast.Text)
+	}
+}
+
+func TestSpeedTestModal(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir()})
+	a.handleEvent(speedTestMsg{Results: []minecraft.SpeedResult{
+		{Target: minecraft.SpeedTarget{Name: "BMCLAPI 镜像"}, Latency: 120 * time.Millisecond, Bytes: 262144, MBps: 2.5},
+		{Target: minecraft.SpeedTarget{Name: "Modrinth API"}, Err: errors.New("HTTP 502")},
+	}})
+	if a.modal.Kind != modalSpeed {
+		t.Fatalf("modal = %#v", a.modal)
+	}
+	out := a.View()
+	for _, want := range []string{"网络测速", "BMCLAPI", "2.50 MB/s", "Modrinth", "失败"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("speed modal missing %q", want)
+		}
 	}
 }
 

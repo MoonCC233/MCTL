@@ -584,6 +584,21 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			Items: items,
 		}
 		return nil
+	case speedTestMsg:
+		items := make([]pickerItem, 0, len(m.Results))
+		for _, res := range m.Results {
+			desc := ""
+			status := "fail"
+			if res.Err != nil {
+				desc = "失败 · " + res.Err.Error()
+			} else {
+				status = "ok"
+				desc = fmt.Sprintf("%d ms · %.2f MB/s · %s", res.Latency.Milliseconds(), res.MBps, formatBytes(res.Bytes))
+			}
+			items = append(items, pickerItem{Label: res.Target.Name, Desc: desc, Value: status})
+		}
+		a.modal = modalState{Kind: modalSpeed, Title: "网络测速", Items: items, Data: m.Results}
+		return nil
 	case newsMsg:
 		if m.Err != nil {
 			a.openError("获取新闻失败", m.Err)

@@ -39,6 +39,7 @@ func (a *App) viewAbout(w, h int) []string {
 		"新建实例向导（名称 / 目录 / 版本 / 加载器 / Java）",
 		"在线整合包筛选与收藏列表",
 		"三套终端主题与 HTTP 代理设置",
+		"网络测速与延迟/吞吐展示",
 	}
 	for _, f := range features {
 		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(f))

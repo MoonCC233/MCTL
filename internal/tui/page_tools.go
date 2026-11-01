@@ -53,6 +53,7 @@ func (a *App) toolItems() []toolItem {
 		{label: "环境自检", desc: "检查游戏目录、Java、版本、资源与下载源。", action: "diagnose"},
 		{label: "检查更新", desc: "查询最新发布版本，有新版本时打开下载页面。", action: "update"},
 		{label: "新闻 / 更新日志", desc: "查看最近的版本发布说明。", action: "news"},
+		{label: "网络测速", desc: "测试下载源、Modrinth、GitHub 与 Adoptium 的延迟和吞吐。", action: "speedtest"},
 		{label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", action: "open-game"},
 		{label: "打开配置目录", desc: "打开 config.json 与日志文件所在目录。", action: "open-config"},
 		{label: "检测 Java", desc: "重新扫描系统与常见安装目录中的 Java 运行时。", action: "java"},
@@ -91,7 +92,7 @@ func (a *App) viewTools(w, h int) []string {
 		hint := []string{
 			"  " + styleMuted.Render(ansiTruncate(it.desc, max(w-10, 16))),
 			"  " + keyHint("enter", "执行") + "  " + keyHint("+", "新建") + "  " + keyHint("x", "导出") + "  " + keyHint("u", "导入"),
-			"  " + keyHint("d", "自检") + "  " + keyHint("t", "更新") + "  " + keyHint("h", "新闻") + "  " + keyHint("f", "收藏"),
+			"  " + keyHint("y", "测速") + "  " + keyHint("d", "自检") + "  " + keyHint("t", "更新") + "  " + keyHint("h", "新闻"),
 		}
 		p := panel("提示", w-4, hintH, false, hint)
 		lines = append(lines, "")
@@ -160,6 +161,9 @@ func (a *App) toolsKey(msg tea.KeyMsg) tea.Cmd {
 	case "h":
 		a.setToast("正在获取更新日志…", 0)
 		a.rt.FetchNews()
+	case "y":
+		a.modal = modalState{Kind: modalSpeed, Title: "网络测速"}
+		a.rt.RunSpeedTest()
 	case "p":
 		a.openScreenshots()
 	case "n":
@@ -237,6 +241,9 @@ func (a *App) runTool(action string) tea.Cmd {
 	case "news":
 		a.setToast("正在获取更新日志…", 0)
 		a.rt.FetchNews()
+	case "speedtest":
+		a.modal = modalState{Kind: modalSpeed, Title: "网络测速"}
+		a.rt.RunSpeedTest()
 	case "open-game":
 		a.openGameDir()
 	case "open-config":

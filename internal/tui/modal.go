@@ -33,6 +33,7 @@ const (
 	modalMods
 	modalModDetail
 	modalInstanceWizard
+	modalSpeed
 )
 
 type pickerItem struct {
@@ -121,6 +122,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "环境自检", Desc: "检查 Java、目录、版本与下载源", Value: "cmd-diagnose"},
 		{Label: "检查更新", Desc: "查询最新发布版本", Value: "cmd-update"},
 		{Label: "新闻 / 更新日志", Desc: "查看最近的版本发布说明", Value: "cmd-news"},
+		{Label: "网络测速", Desc: "测试下载源与常用服务的延迟和吞吐", Value: "cmd-speedtest"},
 		{Label: "实例设置", Desc: "内存、JVM 参数、自动进入服务器", Value: "cmd-instance-settings"},
 		{Label: "新建实例", Desc: "名称、目录、版本、加载器与 Java 一步创建", Value: "cmd-new-instance"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
@@ -339,6 +341,15 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		case "r":
 			a.openScreenshots()
+		}
+	case modalSpeed:
+		switch key {
+		case "esc", "q":
+			a.modal = modalState{}
+		case "r":
+			a.modal = modalState{Kind: modalSpeed, Title: "网络测速"}
+			a.setToast("正在重新测速…", 0)
+			a.rt.RunSpeedTest()
 		}
 	case modalInstanceWizard:
 		state, _ := m.Data.(instanceWizardState)
@@ -701,6 +712,8 @@ func (a *App) renderModal() string {
 		boxW = 80
 	case modalInstanceWizard:
 		boxW = 76
+	case modalSpeed:
+		boxW = 84
 	case modalPicker:
 		boxW = 66
 	case modalProgress:
@@ -966,6 +979,21 @@ func (a *App) renderModal() string {
 		}
 		add("")
 		add("  " + keyHint("enter", "编辑 / 开始") + "  " + keyHint("↑↓", "选择") + "  " + keyHint("esc", "取消"))
+	case modalSpeed:
+		add("")
+		if len(m.Items) == 0 {
+			add("  " + styleFaint.Render("正在测速…"))
+		}
+		for _, it := range m.Items {
+			labelW := max(inner-42, 12)
+			icon, iconStyle := "✗", styleRed
+			if it.Value == "ok" {
+				icon, iconStyle = "✓", styleGreen
+			}
+			add("  " + iconStyle.Render(icon) + " " + styleText.Render(padRight(ansiTruncate(it.Label, labelW), labelW)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, 26)))
+		}
+		add("")
+		add("  " + keyHint("r", "重新测速") + "  " + keyHint("esc", "关闭"))
 	case modalAccounts:
 		add("")
 		for i, it := range m.Items {
@@ -1109,6 +1137,7 @@ func helpLines() []string {
 		"  " + accent("+") + muted("                新建实例（名称 / 目录 / 版本 / 加载器）"),
 		"  " + accent("d / t") + muted("            环境自检 / 检查更新"),
 		"  " + accent("h") + muted("                新闻 / 更新日志"),
+		"  " + accent("y") + muted("                网络测速"),
 		"  " + accent("f") + muted("                收藏（整合包 / 资源）"),
 		"  " + accent("b") + muted("                模组信息（元数据 / 内嵌 jar）"),
 		"  " + accent("i") + muted("                版本页：实例设置（内存 / JVM / 自动进服）"),

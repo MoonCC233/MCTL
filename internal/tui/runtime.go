@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.22"
+var Version = "1.0.23"
 
 // Repository used for release checks and download links.
 const (
@@ -129,6 +129,10 @@ type updateCheckMsg struct {
 type newsMsg struct {
 	Releases []minecraft.ReleaseInfo
 	Err      error
+}
+
+type speedTestMsg struct {
+	Results []minecraft.SpeedResult
 }
 
 type microsoftCodeMsg struct {
@@ -612,6 +616,23 @@ func (r *Runtime) RunDiagnose() {
 			r.Logf("自检 %s [%s]: %s", c.Name, c.Status, c.Detail)
 		}
 		r.Emit(diagnoseDoneMsg{Checks: checks})
+	}()
+}
+
+// RunSpeedTest samples the built-in network targets.
+func (r *Runtime) RunSpeedTest() {
+	go func() {
+		cfg := r.Store.Snapshot()
+		hc := minecraft.NewHTTPClient(minecraft.GetSource(cfg.DownloadSource))
+		results := minecraft.SpeedTest(context.Background(), hc, minecraft.DefaultSpeedTargets(), 256<<10)
+		for _, res := range results {
+			if res.Err != nil {
+				r.Logf("测速 %s 失败: %v", res.Target.Name, res.Err)
+				continue
+			}
+			r.Logf("测速 %s: %d ms · %.2f MB/s", res.Target.Name, res.Latency.Milliseconds(), res.MBps)
+		}
+		r.Emit(speedTestMsg{Results: results})
 	}()
 }
 

@@ -62,6 +62,24 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		t.Logf("Release feed: %s (%s)", info.TagName, info.HTMLURL)
 	})
 
+	t.Run("SpeedTest", func(t *testing.T) {
+		sctx, cancel := context.WithTimeout(ctx, 75*time.Second)
+		defer cancel()
+		results := SpeedTest(sctx, hc, DefaultSpeedTargets()[:3], 64<<10)
+		ok := 0
+		for _, res := range results {
+			if res.Err != nil {
+				t.Logf("speed %s: %v", res.Target.Name, res.Err)
+				continue
+			}
+			ok++
+			t.Logf("speed %s: %d ms, %.2f MB/s", res.Target.Name, res.Latency.Milliseconds(), res.MBps)
+		}
+		if ok < 2 {
+			t.Fatalf("only %d speed targets responded", ok)
+		}
+	})
+
 	t.Run("NewsFeed", func(t *testing.T) {
 		releases, err := FetchRecentReleases(ctx, hc, "MoonCC233", "MCTL", 5)
 		if err != nil {

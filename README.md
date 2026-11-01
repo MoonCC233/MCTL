@@ -15,6 +15,7 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **收藏与筛选**：在线整合包可按游戏版本与加载器筛选；搜索结果可收藏，随时从收藏列表直接安装。
 - **主题与代理**：内置 OpenCode 暗色、午夜蓝、浅色三套主题；支持 HTTP / HTTPS / SOCKS5 代理。
 - **新闻 / 更新日志**：读取发布源并展示最近的版本说明，可直接打开发布页面。
+- **网络测速**：测试 BMCLAPI、Mojang、Modrinth、GitHub 与 Adoptium 的延迟和吞吐，显示 MB/s。
 - **在线资源**：搜索 Modrinth 资源包、光影和模组，按当前实例的 Minecraft 版本与加载器匹配后下载到 `resourcepacks/`、`shaderpacks/` 或 `mods/`。
 - **Microsoft 登录**：设备代码流登录 Microsoft 账户，自动完成 Xbox Live、XSTS 与 Minecraft Services 认证；令牌过期时自动刷新。
 - **工具与关于页面**：集中提供整合包导入、在线资源、存档管理、目录打开、Java 检测、刷新、日志清理和版本信息。
@@ -218,6 +219,7 @@ CurseForge 整合包使用其 API 解析文件下载地址，需要先在设置�
 | `+` | 新建实例（名称 / 目录 / 版本 / 加载器 / Java） |
 | `f` | 收藏（整合包 / 资源包 / 光影 / 模组） |
 | `h` | 新闻 / 更新日志 |
+| `y` | 网络测速 |
 | `o` | 打开游戏目录 |
 | `g` | 打开配置目录 |
 | `v` | 检测 Java |
@@ -291,11 +293,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.22` 的标签会触发 Release 工作流：
+推送形如 `v1.0.23` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.22
-git push origin v1.0.22
+git tag v1.0.23
+git push origin v1.0.23
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

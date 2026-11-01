@@ -668,6 +668,9 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 	case "cmd-news":
 		a.setToast("正在获取更新日志…", 0)
 		a.rt.FetchNews()
+	case "cmd-speedtest":
+		a.modal = modalState{Kind: modalSpeed, Title: "网络测速"}
+		a.rt.RunSpeedTest()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":
