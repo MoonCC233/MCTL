@@ -63,6 +63,61 @@ func TestInstallResource(t *testing.T) {
 	}
 }
 
+func TestInstallDatapack(t *testing.T) {
+	var baseURL string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/project/dp-id/version", func(w http.ResponseWriter, r *http.Request) {
+		writeTestJSON(t, w, []any{
+			map[string]any{
+				"id": "v1", "project_id": "dp-id", "version_type": "release",
+				"version_number": "2.0", "game_versions": []string{"1.20.1"},
+				"files": []any{map[string]any{
+					"url": baseURL + "/files/dp.zip", "filename": "dp.zip", "primary": true,
+				}},
+			},
+		})
+	})
+	mux.HandleFunc("/files/dp.zip", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("datapack"))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	baseURL = server.URL
+
+	old := modrinthAPIBase
+	defer func() { modrinthAPIBase = old }()
+	modrinthAPIBase = server.URL + "/v2"
+	hc := NewHTTPClient(Source{ID: "test"})
+	hc.Client = server.Client()
+
+	worldDir := filepath.Join(t.TempDir(), "saves", "World")
+	if err := os.MkdirAll(worldDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worldDir, "level.dat"), []byte("level"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := InstallDatapack(context.Background(), hc, "dp-id", "1.20.1", worldDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(worldDir, "datapacks", "dp.zip")
+	if res.Path != want || res.Kind != "datapack" || res.Version != "2.0" {
+		t.Fatalf("res = %#v", res)
+	}
+	if data, err := os.ReadFile(want); err != nil || string(data) != "datapack" {
+		t.Fatalf("file = %q, err = %v", data, err)
+	}
+
+	if _, err := InstallDatapack(context.Background(), hc, "dp-id", "1.20.1", filepath.Join(t.TempDir(), "missing")); err == nil {
+		t.Fatal("expected invalid world error")
+	}
+	if _, err := InstallDatapack(context.Background(), hc, "", "1.20.1", worldDir); err == nil {
+		t.Fatal("expected missing project error")
+	}
+}
+
 func TestSearchModpacksFiltered(t *testing.T) {
 	var facetsSeen []string
 	mux := http.NewServeMux()

@@ -119,6 +119,17 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		t.Logf("CurseForge: %d modpacks, first=%q", len(mods), mods[0].Name)
 	})
 
+	t.Run("ModrinthDatapack", func(t *testing.T) {
+		projects, err := SearchProjects(ctx, hc, "terralith", "datapack", 5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(projects) == 0 {
+			t.Fatal("Modrinth datapack search returned no projects")
+		}
+		t.Logf("Modrinth datapacks: %d projects, first=%q", len(projects), projects[0].Title)
+	})
+
 	t.Run("ModrinthFiltered", func(t *testing.T) {
 		projects, err := SearchModpacksFiltered(ctx, hc, "create", ModpackFilter{GameVersion: "1.20.1", Loader: "fabric"}, 5)
 		if err != nil {

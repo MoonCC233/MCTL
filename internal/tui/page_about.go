@@ -48,6 +48,7 @@ func (a *App) viewAbout(w, h int) []string {
 		"实例图标自定义",
 		"CurseForge 在线整合包浏览与安装",
 		"皮肤 / 披风纹理查询",
+		"数据包按存档安装",
 		"网络测速与延迟/吞吐展示",
 	}
 	for _, f := range features {

@@ -163,7 +163,7 @@ var english = map[string]string{
 	"按游戏版本与加载器筛选，搜索并安装 Modrinth 整合包。":              "Filter by game version and loader, then install a Modrinth modpack.",
 	"使用 CurseForge API Key 搜索并安装整合包。":              "Search and install CurseForge modpacks with an API key.",
 	"查看已收藏的整合包、资源包、光影和模组。":                         "Browse saved modpacks, resource packs, shaders and mods.",
-	"搜索 Modrinth 资源包、光影或模组并安装到当前实例。":               "Search Modrinth for resource packs, shaders or mods.",
+	"搜索 Modrinth 资源包、光影、模组或数据包并安装到当前实例。":           "Search Modrinth for resource packs, shaders, mods or data packs.",
 	"查看、打开、备份、导入或删除当前实例的存档。":                       "List, open, back up, import or delete worlds.",
 	"启用、停用或删除当前实例的模组、资源包和光影。":                      "Enable, disable or delete mods, packs and shaders.",
 	"读取模组元数据、加载器、启用状态与内嵌 jar。":                     "Read mod metadata, loaders, state and nested jars.",
@@ -207,6 +207,7 @@ var english = map[string]string{
 	"实例图标自定义":                                                                                       "Custom instance icons",
 	"CurseForge 在线整合包浏览与安装":                                                                         "CurseForge online modpack browsing",
 	"皮肤 / 披风纹理查询":                                                                                   "Skin and cape texture lookup",
+	"数据包按存档安装":                                                                                      "Data packs installed into a chosen world",
 	"网络测速与延迟/吞吐展示":                                                                                  "Network speed test with latency and throughput",
 
 	// Launch.
@@ -247,6 +248,10 @@ var english = map[string]string{
 	"运行日志与游戏输出": "Launcher and game output",
 
 	// Misc.
+	"数据包":   "Data packs",
+	"在线数据包": "Online data packs",
+	"选择存档":  "Choose world",
+	"请先在存档管理中创建或导入一个存档":      "Create or import a world first",
 	"已安装 %d 个版本":             "Installed %d versions",
 	" · 筛选：%s":               " · filter: %s",
 	"已安装 · %d":               "Installed · %d",
@@ -254,9 +259,9 @@ var english = map[string]string{
 	"%s · %d 个版本 · 下载源 %s":   "%s · %d versions · source %s",
 	"常用工具 · %d":              "Tools · %d",
 	"%d 行 · %s · 日志同时写入配置目录": "%d lines · %s · logs are also written to the config folder",
-	"跟随中":                    "Following",
-	"已暂停":                    "Paused",
-	"选择版本与账户，然后开始游戏":         "Pick a version and account, then start",
+	"跟随中": "Following",
+	"已暂停": "Paused",
+	"选择版本与账户，然后开始游戏":                 "Pick a version and account, then start",
 	"还没有安装任何版本 · 前往「下载」获取 Minecraft": "No versions installed · get Minecraft from Download",
 	"已安装 %d 个版本 · %s":                "Installed %d versions · %s",
 	"没有可选项":                          "No options",

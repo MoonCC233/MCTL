@@ -14,7 +14,10 @@ type toolsPage struct {
 }
 
 type resourceBrowser struct {
-	kind string
+	kind        string
+	worldDir    string
+	pendingID   string
+	pendingName string
 }
 
 func resourceKindLabel(kind string) string {
@@ -25,6 +28,8 @@ func resourceKindLabel(kind string) string {
 		return "光影"
 	case "mod":
 		return "模组"
+	case "datapack":
+		return "数据包"
 	}
 	return kind
 }
@@ -41,7 +46,7 @@ func (a *App) toolItems() []toolItem {
 		{label: "在线整合包", desc: "按游戏版本与加载器筛选，搜索并安装 Modrinth 整合包。", action: "online-modpacks"},
 		{label: "CurseForge 整合包", desc: "使用 CurseForge API Key 搜索并安装整合包。", action: "curseforge-modpacks"},
 		{label: "收藏", desc: "查看已收藏的整合包、资源包、光影和模组。", action: "favorites"},
-		{label: "在线资源", desc: "搜索 Modrinth 资源包、光影或模组并安装到当前实例。", action: "online-resources"},
+		{label: "在线资源", desc: "搜索 Modrinth 资源包、光影、模组或数据包并安装到当前实例。", action: "online-resources"},
 		{label: "存档管理", desc: "查看、打开、备份、导入或删除当前实例的存档。", action: "worlds"},
 		{label: "本地资源", desc: "启用、停用或删除当前实例的模组、资源包和光影。", action: "local-resources"},
 		{label: "模组信息", desc: "读取模组元数据、加载器、启用状态与内嵌 jar。", action: "mods-info"},

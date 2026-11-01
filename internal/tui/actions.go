@@ -83,6 +83,24 @@ func (a *App) openLocalResourceTypePicker() {
 	a.modal = modalState{Kind: modalPicker, Title: "本地资源", Items: items, Action: "choose-local-resource-kind"}
 }
 
+func (a *App) openDatapackWorldPicker() {
+	gameDir := a.worldGameDir()
+	worlds, err := minecraft.ListWorlds(gameDir)
+	if err != nil {
+		a.openError("读取存档失败", err)
+		return
+	}
+	if len(worlds) == 0 {
+		a.setToast("请先在存档管理中创建或导入一个存档", 3)
+		return
+	}
+	items := make([]pickerItem, 0, len(worlds))
+	for _, w := range worlds {
+		items = append(items, pickerItem{Label: w.Name, Desc: formatBytes(w.Size), Value: w.Dir})
+	}
+	a.modal = modalState{Kind: modalPicker, Title: "数据包 · 选择存档", Items: items, Action: "choose-datapack-world"}
+}
+
 func (a *App) openResourceFiles(kind string) {
 	gameDir := a.worldGameDir()
 	resources, err := minecraft.ListResources(gameDir, kind)
@@ -206,6 +224,7 @@ func (a *App) openCommunityResources() {
 		{Label: "模组", Desc: "Modrinth", Value: "mod"},
 		{Label: "资源包", Desc: "Resource Packs", Value: "resourcepack"},
 		{Label: "光影", Desc: "Shaders", Value: "shader"},
+		{Label: "数据包", Desc: "Data Packs", Value: "datapack"},
 		{Label: "整合包", Desc: "Modpacks", Value: "modpacks"},
 		{Label: "收藏", Desc: "Favorites", Value: "favorites"},
 	}
@@ -248,6 +267,8 @@ func favoriteKindLabel(kind string) string {
 		return "光影"
 	case "mod":
 		return "模组"
+	case "datapack":
+		return "数据包"
 	}
 	return kind
 }
@@ -258,6 +279,7 @@ func (a *App) openFavorites() {
 		{Label: "资源包", Desc: "Resource Packs", Value: "resourcepack"},
 		{Label: "光影", Desc: "Shaders", Value: "shader"},
 		{Label: "模组", Desc: "Mods", Value: "mod"},
+		{Label: "数据包", Desc: "Data Packs", Value: "datapack"},
 	}
 	a.modal = modalState{Kind: modalPicker, Title: "收藏", Items: items, Action: "favorites-kind"}
 }
@@ -280,6 +302,7 @@ func (a *App) openResourceTypePicker() {
 		{Label: "资源包", Desc: "Resource Packs", Value: "resourcepack"},
 		{Label: "光影", Desc: "Shaders", Value: "shader"},
 		{Label: "模组", Desc: "Mods", Value: "mod"},
+		{Label: "数据包", Desc: "Data Packs", Value: "datapack"},
 	}
 	a.modal = modalState{Kind: modalPicker, Title: "在线资源", Items: items, Action: "choose-resource-kind"}
 }
@@ -359,6 +382,8 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		case "mod", "resourcepack", "shader":
 			a.resources.kind = item.Value
 			a.openInput("在线资源 · "+resourceKindLabel(item.Value), "搜索 Modrinth "+resourceKindLabel(item.Value), "", "输入关键词", "search-resources")
+		case "datapack":
+			a.openDatapackWorldPicker()
 		case "modpacks":
 			items := []pickerItem{
 				{Label: "Modrinth", Desc: "在线整合包", Value: "modrinth"},
@@ -368,6 +393,19 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		case "favorites":
 			a.openFavorites()
 		}
+	case action == "choose-datapack-world":
+		a.resources.kind = "datapack"
+		a.resources.worldDir = item.Value
+		if a.resources.pendingID != "" {
+			id, name := a.resources.pendingID, a.resources.pendingName
+			a.resources.pendingID, a.resources.pendingName = "", ""
+			a.startDatapackInstall(id, name, item.Value)
+			return nil
+		}
+		a.openInput("在线数据包", "搜索 Modrinth 数据包", "", "输入关键词", "search-resources")
+	case action == "install-datapack":
+		worldDir, _ := data.(string)
+		a.startDatapackInstall(item.Value, strings.TrimPrefix(item.Label, "★ "), worldDir)
 	case action == "community-pack-source":
 		if item.Value == "curseforge" {
 			a.openCurseForgeSearch()
@@ -405,12 +443,20 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		name := strings.TrimPrefix(item.Label, "★ ")
 		if kind == "modpack" {
 			a.startOnlineModpack(item.Value, name)
+		} else if kind == "datapack" {
+			a.resources.pendingID = item.Value
+			a.resources.pendingName = name
+			a.openDatapackWorldPicker()
 		} else {
 			a.startResourceInstall(kind, item.Value, name)
 		}
 	case action == "install-online-modpack":
 		a.startOnlineModpack(item.Value, strings.TrimPrefix(item.Label, "★ "))
 	case action == "choose-resource-kind":
+		if item.Value == "datapack" {
+			a.openDatapackWorldPicker()
+			return nil
+		}
 		a.resources.kind = item.Value
 		a.openInput("在线资源 · "+resourceKindLabel(item.Value), "搜索 Modrinth "+resourceKindLabel(item.Value), "", "输入关键词", "search-resources")
 	case action == "search-resources":

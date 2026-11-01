@@ -20,7 +20,7 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **皮肤 / 披风**：查询当前账户的公开皮肤与披风纹理，显示模型类型并可在浏览器中打开；离线 UUID 通常没有公开纹理。
 - **新闻 / 更新日志**：读取发布源并展示最近的版本说明，可直接打开发布页面。
 - **网络测速**：测试 BMCLAPI、Mojang、Modrinth、GitHub 与 Adoptium 的延迟和吞吐，显示 MB/s。
-- **在线资源**：搜索 Modrinth 资源包、光影和模组，按当前实例的 Minecraft 版本与加载器匹配后下载到 `resourcepacks/`、`shaderpacks/` 或 `mods/`。
+- **在线资源**：搜索 Modrinth 资源包、光影、模组和数据包，按当前实例的 Minecraft 版本与加载器匹配后下载到 `resourcepacks/`、`shaderpacks/`、`mods/`，数据包会先选择存档再安装到该存档的 `datapacks/`。
 - **Microsoft 登录**：设备代码流登录 Microsoft 账户，自动完成 Xbox Live、XSTS 与 Minecraft Services 认证；令牌过期时自动刷新。
 - **工具与关于页面**：集中提供整合包导入、在线资源、存档管理、目录打开、Java 检测、刷新、日志清理和版本信息。
 - **存档管理**：列出当前实例存档，支持打开目录、备份为 zip、导入 zip 和删除。
@@ -172,7 +172,7 @@ mctl
 | `←` `→` / `[` `]` | 切换原版 / Fabric / Quilt / Legacy / LiteLoader / Forge / NeoForge / OptiFine / Cleanroom / LabyMod |
 | `i` | 导入本地 Modrinth / CurseForge 整合包 |
 | `o` | 搜索并安装 Modrinth 在线整合包 |
-| `c` | 社区资源（模组 / 资源包 / 光影 / 整合包 / 收藏） |
+| `c` | 社区资源（模组 / 资源包 / 光影 / 数据包 / 整合包 / 收藏） |
 | `m` | 切换正式版、快照、全部 |
 | `/` | 搜索版本 |
 | `r` | 刷新版本清单 |
@@ -303,11 +303,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.28` 的标签会触发 Release 工作流：
+推送形如 `v1.0.29` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.28
-git push origin v1.0.28
+git tag v1.0.29
+git push origin v1.0.29
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

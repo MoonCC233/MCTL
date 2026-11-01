@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.28"
+var Version = "1.0.29"
 
 // Repository used for release checks and download links.
 const (
@@ -562,6 +562,51 @@ func (r *Runtime) InstallResource(kind, projectID, name string) {
 			r.Logf("在线资源安装已取消")
 		} else {
 			r.Logf("在线资源安装失败: %v", err)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "resource", ID: id, Err: err, Canceled: canceled})
+	}()
+}
+
+// InstallDatapack downloads a datapack into a selected world.
+func (r *Runtime) InstallDatapack(projectID, name, worldDir string) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "resource", ID: name, Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	ctx, cancel := context.WithCancel(context.Background())
+	r.installCancel = cancel
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		gameVersion := ""
+		if list, err := minecraft.ScanVersions(cfg.GameDir); err == nil {
+			for _, v := range list {
+				if v.ID == cfg.SelectedVersion {
+					gameVersion = v.MCVersion
+					break
+				}
+			}
+		}
+		hc := minecraft.NewHTTPClient(src)
+		res, err := minecraft.InstallDatapack(ctx, hc, projectID, gameVersion, worldDir)
+		canceled := ctx.Err() != nil
+		id := name
+		if err == nil {
+			id = res.Name
+			r.Logf("数据包安装完成: %s", res.Path)
+		} else if canceled {
+			r.Logf("数据包安装已取消")
+		} else {
+			r.Logf("数据包安装失败: %v", err)
 		}
 		r.mu.Lock()
 		r.installing = false

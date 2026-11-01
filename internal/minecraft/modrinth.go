@@ -231,6 +231,45 @@ func InstallResource(ctx context.Context, hc *HTTPClient, kind, projectID, gameV
 	return &ResourceInstall{Kind: kind, Name: name, Path: dest, Version: version.VersionNumber}, nil
 }
 
+// InstallDatapack downloads the best matching datapack into a world's own
+// datapacks folder. Datapacks are world-scoped, so a world directory is
+// required instead of the game directory.
+func InstallDatapack(ctx context.Context, hc *HTTPClient, projectID, gameVersion, worldDir string) (*ResourceInstall, error) {
+	projectID = strings.TrimSpace(projectID)
+	if projectID == "" {
+		return nil, fmt.Errorf("缺少数据包项目 ID")
+	}
+	if st, err := os.Stat(filepath.Join(worldDir, "level.dat")); err != nil || st.IsDir() {
+		return nil, fmt.Errorf("存档目录无效: %s", worldDir)
+	}
+	versions, err := FetchProjectVersions(ctx, hc, projectID)
+	if err != nil {
+		return nil, err
+	}
+	version, err := SelectModrinthVersion(versions, gameVersion, "")
+	if err != nil {
+		return nil, err
+	}
+	file, err := PrimaryModrinthFile(version)
+	if err != nil {
+		return nil, err
+	}
+	destDir := filepath.Join(worldDir, "datapacks")
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return nil, err
+	}
+	name := filepath.Base(file.Filename)
+	dest := filepath.Join(destDir, name)
+	sha := ""
+	if file.Hashes != nil {
+		sha = file.Hashes["sha1"]
+	}
+	if err := hc.DownloadFile(ctx, file.URL, dest, sha, nil); err != nil {
+		return nil, fmt.Errorf("下载 %s: %w", name, err)
+	}
+	return &ResourceInstall{Kind: "datapack", Name: name, Path: dest, Version: version.VersionNumber}, nil
+}
+
 // PrimaryModrinthFile returns the primary file of a version, or the first.
 func PrimaryModrinthFile(v *ModrinthVersion) (ModrinthFile, error) {
 	if v == nil || len(v.Files) == 0 {

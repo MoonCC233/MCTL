@@ -724,7 +724,13 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			}
 			items = append(items, pickerItem{Label: label, Desc: desc, Value: p.ID})
 		}
-		a.modal = modalState{Kind: modalPicker, Title: "在线资源 · " + resourceKindLabel(m.Kind), Items: items, Action: "install-resource"}
+		action := "install-resource"
+		var data any
+		if m.Kind == "datapack" {
+			action = "install-datapack"
+			data = a.resources.worldDir
+		}
+		a.modal = modalState{Kind: modalPicker, Title: "在线资源 · " + resourceKindLabel(m.Kind), Items: items, Action: action, Data: data}
 		return nil
 	case modpacksMsg:
 		if m.Err != nil {
@@ -926,6 +932,24 @@ func (a *App) startResourceInstall(kind, projectID, name string) {
 		Action:  "cancel-install",
 	}
 	a.rt.InstallResource(kind, projectID, name)
+}
+
+func (a *App) startDatapackInstall(projectID, name, worldDir string) {
+	if projectID == "" || worldDir == "" {
+		a.setToast("请先选择一个存档", 3)
+		return
+	}
+	if a.rt.Busy() {
+		a.setToast("已有任务正在进行", 3)
+		return
+	}
+	a.modal = modalState{
+		Kind:   modalProgress,
+		Title:  "数据包 · " + name,
+		Stage:  "获取版本",
+		Action: "cancel-install",
+	}
+	a.rt.InstallDatapack(projectID, name, worldDir)
 }
 
 func (a *App) startCurseForgeInstall(mod minecraft.CurseForgeMod) {
