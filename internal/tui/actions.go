@@ -692,6 +692,9 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openScreenshots()
 	case "cmd-servers":
 		a.openServers()
+	case "cmd-skin":
+		a.setToast("正在获取皮肤…", 0)
+		a.rt.FetchSkin()
 	case "cmd-export-instance":
 		a.openExportInstance()
 	case "cmd-import-instance":

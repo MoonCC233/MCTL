@@ -93,6 +93,17 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		t.Logf("News feed: %d releases, latest=%s", len(releases), releases[0].TagName)
 	})
 
+	t.Run("SkinProfile", func(t *testing.T) {
+		profile, err := FetchSkinProfile(ctx, hc, "069a79f444e94726a5befca90e38aaf5")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if profile.Name == "" || profile.SkinURL == "" {
+			t.Fatalf("profile = %#v", profile)
+		}
+		t.Logf("Skin: %s, model=%s, cape=%v", profile.Name, profile.SkinModel(), profile.CapeURL != "")
+	})
+
 	t.Run("CurseForgeSearch", func(t *testing.T) {
 		key := strings.TrimSpace(os.Getenv("CURSEFORGE_API_KEY"))
 		if key == "" {

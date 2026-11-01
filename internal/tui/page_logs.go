@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -16,11 +15,11 @@ type logsPage struct {
 
 func (a *App) viewLogs(w, h int) []string {
 	lines := a.rt.Logs.Lines()
-	state := "跟随中"
+	state := tr("跟随中")
 	if !a.logs.follow {
-		state = "已暂停"
+		state = tr("已暂停")
 	}
-	sub := fmt.Sprintf("%d 行 · %s · 日志同时写入配置目录", len(lines), state)
+	sub := trf("%d 行 · %s · 日志同时写入配置目录", len(lines), state)
 	head := pageHeader("运行日志", sub, w)
 	contentH := h - len(head)
 	if contentH < 4 {

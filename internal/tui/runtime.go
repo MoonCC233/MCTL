@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.25"
+var Version = "1.0.26"
 
 // Repository used for release checks and download links.
 const (
@@ -138,6 +138,11 @@ type speedTestMsg struct {
 type curseForgeModsMsg struct {
 	Mods []minecraft.CurseForgeMod
 	Err  error
+}
+
+type skinMsg struct {
+	Profile *minecraft.SkinProfile
+	Err     error
 }
 
 type microsoftCodeMsg struct {
@@ -696,6 +701,25 @@ func (r *Runtime) InstallCurseForgeModpack(mod minecraft.CurseForgeMod) {
 		r.mu.Unlock()
 		r.Emit(installDoneMsg{Kind: "modpack", ID: id, Err: err, Canceled: canceled})
 		r.ScanVersions()
+	}()
+}
+
+// FetchSkin loads public skin and cape data for the selected account.
+func (r *Runtime) FetchSkin() {
+	cfg := r.Store.Snapshot()
+	account := cfg.Account()
+	uuid := account.UUID
+	if uuid == "" {
+		uuid = minecraft.OfflineUUID(account.Name)
+	}
+	src := minecraft.GetSource(cfg.DownloadSource)
+	go func() {
+		hc := minecraft.NewHTTPClient(src)
+		profile, err := minecraft.FetchSkinProfile(context.Background(), hc, uuid)
+		if err != nil {
+			r.Logf("获取皮肤失败: %v", err)
+		}
+		r.Emit(skinMsg{Profile: profile, Err: err})
 	}()
 }
 

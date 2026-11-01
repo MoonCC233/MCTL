@@ -72,9 +72,9 @@ func (p *downloadPage) versions() []minecraft.VersionEntry {
 func (a *App) viewDownload(w, h int) []string {
 	p := &a.download
 	modeName := loaderModeNames[clamp(p.mode, 0, len(loaderModeNames)-1)]
-	sub := "正在获取版本列表…"
+	sub := tr("正在获取版本列表…")
 	if p.manifest != nil {
-		sub = fmt.Sprintf("%s · %d 个版本 · 下载源 %s", modeName, len(p.versions()), minecraft.GetSource(a.store.Snapshot().DownloadSource).Name)
+		sub = trf("%s · %d 个版本 · 下载源 %s", modeName, len(p.versions()), minecraft.GetSource(a.store.Snapshot().DownloadSource).Name)
 	}
 	if p.filter != "" {
 		sub += " · 搜索：" + p.filter
@@ -88,7 +88,7 @@ func (a *App) viewDownload(w, h int) []string {
 	if p.loading {
 		for i := 0; i < contentH; i++ {
 			if i == contentH/2 {
-				lines = append(lines, centerText(spinner(a.frame, "正在获取版本列表…"), w))
+				lines = append(lines, centerText(spinner(a.frame, tr("正在获取版本列表…")), w))
 			} else {
 				lines = append(lines, "")
 			}

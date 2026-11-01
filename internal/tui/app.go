@@ -668,6 +668,17 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			a.setToast("实例已导出: "+filepath.Base(m.Path), 1)
 		}
 		return nil
+	case skinMsg:
+		if m.Err != nil {
+			a.openError("获取皮肤失败", m.Err)
+			return nil
+		}
+		if m.Profile == nil {
+			a.setToast("没有皮肤数据", 3)
+			return nil
+		}
+		a.modal = modalState{Kind: modalSkin, Title: "皮肤 / 披风 · " + m.Profile.Name, Data: m.Profile}
+		return nil
 	case curseForgeModsMsg:
 		if m.Err != nil {
 			a.openError("CurseForge 搜索失败", m.Err)

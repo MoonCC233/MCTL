@@ -20,7 +20,7 @@ func TestLanguageSwitching(t *testing.T) {
 		"versions": {"Versions", "Details"},
 		"download": {"Download", "Vanilla", "Fabric"},
 		"settings": {"Settings", "Language", "Theme", "HTTP proxy", "Game directory"},
-		"tools":    {"Tools", "New instance", "Speed test", "Self-test"},
+		"tools":    {"Tools", "New instance", "Speed test", "Self-test", "Skin / cape"},
 		"about":    {"About", "SUPPORTED", "PROJECT"},
 		"logs":     {"Runtime logs"},
 	}

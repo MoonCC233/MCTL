@@ -74,6 +74,30 @@ func TestSpeedTestModal(t *testing.T) {
 	}
 }
 
+func TestSkinModal(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir()})
+	profile := &minecraft.SkinProfile{
+		Name: "Alex", UUID: "abc", SkinURL: "https://textures.example/skin.png",
+		CapeURL: "https://textures.example/cape.png", Slim: true,
+	}
+	a.handleEvent(skinMsg{Profile: profile})
+	if a.modal.Kind != modalSkin {
+		t.Fatalf("modal = %#v", a.modal)
+	}
+	out := a.View()
+	for _, want := range []string{"皮肤 / 披风", "Alex", "Slim", "skin.png", "cape.png"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("skin modal missing %q", want)
+		}
+	}
+
+	classic := testApp(t, config.Config{GameDir: t.TempDir()})
+	classic.handleEvent(skinMsg{Err: errors.New("没有公开的皮肤")})
+	if classic.modal.Kind != modalError {
+		t.Fatalf("modal = %#v", classic.modal)
+	}
+}
+
 func TestNewsModal(t *testing.T) {
 	a := testApp(t, config.Config{GameDir: t.TempDir()})
 	a.handleEvent(newsMsg{Releases: []minecraft.ReleaseInfo{

@@ -61,11 +61,11 @@ func (p *launchPage) versionByID(id string) (minecraft.InstalledVersion, bool) {
 func (a *App) viewLaunch(w, h int) []string {
 	cfg := a.store.Snapshot()
 	p := &a.launch
-	subtitle := "选择版本与账户，然后开始游戏"
+	subtitle := tr("选择版本与账户，然后开始游戏")
 	if len(p.versions) == 0 {
-		subtitle = "还没有安装任何版本 · 前往「下载」获取 Minecraft"
+		subtitle = tr("还没有安装任何版本 · 前往「下载」获取 Minecraft")
 	} else {
-		subtitle = fmt.Sprintf("已安装 %d 个版本 · %s", len(p.versions), middleEllipsis(cfg.GameDir, max(w-32, 20)))
+		subtitle = trf("已安装 %d 个版本 · %s", len(p.versions), middleEllipsis(cfg.GameDir, max(w-32, 20)))
 	}
 	lines := pageHeader("启动游戏", subtitle, w)
 	contentH := h - len(lines)

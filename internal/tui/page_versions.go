@@ -36,9 +36,9 @@ func (a *App) filteredVersions() []minecraft.InstalledVersion {
 
 func (a *App) viewVersions(w, h int) []string {
 	list := a.filteredVersions()
-	sub := fmt.Sprintf("已安装 %d 个版本", len(a.versions.list))
+	sub := trf("已安装 %d 个版本", len(a.versions.list))
 	if a.versions.filter != "" {
-		sub += " · 筛选：" + a.versions.filter
+		sub += trf(" · 筛选：%s", a.versions.filter)
 	}
 	lines := pageHeader("版本管理", sub, w)
 	contentH := h - len(lines)
@@ -121,7 +121,7 @@ func (a *App) renderVersionList(w, h int, list []minecraft.InstalledVersion) str
 	if len(rows) > panelContentHeight(h) {
 		rows = rows[:panelContentHeight(h)]
 	}
-	return panel(fmt.Sprintf("已安装 · %d", len(a.versions.list)), w, h, a.page == pageVersions, rows)
+	return panel(trf("已安装 · %d", len(a.versions.list)), w, h, a.page == pageVersions, rows)
 }
 
 func lipglossRow(s string, w int) string {

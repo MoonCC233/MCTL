@@ -34,6 +34,7 @@ const (
 	modalModDetail
 	modalInstanceWizard
 	modalSpeed
+	modalSkin
 )
 
 type pickerItem struct {
@@ -118,6 +119,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "模组信息", Desc: "查看模组元数据与内嵌 jar", Value: "cmd-mods-info"},
 		{Label: "截图管理", Desc: "查看或删除 Minecraft 截图", Value: "cmd-screenshots"},
 		{Label: "服务器列表", Desc: "添加、编辑或删除多人服务器", Value: "cmd-servers"},
+		{Label: "皮肤 / 披风", Desc: "查看当前账户的皮肤与披风", Value: "cmd-skin"},
 		{Label: "导出实例", Desc: "打包当前版本或整合包为 zip", Value: "cmd-export-instance"},
 		{Label: "导入实例", Desc: "从 MCTL 实例 zip 创建独立实例", Value: "cmd-import-instance"},
 		{Label: "环境自检", Desc: "检查 Java、目录、版本与下载源", Value: "cmd-diagnose"},
@@ -343,6 +345,30 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "r":
 			a.openScreenshots()
 		}
+	case modalSkin:
+		profile, ok := m.Data.(*minecraft.SkinProfile)
+		switch key {
+		case "esc", "q":
+			a.modal = modalState{}
+		case "o":
+			if ok && profile != nil && profile.SkinURL != "" {
+				if err := openPath(profile.SkinURL); err != nil {
+					a.setToast("打开皮肤失败: "+err.Error(), 2)
+				}
+			}
+		case "c":
+			if ok && profile != nil && profile.CapeURL != "" {
+				if err := openPath(profile.CapeURL); err != nil {
+					a.setToast("打开披风失败: "+err.Error(), 2)
+				}
+			} else {
+				a.setToast("该账户没有披风", 3)
+			}
+		case "r":
+			a.modal = modalState{}
+			a.setToast("正在获取皮肤…", 0)
+			a.rt.FetchSkin()
+		}
 	case modalSpeed:
 		switch key {
 		case "esc", "q":
@@ -557,6 +583,10 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.openInput("添加离线账户", "玩家名（3-16 位字母、数字或下划线）", "", "Steve", "add-account")
 		case "m":
 			a.openMicrosoftLogin()
+		case "s":
+			a.modal = modalState{}
+			a.setToast("正在获取皮肤…", 0)
+			a.rt.FetchSkin()
 		case "d":
 			if len(m.Items) > 0 {
 				name := m.Items[m.Selected].Value
@@ -715,6 +745,8 @@ func (a *App) renderModal() string {
 		boxW = 76
 	case modalSpeed:
 		boxW = 84
+	case modalSkin:
+		boxW = 82
 	case modalPicker:
 		boxW = 66
 	case modalProgress:
@@ -997,6 +1029,29 @@ func (a *App) renderModal() string {
 		}
 		add("")
 		add("  " + keyHint("r", "重新测速") + "  " + keyHint("esc", "关闭"))
+	case modalSkin:
+		profile, ok := m.Data.(*minecraft.SkinProfile)
+		add("")
+		if !ok || profile == nil {
+			add("  " + styleFaint.Render("没有皮肤数据"))
+		} else {
+			add("  " + styleText.Render(padRight(tr("名称"), 8)) + " " + styleFaint.Render(profile.Name))
+			add("  " + styleText.Render(padRight("UUID", 8)) + " " + styleFaint.Render(profile.UUID))
+			add("  " + styleText.Render(padRight(tr("模型"), 8)) + " " + styleFaint.Render(profile.SkinModel()))
+			add("")
+			for _, l := range wrapText(tr("皮肤")+"  "+profile.SkinURL, max(inner-4, 12)) {
+				add("  " + styleMuted.Render(l))
+			}
+			cape := tr("无")
+			if profile.CapeURL != "" {
+				cape = profile.CapeURL
+			}
+			for _, l := range wrapText(tr("披风")+"  "+cape, max(inner-4, 12)) {
+				add("  " + styleMuted.Render(l))
+			}
+		}
+		add("")
+		add("  " + keyHint("o", "打开皮肤") + "  " + keyHint("c", "打开披风") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
 	case modalAccounts:
 		add("")
 		for i, it := range m.Items {
@@ -1008,7 +1063,7 @@ func (a *App) renderModal() string {
 			}
 		}
 		add("")
-		add("  " + keyHint("enter", "选择") + "  " + keyHint("a", "离线") + "  " + keyHint("m", "Microsoft") + "  " + keyHint("d", "删除") + "  " + keyHint("esc", "关闭"))
+		add("  " + keyHint("enter", "选择") + "  " + keyHint("a", "离线") + "  " + keyHint("m", "Microsoft") + "  " + keyHint("s", "皮肤") + "  " + keyHint("d", "删除") + "  " + keyHint("esc", "关闭"))
 	case modalProgress:
 		add("")
 		stage := m.Stage
@@ -1123,7 +1178,7 @@ func helpLines() []string {
 		styleSection.Render("启动页"),
 		"  " + accent("↑↓ / ←→") + muted("         选择项目 / 切换值"),
 		"  " + accent("enter") + muted("            启动游戏"),
-		"  " + accent("a") + muted("                账户管理（含 Microsoft 登录）"),
+		"  " + accent("a") + muted("                账户管理（含 Microsoft 登录 / s 皮肤）"),
 		"  " + accent("s") + muted("                停止游戏"),
 		"",
 		styleSection.Render("版本 / 下载"),

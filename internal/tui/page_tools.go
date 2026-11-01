@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -47,6 +46,7 @@ func (a *App) toolItems() []toolItem {
 		{label: "模组信息", desc: "读取模组元数据、加载器、启用状态与内嵌 jar。", action: "mods-info"},
 		{label: "截图管理", desc: "查看或删除当前实例的 Minecraft 截图。", action: "screenshots"},
 		{label: "服务器列表", desc: "添加、编辑或删除当前实例保存的多人服务器。", action: "servers"},
+		{label: "皮肤 / 披风", desc: "查询当前账户的公开皮肤与披风纹理。", action: "skin"},
 		{label: "导出实例", desc: "把当前版本或整合包连同模组、存档与截图打包为 zip。", action: "export-instance"},
 		{label: "导入实例", desc: "从 MCTL 实例 zip 创建独立实例并补全缺失文件。", action: "import-instance"},
 		{label: "新建实例", desc: "按名称、目录、版本、加载器与 Java 创建独立实例。", action: "new-instance"},
@@ -135,7 +135,7 @@ func (a *App) renderToolList(w, h int, items []toolItem) string {
 	if len(rows) > maxRows {
 		rows = rows[:maxRows]
 	}
-	return panel(fmt.Sprintf("常用工具 · %d", len(items)), w, h, a.page == pageTools, rows)
+	return panel(trf("常用工具 · %d", len(items)), w, h, a.page == pageTools, rows)
 }
 
 func (a *App) toolsKey(msg tea.KeyMsg) tea.Cmd {
@@ -229,6 +229,9 @@ func (a *App) runTool(action string) tea.Cmd {
 		a.openScreenshots()
 	case "servers":
 		a.openServers()
+	case "skin":
+		a.setToast("正在获取皮肤…", 0)
+		a.rt.FetchSkin()
 	case "export-instance":
 		a.openExportInstance()
 	case "import-instance":
