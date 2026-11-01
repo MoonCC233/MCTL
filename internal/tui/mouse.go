@@ -197,6 +197,65 @@ func (a *App) hoverHint() string {
 	return ""
 }
 
+func (a *App) openOSK() {
+	if a.modal.Kind != modalInput {
+		return
+	}
+	target := a.modal
+	a.modal = modalState{
+		Kind:   modalKeyboard,
+		Title:  tr("屏幕键盘") + " · " + tr(target.Title),
+		Value:  append([]rune(nil), target.Value...),
+		Cursor: target.Cursor,
+		Data:   &target,
+	}
+}
+
+func (a *App) insertOSK(r rune) {
+	m := &a.modal
+	m.Value = append(m.Value, 0)
+	copy(m.Value[m.Cursor+1:], m.Value[m.Cursor:])
+	m.Value[m.Cursor] = r
+	m.Cursor++
+}
+
+func (a *App) pressOSK(key string) {
+	m := &a.modal
+	switch key {
+	case "shift":
+		m.Shift = !m.Shift
+	case "symbols":
+		m.Symbols = !m.Symbols
+	case "space":
+		a.insertOSK(' ')
+	case "back":
+		if m.Cursor > 0 {
+			m.Value = append(m.Value[:m.Cursor-1], m.Value[m.Cursor:]...)
+			m.Cursor--
+		}
+	case "clear":
+		m.Value = nil
+		m.Cursor = 0
+	default:
+		for _, r := range key {
+			a.insertOSK(r)
+		}
+	}
+}
+
+func (a *App) finishOSK(commit bool) {
+	target, ok := a.modal.Data.(*modalState)
+	if !ok {
+		a.modal = modalState{}
+		return
+	}
+	if commit {
+		target.Value = append([]rune(nil), a.modal.Value...)
+		target.Cursor = a.modal.Cursor
+	}
+	a.modal = *target
+}
+
 func (a *App) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	a.mouseX, a.mouseY = msg.X, msg.Y
 	if msg.Action == tea.MouseActionMotion {
@@ -342,6 +401,16 @@ func (a *App) activateHit(h hitRegion) (tea.Model, tea.Cmd) {
 		return a.handleModalKey(keyMsg("esc"))
 	case "modal-favorite":
 		a.togglePickerFavorite()
+	case "open-osk":
+		a.openOSK()
+	case "osk-key":
+		if key, ok := h.data.(string); ok {
+			a.pressOSK(key)
+		}
+	case "osk-done":
+		a.finishOSK(true)
+	case "osk-cancel":
+		a.finishOSK(false)
 	case "modal-key":
 		if key, ok := h.data.(string); ok {
 			return a.handleModalKey(keyMsg(key))

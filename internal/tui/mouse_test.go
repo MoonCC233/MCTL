@@ -267,6 +267,65 @@ func TestMouseModalHoverHighlight(t *testing.T) {
 	}
 }
 
+func TestMouseOnScreenKeyboard(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir()})
+	a.modal = modalState{Kind: modalInput, Title: "测试", Label: "名称", Action: "test-input"}
+	clickRegion(a, findHit(t, a, "open-osk", nil))
+	if a.modal.Kind != modalKeyboard {
+		t.Fatalf("keyboard modal = %#v", a.modal)
+	}
+	for _, key := range []string{"a", "b", "space", "c"} {
+		clickRegion(a, findHit(t, a, "osk-key", key))
+	}
+	clickRegion(a, findHit(t, a, "osk-done", nil))
+	if a.modal.Kind != modalInput {
+		t.Fatalf("should return to input: %#v", a.modal)
+	}
+	if got := string(a.modal.Value); got != "ab c" {
+		t.Fatalf("value = %q", got)
+	}
+
+	// Backspace, shift and symbol page.
+	clickRegion(a, findHit(t, a, "open-osk", nil))
+	clickRegion(a, findHit(t, a, "osk-key", "back"))
+	clickRegion(a, findHit(t, a, "osk-key", "shift"))
+	clickRegion(a, findHit(t, a, "osk-key", "A"))
+	clickRegion(a, findHit(t, a, "osk-key", "symbols"))
+	clickRegion(a, findHit(t, a, "osk-key", ":"))
+	clickRegion(a, findHit(t, a, "osk-done", nil))
+	if got := string(a.modal.Value); got != "ab A:" {
+		t.Fatalf("value = %q", got)
+	}
+}
+
+func TestMouseOnScreenKeyboardCancel(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir()})
+	a.modal = modalState{Kind: modalInput, Title: "测试", Label: "名称", Action: "test-input", Value: []rune("keep")}
+	a.modal.Cursor = 4
+	clickRegion(a, findHit(t, a, "open-osk", nil))
+	clickRegion(a, findHit(t, a, "osk-key", "clear"))
+	clickRegion(a, findHit(t, a, "osk-key", "x"))
+	clickRegion(a, findHit(t, a, "osk-cancel", nil))
+	if a.modal.Kind != modalInput || string(a.modal.Value) != "keep" {
+		t.Fatalf("cancel should restore the input: %#v", a.modal)
+	}
+}
+
+func TestMouseInputFieldOpensKeyboard(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir()})
+	a.modal = modalState{Kind: modalInput, Title: "测试", Label: "名称", Action: "test-input"}
+	hits := 0
+	a.View()
+	for _, h := range a.hits {
+		if h.action == "open-osk" {
+			hits++
+		}
+	}
+	if hits < 2 {
+		t.Fatalf("input field and button should both be clickable, hits=%d", hits)
+	}
+}
+
 func TestKeyboardNavigationDisabled(t *testing.T) {
 	a := mouseApp(t)
 	for _, key := range []string{"3", "tab", "q", "?"} {

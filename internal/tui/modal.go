@@ -35,6 +35,7 @@ const (
 	modalInstanceWizard
 	modalSpeed
 	modalSkin
+	modalKeyboard
 )
 
 type pickerItem struct {
@@ -60,6 +61,8 @@ type modalState struct {
 	Percent     float64
 	Err         error
 	Query       []rune
+	Shift       bool
+	Symbols     bool
 }
 
 func (a *App) openConfirm(title, body, action string, data any) {
@@ -759,13 +762,17 @@ func (a *App) renderModal() string {
 		boxW = 82
 	case modalPicker:
 		boxW = 66
+	case modalKeyboard:
+		boxW = 46
 	case modalProgress:
 		boxW = 66
 	}
 	boxW = min(boxW, maxW)
 	inner := boxW - 4
 	var content []string
+	inputFieldLine := -1
 	add := func(s string) { content = append(content, s) }
+	a.hitOriginX, a.hitOriginY = 0, 0
 
 	switch m.Kind {
 	case modalConfirm:
@@ -781,9 +788,67 @@ func (a *App) renderModal() string {
 			add("  " + styleMuted.Render(l))
 		}
 		add("")
+		inputFieldLine = len(content)
 		add("  " + a.inputView(m, inner-4))
 		add("")
-		add("  " + keyHint("enter", "确定") + "  " + keyHint("esc", "取消"))
+		add("  " + keyHint("enter", "确定") + "  " + keyHint("esc", "取消") + "  " + keyHint("k", "屏幕键盘"))
+	case modalKeyboard:
+		add("")
+		for _, row := range oskRows(m.Symbols, m.Shift) {
+			lineIdx := len(content)
+			line := "  "
+			x := 2
+			for _, ch := range row {
+				line += styleText.Render(padRight(string(ch), 3)) + " "
+				a.addHit(x, 1+lineIdx, x+2, 1+lineIdx, "osk-key", string(ch))
+				x += 4
+			}
+			add(line)
+		}
+		add("")
+		lineIdx := len(content)
+		line := "  "
+		x := 2
+		symbolLabel := "符号"
+		if m.Symbols {
+			symbolLabel = "字母"
+		}
+		specials := []struct {
+			label string
+			key   string
+			w     int
+		}{
+			{"大写", "shift", 7},
+			{symbolLabel, "symbols", 7},
+			{"空格", "space", 7},
+			{"退格", "back", 7},
+			{"清空", "clear", 7},
+		}
+		for _, s := range specials {
+			cell := "[" + padRight(tr(s.label), s.w-2) + "]"
+			line += styleMuted.Render(cell) + " "
+			a.addHit(x, 1+lineIdx, x+s.w-1, 1+lineIdx, "osk-key", s.key)
+			x += s.w + 1
+		}
+		add(line)
+		add("")
+		lineIdx = len(content)
+		line = "  "
+		x = 2
+		for _, b := range []struct {
+			label  string
+			action string
+			w      int
+		}{
+			{"取消", "osk-cancel", 8},
+			{"完成", "osk-done", 8},
+		} {
+			cell := "[" + padRight(tr(b.label), b.w-2) + "]"
+			line += styleAccent.Render(cell) + " "
+			a.addHit(x, 1+lineIdx, x+b.w-1, 1+lineIdx, b.action, nil)
+			x += b.w + 1
+		}
+		add(line)
 	case modalPicker:
 		add("")
 		visible := min(10, max(maxH-12, 3))
@@ -1152,6 +1217,12 @@ func (a *App) renderModal() string {
 	case modalHelp, modalError:
 		a.addHit(0, 0, 9999, 9999, "modal-close", nil)
 	}
+	if m.Kind == modalInput {
+		if inputFieldLine >= 0 {
+			a.addHit(2, 1+inputFieldLine, boxW-2, 1+inputFieldLine, "open-osk", nil)
+		}
+		a.registerModalButton(content, tr("屏幕键盘"), "open-osk")
+	}
 	if m.Kind == modalPicker {
 		switch m.Action {
 		case "install-online-modpack", "install-resource":
@@ -1160,11 +1231,13 @@ func (a *App) renderModal() string {
 			a.registerModalButton(content, tr("取消收藏"), "modal-favorite")
 		}
 	}
-	a.registerModalButton(content, tr("关闭"), "modal-close")
-	a.registerModalButton(content, tr("取消"), "modal-cancel")
-	a.registerModalButton(content, tr("返回"), "modal-close")
+	if m.Kind != modalKeyboard {
+		a.registerModalButton(content, tr("关闭"), "modal-close")
+		a.registerModalButton(content, tr("取消"), "modal-cancel")
+		a.registerModalButton(content, tr("返回"), "modal-close")
+	}
 	switch m.Kind {
-	case modalConfirm, modalInput, modalHelp, modalError, modalProgress:
+	case modalConfirm, modalInput, modalHelp, modalError, modalProgress, modalKeyboard:
 	default:
 		for _, b := range []struct{ label, key string }{
 			{"刷新", "r"}, {"重新检测", "r"}, {"重新测速", "r"},
@@ -1213,6 +1286,29 @@ func (a *App) paletteQueryView(width int) string {
 	return styleText.Render(string(m.Query)) + styleAccent.Render("▏")
 }
 
+// oskRows returns the on-screen keyboard layout.
+func oskRows(symbols, shift bool) [][]rune {
+	var rows []string
+	if symbols {
+		rows = []string{"!@#$%^&*()", "-_=+[]{}\\|", ";:'\",.<>/?", "`~"}
+	} else {
+		rows = []string{"1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm"}
+	}
+	out := make([][]rune, 0, len(rows))
+	for _, row := range rows {
+		runes := []rune(row)
+		if shift && !symbols {
+			for i, r := range runes {
+				if r >= 'a' && r <= 'z' {
+					runes[i] = r - 'a' + 'A'
+				}
+			}
+		}
+		out = append(out, runes)
+	}
+	return out
+}
+
 func helpLines() []string {
 	accent := func(s string) string { return styleAccent.Render(s) }
 	muted := func(s string) string { return styleMuted.Render(s) }
@@ -1239,6 +1335,9 @@ func helpLines() []string {
 		"  " + accent("工具页") + muted("         单击条目执行"),
 		"  " + accent("关于 / 日志") + muted("    滚轮滚动"),
 		"",
+		styleSection.Render("文本输入"),
+		"  " + muted("单击输入框或「屏幕键盘」按钮，可用鼠标输入文字与符号。"),
+		"  " + muted("键盘输入仍可用，但不是必需。"),
 		styleSection.Render("说明"),
 		"  " + muted("只有文本输入框需要键盘，其余操作全部使用鼠标。"),
 	}
