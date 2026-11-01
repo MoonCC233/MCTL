@@ -143,9 +143,9 @@ func (a *App) renderHero(w, h int, cfg config.Config) string {
 		)
 		content = append(content, "")
 
-		button := "  启动游戏  "
+		button := "  " + tr("启动游戏") + "  "
 		if a.rt.Launching() {
-			button = "  游戏运行中  "
+			button = "  " + tr("游戏运行中") + "  "
 		}
 		if focus && a.launchFocus() == 2 && !a.rt.Launching() {
 			content = append(content, centerText(lipgloss.NewStyle().Foreground(colorBg).Background(colorGreen).Bold(true).Padding(0, 3).Render(button), inner))
@@ -200,8 +200,8 @@ func (a *App) renderEnvironment(w, h int, cfg config.Config) string {
 		"  " + styleMuted.Render("Java    ") + styleText.Render(ansiTruncate(java, max(inner-12, 10))),
 		"  " + styleMuted.Render(tr("内存")+"    ") + styleText.Render(fmt.Sprintf("%d MB", cfg.MaxMemory)),
 		"  " + styleMuted.Render(tr("目录")+"    ") + styleFaint.Render(middleEllipsis(cfg.GameDir, max(inner-12, 10))),
-		"  " + styleMuted.Render(tr("模组")+"    ") + styleText.Render(fmt.Sprintf("%d 个", mods)),
-		"  " + styleMuted.Render(tr("下载源")+"  ") + styleText.Render(minecraft.GetSource(cfg.DownloadSource).Name),
+		"  " + styleMuted.Render(tr("模组")+"    ") + styleText.Render(trf("%d 个", mods)),
+		"  " + styleMuted.Render(tr("下载源")+"  ") + styleText.Render(tr(minecraft.GetSource(cfg.DownloadSource).Name)),
 	}
 	for len(lines) < panelContentHeight(h) {
 		lines = append(lines, "")

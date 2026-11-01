@@ -162,7 +162,7 @@ func (a *App) renderHeader() string {
 		if j := a.rt.Java(); j != nil {
 			java = fmt.Sprintf("Java %d", j.Major)
 		}
-		src := minecraft.GetSource(cfg.DownloadSource).Name
+		src := tr(minecraft.GetSource(cfg.DownloadSource).Name)
 		right = styleMuted.Render(fmt.Sprintf("%s  ·  %d MB  ·  %s", java, cfg.MaxMemory, src))
 	}
 	right += " "
@@ -211,11 +211,11 @@ func (a *App) renderFooter() string {
 	} else if a.toast.Text != "" {
 		right = dot(statusColor(a.toast.Level)) + " " + lipgloss.NewStyle().Foreground(statusColor(a.toast.Level)).Render(a.toast.Text)
 	} else if a.rt.Launching() {
-		right = dot(colorGreen) + " " + styleGreen.Render("游戏运行中")
+		right = dot(colorGreen) + " " + styleGreen.Render(tr("游戏运行中"))
 	} else if a.rt.Installing() {
-		right = spinner(a.frame, "安装中")
+		right = spinner(a.frame, tr("安装中"))
 	} else {
-		right = dot(colorGreen) + " " + styleMuted.Render("就绪")
+		right = dot(colorGreen) + " " + styleMuted.Render(tr("就绪"))
 	}
 	right += " "
 	if lipgloss.Width(left)+lipgloss.Width(right)+1 > a.width {

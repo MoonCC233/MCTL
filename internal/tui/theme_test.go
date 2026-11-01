@@ -80,7 +80,7 @@ func TestSettingsIncludeThemeAndProxy(t *testing.T) {
 	for _, it := range a.settingItems() {
 		keys[it.key] = true
 	}
-	for _, want := range []string{"theme", "proxy"} {
+	for _, want := range []string{"theme", "proxy", "language", "check_update", "feedback"} {
 		if !keys[want] {
 			t.Fatalf("settings are missing %q", want)
 		}

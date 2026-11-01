@@ -71,13 +71,13 @@ func (p *downloadPage) versions() []minecraft.VersionEntry {
 
 func (a *App) viewDownload(w, h int) []string {
 	p := &a.download
-	modeName := loaderModeNames[clamp(p.mode, 0, len(loaderModeNames)-1)]
+	modeName := tr(loaderModeNames[clamp(p.mode, 0, len(loaderModeNames)-1)])
 	sub := tr("正在获取版本列表…")
 	if p.manifest != nil {
-		sub = trf("%s · %d 个版本 · 下载源 %s", modeName, len(p.versions()), minecraft.GetSource(a.store.Snapshot().DownloadSource).Name)
+		sub = trf("%s · %d 个版本 · 下载源 %s", modeName, len(p.versions()), tr(minecraft.GetSource(a.store.Snapshot().DownloadSource).Name))
 	}
 	if p.filter != "" {
-		sub += " · 搜索：" + p.filter
+		sub += tr(" · 搜索：") + p.filter
 	}
 	lines := pageHeader("下载", sub, w)
 	lines = append(lines, "  "+a.renderDownloadTabs(w))
@@ -122,7 +122,7 @@ func (a *App) viewDownload(w, h int) []string {
 func (a *App) renderDownloadTabs(width int) string {
 	p := &a.download
 	if width < 74 {
-		return styleMuted.Render("类型: ") + styleAccent.Render(loaderModeNames[p.mode]) + "  " + styleFaint.Render("←→ 切换")
+		return styleMuted.Render(tr("类型: ")) + styleAccent.Render(tr(loaderModeNames[p.mode])) + "  " + styleFaint.Render(tr("←→ 切换"))
 	}
 	tab := func(label string, selected bool) string {
 		if selected {
@@ -182,26 +182,26 @@ func (a *App) renderDownloadList(w, h int, list []minecraft.VersionEntry) string
 	if len(rows) > panelContentHeight(h) {
 		rows = rows[:panelContentHeight(h)]
 	}
-	title := "版本列表"
+	title := tr("版本列表")
 	if a.download.mode != 0 {
-		title = "选择游戏版本"
+		title = tr("选择游戏版本")
 	}
-	return panel(fmt.Sprintf("%s · %d", title, len(list)), w, h, a.page == pageDownload, rows)
+	return panel(title+fmt.Sprintf(" · %d", len(list)), w, h, a.page == pageDownload, rows)
 }
 
 func typeLabel(t string) string {
 	switch t {
 	case "release":
-		return "正式"
+		return tr("正式")
 	case "snapshot":
-		return "快照"
+		return tr("快照")
 	case "old_beta":
 		return "Beta"
 	case "old_alpha":
 		return "Alpha"
 	default:
 		if t == "" {
-			return "未知"
+			return tr("未知")
 		}
 		return ansiTruncate(t, 6)
 	}
@@ -211,7 +211,7 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 	inner := panelContentWidth(w)
 	var rows []string
 	if len(list) == 0 || a.download.idx >= len(list) {
-		rows = append(rows, "", "  "+styleFaint.Render("选择左侧版本查看详情"))
+		rows = append(rows, "", "  "+styleFaint.Render(tr("选择左侧版本查看详情")))
 	} else {
 		v := list[a.download.idx]
 		rows = append(rows,
@@ -224,55 +224,55 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 			kv("发布时间", shortDate(v.ReleaseTime), inner),
 		)
 		if a.download.installed[v.ID] {
-			rows = append(rows, kv("状态", "已安装 ✓", inner))
+			rows = append(rows, kv("状态", tr("已安装 ✓"), inner))
 		} else {
-			rows = append(rows, kv("状态", "未安装", inner))
+			rows = append(rows, kv("状态", tr("未安装"), inner))
 		}
 		rows = append(rows, "", "  "+styleBorder.Render(strings.Repeat("─", max(inner-4, 0))))
 		switch a.download.mode {
 		case 0:
 			if a.download.installed[v.ID] {
-				rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("修复 / 重新安装"))
+				rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("修复 / 重新安装")))
 			} else {
-				rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("安装此版本"))
+				rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("安装此版本")))
 			}
-			rows = append(rows, "", "  "+styleFaint.Render("将下载客户端、依赖库与资源文件"))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将下载客户端、依赖库与资源文件")))
 		case 1:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Fabric 加载器"))
-			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
-			rows = append(rows, "  "+styleFaint.Render("再写入 Fabric 配置并补全依赖"))
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Fabric 加载器")))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render(tr("再写入 Fabric 配置并补全依赖")))
 		case 2:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Quilt 加载器"))
-			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
-			rows = append(rows, "  "+styleFaint.Render("再写入 Quilt 配置并补全依赖"))
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Quilt 加载器")))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render(tr("再写入 Quilt 配置并补全依赖")))
 		case 3:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Legacy Fabric 加载器"))
-			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
-			rows = append(rows, "  "+styleFaint.Render("再写入 Legacy Fabric 配置并补全依赖"))
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Legacy Fabric 加载器")))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render(tr("再写入 Legacy Fabric 配置并补全依赖")))
 		case 4:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 LiteLoader 版本"))
-			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
-			rows = append(rows, "  "+styleFaint.Render("再写入 LiteLoader 启动配置"))
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 LiteLoader 版本")))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render(tr("再写入 LiteLoader 启动配置")))
 		case 5:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Forge 版本"))
-			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
-			rows = append(rows, "  "+styleFaint.Render("再运行 Forge 安装器并补全依赖"))
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Forge 版本")))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render(tr("再运行 Forge 安装器并补全依赖")))
 		case 6:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 NeoForge 版本"))
-			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
-			rows = append(rows, "  "+styleFaint.Render("再运行 NeoForge 安装器并补全依赖"))
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 NeoForge 版本")))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render(tr("再运行 NeoForge 安装器并补全依赖")))
 		case 7:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 OptiFine 版本"))
-			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
-			rows = append(rows, "  "+styleFaint.Render("再写入 OptiFine 配置并补全依赖"))
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 OptiFine 版本")))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render(tr("再写入 OptiFine 配置并补全依赖")))
 		case 8:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Cleanroom 版本"))
-			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 1.12.2，"))
-			rows = append(rows, "  "+styleFaint.Render("再运行 Cleanroom 安装器（需要 Java 25）"))
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Cleanroom 版本")))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 1.12.2，")))
+			rows = append(rows, "  "+styleFaint.Render(tr("再运行 Cleanroom 安装器（需要 Java 25）")))
 		case 9:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 LabyMod 通道"))
-			rows = append(rows, "", "  "+styleFaint.Render("将从官方自定义清单和依赖库生成"))
-			rows = append(rows, "  "+styleFaint.Render("可直接启动的 LabyMod 版本"))
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 LabyMod 通道")))
+			rows = append(rows, "", "  "+styleFaint.Render(tr("将从官方自定义清单和依赖库生成")))
+			rows = append(rows, "  "+styleFaint.Render(tr("可直接启动的 LabyMod 版本")))
 		}
 	}
 	for len(rows) < panelContentHeight(h) {

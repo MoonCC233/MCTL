@@ -53,6 +53,8 @@ func (a *App) settingItems() []settingItem {
 		{key: "ms_login", section: "账户", label: "Microsoft 登录", desc: "使用设备代码在浏览器中登录 Microsoft 账户。", kind: settingAction},
 		{key: "cf_api_key", section: "整合包", label: "CurseForge Key", desc: "导入 CurseForge 整合包所需的 API Key，可在 CurseForge 开发者控制台申请。", kind: settingText},
 		{key: "proxy", section: "网络", label: "HTTP 代理", desc: "例如 http://127.0.0.1:7890；留空表示直连并使用环境变量代理。", kind: settingText},
+		{key: "check_update", section: "更新", label: "检查更新", desc: "检查最新发布版本并在有更新时打开下载页面。", kind: settingAction},
+		{key: "feedback", section: "更新", label: "问题反馈", desc: "在浏览器中打开项目的 Issue 页面。", kind: settingAction},
 		{key: "open_game", section: "目录", label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", kind: settingAction},
 		{key: "open_config", section: "目录", label: "打开配置目录", desc: "打开 MCTL 配置与日志所在目录。", kind: settingAction},
 	}
@@ -65,7 +67,7 @@ func (a *App) viewSettings(w, h int) []string {
 		a.settings.idx = len(items) - 1
 	}
 	confDir, _ := config.Dir()
-	lines := pageHeader("设置", "修改会立即保存 · "+middleEllipsis(confDir, max(w-24, 20)), w)
+	lines := pageHeader("设置", tr("修改会立即保存")+" · "+middleEllipsis(confDir, max(w-24, 20)), w)
 	contentH := h - len(lines)
 	if contentH < 5 {
 		return fitLines(lines, h, w)
@@ -156,7 +158,7 @@ func (a *App) settingValue(cfg config.Config, it settingItem) string {
 	case "game_dir":
 		return middleEllipsis(cfg.GameDir, 40)
 	case "download_source":
-		return minecraft.GetSource(cfg.DownloadSource).Name
+		return tr(minecraft.GetSource(cfg.DownloadSource).Name)
 	case "theme":
 		return ThemeName(cfg.Theme)
 	case "language":
@@ -166,14 +168,14 @@ func (a *App) settingValue(cfg config.Config, it settingItem) string {
 			return middleEllipsis(cfg.JavaPath, 40)
 		}
 		if a.settings.detected != nil {
-			return fmt.Sprintf("自动 · Java %d", a.settings.detected.Major)
+			return trf("自动 · Java %d", a.settings.detected.Major)
 		}
-		return "自动 · 未检测到"
+		return tr("自动 · 未检测到")
 	case "auto_java":
 		if cfg.AutoJava {
-			return "开启"
+			return tr("开启")
 		}
-		return "关闭"
+		return tr("关闭")
 	case "max_memory":
 		return fmt.Sprintf("%d MB", cfg.MaxMemory)
 	case "min_memory":
@@ -184,22 +186,22 @@ func (a *App) settingValue(cfg config.Config, it settingItem) string {
 		return strconv.Itoa(cfg.Height)
 	case "fullscreen":
 		if cfg.Fullscreen {
-			return "开启"
+			return tr("开启")
 		}
-		return "关闭"
+		return tr("关闭")
 	case "jvm_args":
 		if strings.TrimSpace(cfg.JVMArgs) == "" {
-			return "（无）"
+			return tr("（无）")
 		}
 		return middleEllipsis(cfg.JVMArgs, 40)
 	case "game_args":
 		if strings.TrimSpace(cfg.GameArgs) == "" {
-			return "（无）"
+			return tr("（无）")
 		}
 		return middleEllipsis(cfg.GameArgs, 40)
 	case "ms_client_id":
 		if strings.TrimSpace(cfg.MicrosoftClientID) == "" {
-			return "未配置"
+			return tr("未配置")
 		}
 		return middleEllipsis(cfg.MicrosoftClientID, 40)
 	case "ms_login":
@@ -385,6 +387,14 @@ func (a *App) runSettingAction(it settingItem) {
 		}
 		if err := openPath(dir); err != nil {
 			a.setToast("打开配置目录失败: "+err.Error(), 2)
+		}
+	case "check_update":
+		a.setToast("正在检查更新…", 0)
+		a.rt.CheckUpdate()
+	case "feedback":
+		url := "https://github.com/" + RepoOwner + "/" + RepoName + "/issues"
+		if err := openPath(url); err != nil {
+			a.setToast("打开反馈页面失败: "+err.Error(), 2)
 		}
 	}
 }

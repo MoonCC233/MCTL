@@ -118,6 +118,16 @@ func ThemeIDs() []string {
 
 // ThemeName returns a display name, falling back to the default theme.
 func ThemeName(id string) string {
+	if language == "en" {
+		switch NormalizeTheme(id) {
+		case "midnight":
+			return "Midnight"
+		case "light":
+			return "Light"
+		default:
+			return "OpenCode Dark"
+		}
+	}
 	return paletteFor(id).Name
 }
 

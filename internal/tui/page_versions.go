@@ -75,7 +75,7 @@ func (a *App) renderVersionList(w, h int, list []minecraft.InstalledVersion) str
 	}
 	var rows []string
 	if len(list) == 0 {
-		rows = append(rows, "", "  "+styleFaint.Render("没有已安装的版本"), "  "+styleFaint.Render("按 n 前往下载页安装"))
+		rows = append(rows, "", "  "+styleFaint.Render(tr("没有已安装的版本")), "  "+styleFaint.Render(tr("按 n 前往下载页安装")))
 	} else {
 		start := 0
 		if a.versions.idx >= maxRows {
@@ -144,7 +144,7 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 			kv("类型", v.Type, inner),
 			kv("Java", javaReq(v), inner),
 			kv("大小", formatBytes(v.Size), inner),
-			kv("模组", fmt.Sprintf("%d 个（共享）", v.Mods), inner),
+			kv("模组", trf("%d 个（共享）", v.Mods), inner),
 			kv("发布", shortDate(v.ReleaseTime), inner),
 			"",
 		)
@@ -158,32 +158,32 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 			rows = append(rows, kv("主页", v.Link, inner))
 		}
 		rows = append(rows,
-			"  "+styleMuted.Render("版本路径"),
+			"  "+styleMuted.Render(tr("版本路径")),
 			"  "+styleFaint.Render(middleEllipsis(v.Dir, inner-4)),
 		)
 		if v.GameDir != "" {
 			rows = append(rows,
-				"  "+styleMuted.Render("实例路径"),
+				"  "+styleMuted.Render(tr("实例路径")),
 				"  "+styleFaint.Render(middleEllipsis(v.GameDir, inner-4)),
 			)
 		}
 		if !v.Complete {
-			rows = append(rows, "", "  "+styleYellow.Render("⚠ 客户端文件不完整，启动时会自动补全"))
+			rows = append(rows, "", "  "+styleYellow.Render(tr("⚠ 客户端文件不完整，启动时会自动补全")))
 		}
 		rows = append(rows, "", "  "+styleBorder.Render(strings.Repeat("─", max(inner-4, 0))))
 		rows = append(rows,
-			"  "+styleAccent.Render("enter")+" "+styleMuted.Render("启动游戏"),
-			"  "+styleAccent.Render("d")+"     "+styleMuted.Render("删除版本"),
-			"  "+styleAccent.Render("o")+"     "+styleMuted.Render("打开版本目录"),
-			"  "+styleAccent.Render("m")+"     "+styleMuted.Render("打开模组目录"),
-			"  "+styleAccent.Render("p")+"     "+styleMuted.Render("打开资源包目录"),
-			"  "+styleAccent.Render("s")+"     "+styleMuted.Render("打开存档目录"),
-			"  "+styleAccent.Render("h")+"     "+styleMuted.Render("打开截图目录"),
-			"  "+styleAccent.Render("f")+"     "+styleMuted.Render("打开配置目录"),
-			"  "+styleAccent.Render("i")+"     "+styleMuted.Render("实例设置"),
-			"  "+styleAccent.Render("l")+"     "+styleMuted.Render("实例安装 / 修复"),
-			"  "+styleAccent.Render("x")+"     "+styleMuted.Render("导出实例"),
-			"  "+styleAccent.Render("+")+"     "+styleMuted.Render("新建实例"),
+			"  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("启动游戏")),
+			"  "+styleAccent.Render("d")+"     "+styleMuted.Render(tr("删除版本")),
+			"  "+styleAccent.Render("o")+"     "+styleMuted.Render(tr("打开版本目录")),
+			"  "+styleAccent.Render("m")+"     "+styleMuted.Render(tr("打开模组目录")),
+			"  "+styleAccent.Render("p")+"     "+styleMuted.Render(tr("打开资源包目录")),
+			"  "+styleAccent.Render("s")+"     "+styleMuted.Render(tr("打开存档目录")),
+			"  "+styleAccent.Render("h")+"     "+styleMuted.Render(tr("打开截图目录")),
+			"  "+styleAccent.Render("f")+"     "+styleMuted.Render(tr("打开配置目录")),
+			"  "+styleAccent.Render("i")+"     "+styleMuted.Render(tr("实例设置")),
+			"  "+styleAccent.Render("l")+"     "+styleMuted.Render(tr("实例安装 / 修复")),
+			"  "+styleAccent.Render("x")+"     "+styleMuted.Render(tr("导出实例")),
+			"  "+styleAccent.Render("+")+"     "+styleMuted.Render(tr("新建实例")),
 		)
 	}
 	for len(rows) < panelContentHeight(h) {

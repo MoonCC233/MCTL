@@ -51,9 +51,9 @@ func (a *App) viewLogs(w, h int) []string {
 	if len(rows) > maxRows {
 		rows = rows[:maxRows]
 	}
-	title := "日志"
+	title := tr("日志")
 	if a.logs.follow {
-		title += " · 跟随"
+		title += tr(" · 跟随")
 	}
 	p := panel(title, w-4, contentH, a.page == pageLogs, rows)
 	for _, l := range strings.Split(p, "\n") {
