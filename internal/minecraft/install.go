@@ -260,7 +260,12 @@ func (i *Installer) EnsureInstalled(ctx context.Context, id string) error {
 		if !fileMatches(p, rv.Logging.Client.File.Size) {
 			i.logf("下载日志配置")
 			if err := i.HTTP.DownloadFile(ctx, rv.Logging.Client.File.URL, p, rv.Logging.Client.File.SHA1, nil); err != nil {
-				return fmt.Errorf("下载日志配置: %w", err)
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				// The log4j config is optional; a missing mirror copy should not
+				// block the installation.
+				i.logf("日志配置下载失败，已跳过: %v", err)
 			}
 		}
 	}

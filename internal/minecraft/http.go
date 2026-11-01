@@ -15,7 +15,7 @@ import (
 )
 
 // UserAgent identifies MCTL to download servers.
-const UserAgent = "MCTL/1.0.42 (Minecraft launcher)"
+const UserAgent = "MCTL/1.0.43 (Minecraft launcher)"
 
 // HTTPClient wraps retries, mirror rewriting and checksum verification.
 type HTTPClient struct {

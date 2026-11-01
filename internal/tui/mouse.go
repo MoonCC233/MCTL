@@ -260,6 +260,10 @@ func (a *App) hoverHint() string {
 		return tr("单击编辑或切换")
 	case "tool-row":
 		return tr("单击执行")
+	case "home-action":
+		return tr("单击执行快捷操作")
+	case "home-news":
+		return tr("单击查看完整更新日志")
 	case "modal-item":
 		return tr("单击选择")
 	case "help":
@@ -416,6 +420,26 @@ func (a *App) activateHit(h hitRegion) (tea.Model, tea.Cmd) {
 	case "launch-news":
 		a.setToast("正在获取更新日志…", 0)
 		a.rt.FetchNews()
+	case "home-news":
+		a.setToast("正在获取更新日志…", 0)
+		a.rt.FetchNews()
+	case "home-action":
+		it, ok := h.data.(homeAction)
+		if !ok {
+			return a, nil
+		}
+		switch it.action {
+		case "launch":
+			if a.rt.Launching() {
+				a.openConfirm("停止游戏", "确定要结束当前游戏进程吗？未保存的游戏进度可能丢失。", "stop-game", nil)
+			} else {
+				a.startLaunch(a.launch.selectedVersion(a.store.Snapshot()))
+			}
+		case "page":
+			a.switchPage(pageDownload)
+		default:
+			return a, a.runTool(it.action)
+		}
 	case "versions-row":
 		idx, _ := h.data.(int)
 		list := a.filteredVersions()

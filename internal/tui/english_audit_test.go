@@ -27,7 +27,7 @@ func englishChromeLine(line string) bool {
 func TestEnglishChromeIsTranslated(t *testing.T) {
 	t.Cleanup(func() { SetLanguage("zh") })
 	SetLanguage("en")
-	for _, page := range []string{"launch", "versions", "download", "settings", "tools", "about", "logs"} {
+	for _, page := range []string{"home", "launch", "versions", "download", "settings", "tools", "about", "logs"} {
 		out := RenderDemo(page, 160, 40)
 		lines := strings.Split(out, "\n")
 		if page == "logs" {
@@ -49,6 +49,7 @@ func TestEnglishChromeIsTranslated(t *testing.T) {
 
 func TestLayoutRegions(t *testing.T) {
 	regions := map[string][]string{
+		"home":     {"新闻 / 公告", "快捷操作", "运行状态"},
 		"launch":   {"当前实例", "运行环境", "最近日志", "新闻 / 公告"},
 		"versions": {"已安装 ·", "详情"},
 		"download": {"版本列表 ·", "详情"},

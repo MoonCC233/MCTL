@@ -36,7 +36,7 @@ func TestLanguageSwitching(t *testing.T) {
 		}
 	}
 	// English chrome must still fit a narrow terminal.
-	for _, page := range []string{"launch", "versions", "download", "settings", "tools", "about", "logs"} {
+	for _, page := range []string{"home", "launch", "versions", "download", "settings", "tools", "about", "logs"} {
 		out := RenderDemo(page, 90, 24)
 		for i, line := range strings.Split(out, "\n") {
 			if got := lipgloss.Width(line); got > 90 {

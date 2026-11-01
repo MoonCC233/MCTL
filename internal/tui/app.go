@@ -20,7 +20,8 @@ import (
 type pageID int
 
 const (
-	pageLaunch pageID = iota
+	pageHome pageID = iota
+	pageLaunch
 	pageVersions
 	pageDownload
 	pageSettings
@@ -30,9 +31,9 @@ const (
 	pageCount
 )
 
-var pageNames = []string{"启动", "版本", "下载", "设置", "工具", "关于", "日志"}
-var pageEnglish = []string{"LAUNCH", "VERSIONS", "DOWNLOAD", "SETTINGS", "TOOLS", "ABOUT", "LOGS"}
-var pageNumbers = []string{"1", "2", "3", "4", "5", "6", "7"}
+var pageNames = []string{"主页", "启动", "版本", "下载", "设置", "工具", "关于", "日志"}
+var pageEnglish = []string{"HOME", "LAUNCH", "VERSIONS", "DOWNLOAD", "SETTINGS", "TOOLS", "ABOUT", "LOGS"}
+var pageNumbers = []string{"1", "2", "3", "4", "5", "6", "7", "8"}
 
 type toastState struct {
 	Text  string
@@ -409,6 +410,8 @@ func (a *App) sidebarBottom(w int, compact bool) []string {
 
 func (a *App) renderPage(w, h int) []string {
 	switch a.page {
+	case pageHome:
+		return a.viewHome(w, h)
 	case pageLaunch:
 		return a.viewLaunch(w, h)
 	case pageVersions:
@@ -453,6 +456,8 @@ func (a *App) switchPage(p pageID) {
 	}
 	a.page = p
 	switch p {
+	case pageHome:
+		a.refreshLaunchNews(false)
 	case pageLaunch:
 		a.refreshLaunchNews(false)
 	case pageVersions:

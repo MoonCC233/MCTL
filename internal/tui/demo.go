@@ -77,7 +77,7 @@ func RenderDemo(page string, width, height int) string {
 	}
 	if page == "all" {
 		var b strings.Builder
-		for _, p := range []pageID{pageLaunch, pageVersions, pageDownload, pageSettings, pageTools, pageAbout, pageLogs} {
+		for _, p := range []pageID{pageHome, pageLaunch, pageVersions, pageDownload, pageSettings, pageTools, pageAbout, pageLogs} {
 			fmt.Fprintf(&b, "── %s ──\n", pageLabel(int(p)))
 			b.WriteString(render(p))
 			b.WriteString("\n\n")
@@ -85,6 +85,8 @@ func RenderDemo(page string, width, height int) string {
 		return strings.TrimRight(b.String(), "\n")
 	}
 	switch page {
+	case "home":
+		return render(pageHome)
 	case "versions":
 		return render(pageVersions)
 	case "download":

@@ -168,7 +168,7 @@ func demoFlagTakesValue(flag string) bool {
 
 func isDemoPage(s string) bool {
 	switch s {
-	case "launch", "versions", "download", "settings", "tools", "about", "logs", "all":
+	case "home", "launch", "versions", "download", "settings", "tools", "about", "logs", "all":
 		return true
 	}
 	return false
@@ -186,7 +186,7 @@ func printHelp() {
   --print-config        打印配置路径与内容
   --list-java           列出检测到的 Java 运行时并退出
   --demo                渲染演示界面并退出
-  --demo-page <页面>    launch | versions | download | settings | tools | about | logs | all
+  --demo-page <页面>    home | launch | versions | download | settings | tools | about | logs | all
   --demo-width <列数>   演示界面宽度（默认 118）
   --demo-height <行数>  演示界面高度（默认 34）
   --version             显示版本号

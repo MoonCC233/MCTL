@@ -336,32 +336,47 @@ var english = map[string]string{
 	"项目 ID 或链接":                        "Project ID or link",
 	"例如 285109 或 .../modpacks/rlcraft": "e.g. 285109 or .../modpacks/rlcraft",
 	"按项目 ID 或链接读取文件列表并安装，适用于搜索接口受限的 Key。": "Resolve files by project ID or link; useful when the key cannot use search.",
-	"正在读取 CurseForge 项目…": "Loading the CurseForge project…",
-	"行尾":                  "End",
-	"启用 / 停用":             "Enable / disable",
-	"打开目录":                "Open folder",
-	"备份":                  "Backup",
-	"问题反馈":                "Feedback",
-	"在浏览器中打开项目的 Issue 页面。": "Open the project's issue tracker in a browser.",
-	"新闻 / 公告":         "News",
-	"正在获取新闻…":         "Loading news…",
-	"新闻获取失败 · n 重试":   "Failed to load news · n to retry",
-	"暂无新闻":            "No news yet",
-	"实例安装 / 修复":       "Instance install / repair",
-	"将下载客户端、依赖库与资源文件": "Downloads the client, libraries and assets.",
-	"自动 · Java %d":    "Auto · Java %d",
-	"测速":              "Speed test",
-	"自检":              "Self-test",
-	"更新":              "Update",
-	"BMCLAPI 镜像":      "BMCLAPI mirror",
-	"Mojang 官方":       "Mojang Official",
-	" · 筛选：":          " · filter: ",
-	"数据包":             "Data packs",
-	"在线数据包":           "Online data packs",
-	"世界":              "Worlds",
-	"在线世界":            "Online worlds",
-	"投影管理":            "Schematics",
-	"投影":              "Schematics",
+	"正在读取 CurseForge 项目…":                "Loading the CurseForge project…",
+	"最新动态、快捷入口与运行状态":                     "News, shortcuts and runtime status",
+	"已安装 %d 个版本 · 最新发布与常用操作":             "%d versions installed · latest release and common actions",
+	"新闻获取失败":                             "Failed to load news",
+	"单击此处重试":                             "Click here to retry",
+	"单击查看完整更新日志":                         "Click to open the full changelog",
+	"单击执行快捷操作":                           "Click to run this shortcut",
+	"快捷操作":                               "Quick actions",
+	"运行状态":                               "Status",
+	"未选择":                                "Not set",
+	"使用当前实例与账户启动":                        "Launch with the current instance and account",
+	"原版与 Fabric / Forge / NeoForge 等加载器": "Vanilla, Fabric, Forge, NeoForge and more",
+	"独立目录、版本、加载器与 Java":                  "Separate directory, version, loader and Java",
+	"Modrinth .mrpack 或 CurseForge 压缩包":  "Modrinth .mrpack or CurseForge archive",
+	"在系统文件管理器中打开":                        "Open in the system file manager",
+	"列出所有检测到的运行时":                        "List every detected runtime",
+	"行尾":                                 "End",
+	"启用 / 停用":                            "Enable / disable",
+	"打开目录":                               "Open folder",
+	"备份":                                 "Backup",
+	"问题反馈":                               "Feedback",
+	"在浏览器中打开项目的 Issue 页面。":               "Open the project's issue tracker in a browser.",
+	"新闻 / 公告":                            "News",
+	"正在获取新闻…":                            "Loading news…",
+	"新闻获取失败 · n 重试":                      "Failed to load news · n to retry",
+	"暂无新闻":                               "No news yet",
+	"实例安装 / 修复":                          "Instance install / repair",
+	"将下载客户端、依赖库与资源文件":                    "Downloads the client, libraries and assets.",
+	"自动 · Java %d":                       "Auto · Java %d",
+	"测速":                                 "Speed test",
+	"自检":                                 "Self-test",
+	"更新":                                 "Update",
+	"BMCLAPI 镜像":                         "BMCLAPI mirror",
+	"Mojang 官方":                          "Mojang Official",
+	" · 筛选：":                             " · filter: ",
+	"数据包":                                "Data packs",
+	"在线数据包":                              "Online data packs",
+	"世界":                                 "Worlds",
+	"在线世界":                               "Online worlds",
+	"投影管理":                               "Schematics",
+	"投影":                                 "Schematics",
 	"查看、打开或删除当前实例的投影文件。": "Browse or delete schematic files in this instance.",
 	"实例安装": "Instance install",
 	"为当前实例安装加载器或补全游戏文件。":     "Install a loader or repair files for this instance.",
@@ -418,18 +433,20 @@ func pageLabel(i int) string {
 	if language == "en" {
 		switch i {
 		case 0:
-			return "Launch"
+			return "Home"
 		case 1:
-			return "Versions"
+			return "Launch"
 		case 2:
-			return "Download"
+			return "Versions"
 		case 3:
-			return "Settings"
+			return "Download"
 		case 4:
-			return "Tools"
+			return "Settings"
 		case 5:
-			return "About"
+			return "Tools"
 		case 6:
+			return "About"
+		case 7:
 			return "Logs"
 		}
 	}

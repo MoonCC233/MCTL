@@ -18,7 +18,7 @@ func TestRenderDemoPagesFillTerminal(t *testing.T) {
 		{90, 24},
 		{160, 44},
 	} {
-		for _, page := range []string{"launch", "versions", "download", "settings", "tools", "about", "logs"} {
+		for _, page := range []string{"home", "launch", "versions", "download", "settings", "tools", "about", "logs"} {
 			out := RenderDemo(page, size.w, size.h)
 			lines := strings.Split(out, "\n")
 			if len(lines) != size.h {
@@ -85,6 +85,7 @@ func TestToolsDemoListsInstanceTools(t *testing.T) {
 
 func TestDemoPageContentMap(t *testing.T) {
 	pages := map[string][]string{
+		"home":     {"主页", "新闻 / 公告", "快捷操作", "运行状态"},
 		"launch":   {"启动", "账户", "版本"},
 		"versions": {"已安装", "详情", "实例设置"},
 		"download": {"版本列表", "Fabric", "Forge"},
@@ -93,7 +94,7 @@ func TestDemoPageContentMap(t *testing.T) {
 		"about":    {"关于", "支持", "MCTL"},
 		"logs":     {"日志"},
 	}
-	nav := []string{"LAUNCH", "VERSIONS", "DOWNLOAD", "SETTINGS", "TOOLS", "ABOUT", "LOGS"}
+	nav := []string{"HOME", "LAUNCH", "VERSIONS", "DOWNLOAD", "SETTINGS", "TOOLS", "ABOUT", "LOGS"}
 	for page, markers := range pages {
 		out := RenderDemo(page, 118, 34)
 		for _, m := range markers {
@@ -137,7 +138,7 @@ func TestAboutPageScrolls(t *testing.T) {
 }
 
 func TestLayoutFrameStructure(t *testing.T) {
-	for _, page := range []string{"launch", "versions", "download", "settings", "tools", "about", "logs"} {
+	for _, page := range []string{"home", "launch", "versions", "download", "settings", "tools", "about", "logs"} {
 		out := RenderDemo(page, 118, 34)
 		lines := strings.Split(out, "\n")
 		if len(lines) != 34 {

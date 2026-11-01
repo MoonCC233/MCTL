@@ -426,12 +426,52 @@ func TestMouseModalContextCancelRestoresList(t *testing.T) {
 	}
 }
 
+func TestHomeIsDefaultPage(t *testing.T) {
+	a := mouseApp(t)
+	if a.page != pageHome {
+		t.Fatalf("default page = %v", a.page)
+	}
+	out := a.View()
+	if !strings.Contains(out, "新闻 / 公告") || !strings.Contains(out, "快捷操作") {
+		t.Fatal("home page should show news and shortcuts")
+	}
+}
+
+func TestHomeQuickActionSwitchesPage(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageHome
+	items := homeActions()
+	idx := -1
+	for i, it := range items {
+		if it.label == "下载版本" {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		t.Fatal("download shortcut missing")
+	}
+	clickRegion(a, findHit(t, a, "home-action", items[idx]))
+	if a.page != pageDownload {
+		t.Fatalf("page = %v", a.page)
+	}
+}
+
+func TestHomeNewsPanelIsClickable(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageHome
+	h := findHit(t, a, "home-news", nil)
+	if h.action != "home-news" {
+		t.Fatalf("hit = %#v", h)
+	}
+}
+
 func TestKeyboardNavigationDisabled(t *testing.T) {
 	a := mouseApp(t)
 	for _, key := range []string{"3", "tab", "q", "?"} {
 		a.handleKey(keyMsg(key))
 	}
-	if a.page != pageLaunch {
+	if a.page != pageHome {
 		t.Fatalf("keyboard changed page to %v", a.page)
 	}
 	if a.modal.Kind != modalNone {

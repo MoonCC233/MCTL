@@ -6,7 +6,8 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 
 ## 特性
 
-- **完整的终端界面**：启动、版本、下载、设置、工具、关于、日志七个页面，支持响应式布局。
+- **完整的终端界面**：主页、启动、版本、下载、设置、工具、关于、日志八个页面，支持响应式布局。
+- **主页**：独立展示最近发布新闻、快捷操作（启动 / 下载 / 新建实例 / 导入整合包 / 打开目录 / 检测 Java）与运行状态（Java、账户、实例、下载源、游戏目录）。
 - **真实安装流程**：读取 Mojang 版本清单，下载客户端、依赖库、natives 和资源文件，校验 SHA-1。
 - **版本继承**：解析 `inheritsFrom`，合并父版本与子版本的库、参数和主类。
 - **加载器支持**：Fabric、Quilt、Legacy Fabric、LiteLoader、Forge、NeoForge、OptiFine、Cleanroom 与 LabyMod；Forge/NeoForge/Cleanroom 使用官方安装器，LiteLoader/OptiFine 使用嵌入或生成的版本配置安装，LabyMod 使用官方自定义清单与依赖库生成可启动版本。
@@ -111,7 +112,7 @@ mctl
 | `--print-config` | 打印配置文件路径与当前配置 |
 | `--list-java` | 列出所有检测到的 Java 运行时与路径 |
 | `--demo [页面]` | 渲染演示界面并退出 |
-| `--demo-page <页面>` | 演示页面：`launch`、`versions`、`download`、`settings`、`logs`、`all` |
+| `--demo-page <页面>` | 演示页面：`home`、`launch`、`versions`、`download`、`settings`、`tools`、`about`、`logs`、`all` |
 | `--demo-width <列数>` | 演示界面宽度，默认 `118` |
 | `--demo-height <行数>` | 演示界面高度，默认 `34` |
 | `--version` | 显示版本号 |
@@ -135,6 +136,13 @@ mctl
 | 悬停 | 底部显示当前可执行操作，行会高亮 |
 | 单击弹窗外部 | 关闭弹窗 |
 | 单击弹窗按钮 | 确认 / 取消 / 收藏 |
+
+### 主页
+
+- 左侧列出最近发布记录，单击打开完整更新日志。
+- 右侧快捷操作：启动游戏、下载版本、新建实例、导入整合包、打开游戏目录、检测 Java。
+- 底部显示 Java、账户、当前实例、下载源与游戏目录。
+- 滚轮或侧边栏可随时切换到其他页面。
 
 ### 启动页
 
@@ -242,7 +250,7 @@ go test -tags live -v ./internal/minecraft -run TestLiveLoaderMetadata -count=1
 真实加载器安装（会下载安装器与依赖，需数十 MB 到数百 MB 流量，默认跳过）：
 
 ```bash
-MCTL_REAL_INSTALL=1 go test -tags live -v ./internal/minecraft -run 'TestLiveForgeInstall|TestLiveNeoForgeInstall|TestLiveCleanroomInstall' -count=1
+MCTL_REAL_INSTALL=1 go test -tags live -v ./internal/minecraft -run 'TestLiveForgeInstall|TestLiveNeoForgeInstall|TestLiveCleanroomInstall|TestLiveLabyModProfile' -count=1
 ```
 
 测试会准备原版 profile 与客户端 jar，下载官方安装器并实际执行，然后解析生成的版本配置：
@@ -250,6 +258,7 @@ MCTL_REAL_INSTALL=1 go test -tags live -v ./internal/minecraft -run 'TestLiveFor
 - Forge 1.20.1 + 47.4.28：`java -jar ... --installClient`
 - NeoForge 1.21.1 + 21.1.265：同一套 `--installClient` 流程
 - Cleanroom 1.12.2 + 0.7.14-alpha：`client -d <dir> --version <id> -y`，需要 Java 25
+- LabyMod 1.20.1：读取官方清单生成版本配置，并实际下载客户端、依赖库与资源文件
 
 安装器运行在当前配置的代理下：MCTL 会把 `http.proxyHost` / `https.proxyHost` 传给安装器 JVM，并在游戏目录缺少 `launcher_profiles.json` 时自动创建最小配置。
 
@@ -278,11 +287,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.42` 的标签会触发 Release 工作流：
+推送形如 `v1.0.43` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.42
-git push origin v1.0.42
+git tag v1.0.43
+git push origin v1.0.43
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

@@ -1349,6 +1349,7 @@ func helpLines() []string {
 		"  " + accent("单击弹窗按钮") + muted("   确认 / 取消"),
 		"",
 		styleSection.Render("页面"),
+		"  " + accent("主页") + muted("           新闻、快捷操作与运行状态"),
 		"  " + accent("启动页") + muted("         单击版本或账户切换，单击绿色按钮启动 / 停止"),
 		"  " + accent("版本页") + muted("         双击版本启动，单击右侧操作行执行操作"),
 		"  " + accent("下载页") + muted("         单击页签切换类型，双击版本安装"),
