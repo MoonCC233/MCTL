@@ -22,3 +22,6 @@ go.work.sum
 
 # Temporary cross-build output
 /dist2/
+
+# CodeGraph local index
+.codegraph/
