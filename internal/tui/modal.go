@@ -27,6 +27,7 @@ const (
 	modalResources
 	modalScreenshots
 	modalServers
+	modalDiagnostics
 )
 
 type pickerItem struct {
@@ -110,6 +111,8 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "服务器列表", Desc: "添加、编辑或删除多人服务器", Value: "cmd-servers"},
 		{Label: "导出实例", Desc: "打包当前版本或整合包为 zip", Value: "cmd-export-instance"},
 		{Label: "导入实例", Desc: "从 MCTL 实例 zip 创建独立实例", Value: "cmd-import-instance"},
+		{Label: "环境自检", Desc: "检查 Java、目录、版本与下载源", Value: "cmd-diagnose"},
+		{Label: "检查更新", Desc: "查询最新发布版本", Value: "cmd-update"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
 		{Label: "工具", Desc: "目录、Java、日志与整合包导入", Value: "cmd-page-tools"},
 		{Label: "关于 MCTL", Desc: "版本、路径与项目信息", Value: "cmd-page-about"},
@@ -291,6 +294,15 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		case "r":
 			a.openScreenshots()
+		}
+	case modalDiagnostics:
+		switch key {
+		case "esc", "q":
+			a.modal = modalState{}
+		case "r":
+			a.modal = modalState{}
+			a.setToast("正在重新检测…", 0)
+			a.rt.RunDiagnose()
 		}
 	case modalServers:
 		switch key {
@@ -526,6 +538,8 @@ func (a *App) renderModal() string {
 		boxW = 72
 	case modalServers:
 		boxW = 76
+	case modalDiagnostics:
+		boxW = 80
 	case modalPicker:
 		boxW = 66
 	case modalProgress:
@@ -678,6 +692,23 @@ func (a *App) renderModal() string {
 		}
 		add("")
 		add("  " + keyHint("a", "添加") + "  " + keyHint("e", "编辑") + "  " + keyHint("d", "删除") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
+	case modalDiagnostics:
+		add("")
+		if len(m.Items) == 0 {
+			add("  " + styleFaint.Render("正在检测…"))
+		}
+		for _, it := range m.Items {
+			icon, iconStyle := "✗", styleRed
+			switch it.Value {
+			case string(minecraft.DiagnoseOK):
+				icon, iconStyle = "✓", styleGreen
+			case string(minecraft.DiagnoseWarn):
+				icon, iconStyle = "!", styleYellow
+			}
+			add("  " + iconStyle.Render(icon) + " " + styleText.Render(padRight(it.Label, 14)) + " " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-24, 10))))
+		}
+		add("")
+		add("  " + keyHint("r", "重新检测") + "  " + keyHint("esc", "关闭"))
 	case modalAccounts:
 		add("")
 		for i, it := range m.Items {
@@ -818,6 +849,7 @@ func helpLines() []string {
 		"  " + accent("w / e / m / s / p") + muted("  整合包 / 在线 / 本地 / 存档 / 截图"),
 		"  " + accent("n") + muted("                服务器列表"),
 		"  " + accent("x / u") + muted("            导出 / 导入实例"),
+		"  " + accent("d / t") + muted("            环境自检 / 检查更新"),
 		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),
 	}
 }

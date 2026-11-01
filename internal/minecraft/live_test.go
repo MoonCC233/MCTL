@@ -51,6 +51,17 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		t.Logf("Modrinth latest: %s (%s)", version.VersionNumber, file.Filename)
 	})
 
+	t.Run("ReleaseFeed", func(t *testing.T) {
+		info, err := FetchLatestRelease(ctx, hc, "MoonCC233", "MCTL")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.TagName == "" || info.HTMLURL == "" {
+			t.Fatalf("release = %#v", info)
+		}
+		t.Logf("Release feed: %s (%s)", info.TagName, info.HTMLURL)
+	})
+
 	t.Run("ModrinthResourcePack", func(t *testing.T) {
 		projects, err := SearchProjects(ctx, hc, "faithful", "resourcepack", 3)
 		if err != nil {

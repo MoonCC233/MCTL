@@ -19,7 +19,13 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.16"
+var Version = "1.0.17"
+
+// Repository used for release checks and download links.
+const (
+	RepoOwner = "MoonCC233"
+	RepoName  = "MCTL"
+)
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -107,6 +113,16 @@ type instanceDoneMsg struct {
 	Path   string
 	Err    error
 	Warn   error
+}
+
+type diagnoseDoneMsg struct {
+	Checks []minecraft.DiagnoseCheck
+}
+
+type updateCheckMsg struct {
+	Info    *minecraft.ReleaseInfo
+	Current string
+	Err     error
 }
 
 type microsoftCodeMsg struct {
@@ -572,6 +588,37 @@ func (r *Runtime) ImportWorld(gameDir, zipPath string) {
 			r.Logf("存档已导入: %s", name)
 		}
 		r.Emit(worldDoneMsg{Action: "import", Name: name, Path: zipPath, Err: err})
+	}()
+}
+
+// RunDiagnose checks the local environment and download source.
+func (r *Runtime) RunDiagnose() {
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		hc := minecraft.NewHTTPClient(src)
+		checks := minecraft.Diagnose(context.Background(), hc, minecraft.DiagnoseOptions{
+			GameDir:   cfg.GameDir,
+			JavaPath:  cfg.JavaPath,
+			VersionID: cfg.SelectedVersion,
+		})
+		for _, c := range checks {
+			r.Logf("自检 %s [%s]: %s", c.Name, c.Status, c.Detail)
+		}
+		r.Emit(diagnoseDoneMsg{Checks: checks})
+	}()
+}
+
+// CheckUpdate queries the latest published release.
+func (r *Runtime) CheckUpdate() {
+	go func() {
+		cfg := r.Store.Snapshot()
+		hc := minecraft.NewHTTPClient(minecraft.GetSource(cfg.DownloadSource))
+		info, err := minecraft.FetchLatestRelease(context.Background(), hc, RepoOwner, RepoName)
+		if err != nil {
+			r.Logf("检查更新失败: %v", err)
+		}
+		r.Emit(updateCheckMsg{Info: info, Current: Version, Err: err})
 	}()
 }
 

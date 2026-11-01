@@ -299,6 +299,21 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		}
 		a.setToast("已删除: "+d.Name, 1)
 		a.openResourceFiles(d.Kind)
+	case action == "diagnose":
+		a.setToast("正在检测运行环境…", 0)
+		a.rt.RunDiagnose()
+	case action == "update":
+		a.setToast("正在检查更新…", 0)
+		a.rt.CheckUpdate()
+	case action == "open-release":
+		url, _ := data.(string)
+		if url == "" {
+			a.setToast("发布页面地址无效", 3)
+			return nil
+		}
+		if err := openPath(url); err != nil {
+			a.setToast("打开浏览器失败: "+err.Error(), 2)
+		}
 	case action == "export-instance":
 		versionID, _ := data.(string)
 		dest := strings.TrimSpace(value)
@@ -459,6 +474,12 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openExportInstance()
 	case "cmd-import-instance":
 		a.openImportInstance()
+	case "cmd-diagnose":
+		a.setToast("正在检测运行环境…", 0)
+		a.rt.RunDiagnose()
+	case "cmd-update":
+		a.setToast("正在检查更新…", 0)
+		a.rt.CheckUpdate()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":

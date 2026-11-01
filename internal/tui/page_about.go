@@ -34,6 +34,7 @@ func (a *App) viewAbout(w, h int) []string {
 		"实时日志、命令面板、存档与本地资源管理",
 		"截图浏览与多人服务器列表编辑",
 		"实例 zip 导出与导入",
+		"环境自检、更新检查与下载源连通性测试",
 	}
 	for _, f := range features {
 		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(f))

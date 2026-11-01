@@ -195,7 +195,7 @@ func (a *App) renderFooter() string {
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
 	case pageTools:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("x", "导出"), keyHint("u", "导入"), keyHint("w", "整合包"), keyHint("e", "在线"), keyHint("s", "存档")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("x", "导出"), keyHint("u", "导入"), keyHint("d", "自检"), keyHint("t", "更新")}
 	case pageAbout:
 		parts = []string{keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
 	case pageLogs:
@@ -567,6 +567,38 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			a.openWorlds()
 		} else {
 			a.setToast("存档已备份: "+filepath.Base(m.Path), 1)
+		}
+		return nil
+	case diagnoseDoneMsg:
+		items := make([]pickerItem, 0, len(m.Checks))
+		okCount := 0
+		for _, c := range m.Checks {
+			if c.Status == minecraft.DiagnoseOK {
+				okCount++
+			}
+			items = append(items, pickerItem{Label: c.Name, Desc: c.Detail, Value: string(c.Status)})
+		}
+		a.modal = modalState{
+			Kind:  modalDiagnostics,
+			Title: fmt.Sprintf("环境自检 · %d/%d 通过", okCount, len(items)),
+			Items: items,
+		}
+		return nil
+	case updateCheckMsg:
+		if m.Err != nil {
+			a.openError("检查更新失败", m.Err)
+			return nil
+		}
+		if m.Info == nil {
+			a.setToast("没有找到发布信息", 3)
+			return nil
+		}
+		if minecraft.IsNewerVersion(m.Info.TagName, m.Current) {
+			a.openConfirm("发现新版本 "+m.Info.TagName,
+				fmt.Sprintf("当前版本 v%s，最新版本 %s。按 enter 打开下载页面。", m.Current, m.Info.TagName),
+				"open-release", m.Info.HTMLURL)
+		} else {
+			a.setToast("已是最新版本 v"+m.Current, 1)
 		}
 		return nil
 	case instanceDoneMsg:

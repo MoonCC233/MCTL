@@ -46,6 +46,8 @@ func (a *App) toolItems() []toolItem {
 		{label: "服务器列表", desc: "添加、编辑或删除当前实例保存的多人服务器。", action: "servers"},
 		{label: "导出实例", desc: "把当前版本或整合包连同模组、存档与截图打包为 zip。", action: "export-instance"},
 		{label: "导入实例", desc: "从 MCTL 实例 zip 创建独立实例并补全缺失文件。", action: "import-instance"},
+		{label: "环境自检", desc: "检查游戏目录、Java、版本、资源与下载源。", action: "diagnose"},
+		{label: "检查更新", desc: "查询最新发布版本，有新版本时打开下载页面。", action: "update"},
 		{label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", action: "open-game"},
 		{label: "打开配置目录", desc: "打开 config.json 与日志文件所在目录。", action: "open-config"},
 		{label: "检测 Java", desc: "重新扫描系统与常见安装目录中的 Java 运行时。", action: "java"},
@@ -81,7 +83,11 @@ func (a *App) viewTools(w, h int) []string {
 	}
 	if hintH > 0 {
 		it := items[a.tools.idx]
-		hint := []string{"  " + styleMuted.Render(ansiTruncate(it.desc, max(w-10, 16))), "", "  " + keyHint("enter", "执行") + "  " + keyHint("w", "在线") + "  " + keyHint("e", "资源") + "  " + keyHint("m", "本地") + "  " + keyHint("s", "存档") + "  " + keyHint("x", "导出") + "  " + keyHint("u", "导入")}
+		hint := []string{
+			"  " + styleMuted.Render(ansiTruncate(it.desc, max(w-10, 16))),
+			"  " + keyHint("enter", "执行") + "  " + keyHint("x", "导出") + "  " + keyHint("u", "导入") + "  " + keyHint("w", "在线"),
+			"  " + keyHint("d", "自检") + "  " + keyHint("t", "更新") + "  " + keyHint("m", "本地") + "  " + keyHint("s", "存档"),
+		}
 		p := panel("提示", w-4, hintH, false, hint)
 		lines = append(lines, "")
 		for _, l := range strings.Split(p, "\n") {
@@ -150,6 +156,12 @@ func (a *App) toolsKey(msg tea.KeyMsg) tea.Cmd {
 		a.openExportInstance()
 	case "u":
 		a.openImportInstance()
+	case "d":
+		a.setToast("正在检测运行环境…", 0)
+		a.rt.RunDiagnose()
+	case "t":
+		a.setToast("正在检查更新…", 0)
+		a.rt.CheckUpdate()
 	case "o":
 		a.openGameDir()
 	case "g":
@@ -194,6 +206,12 @@ func (a *App) runTool(action string) tea.Cmd {
 		a.openExportInstance()
 	case "import-instance":
 		a.openImportInstance()
+	case "diagnose":
+		a.setToast("正在检测运行环境…", 0)
+		a.rt.RunDiagnose()
+	case "update":
+		a.setToast("正在检查更新…", 0)
+		a.rt.CheckUpdate()
 	case "open-game":
 		a.openGameDir()
 	case "open-config":
