@@ -235,6 +235,7 @@ CurseForge 整合包使用其 API 解析文件下载地址，需要先在设置�
 
 | 按键 | 功能 |
 | --- | --- |
+| `↑` `↓` | 滚动内容 |
 | `o` | 打开游戏目录 |
 | `g` | 打开配置目录 |
 
@@ -297,11 +298,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.26` 的标签会触发 Release 工作流：
+推送形如 `v1.0.27` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.26
-git push origin v1.0.26
+git tag v1.0.27
+git push origin v1.0.27
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

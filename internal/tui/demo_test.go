@@ -4,7 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/MoonCC233/MCTL/internal/config"
 )
 
 func TestRenderDemoPagesFillTerminal(t *testing.T) {
@@ -92,6 +95,54 @@ func TestDemoPageContentMap(t *testing.T) {
 			if !strings.Contains(out, label) {
 				t.Fatalf("%s page is missing navigation label %q", page, label)
 			}
+		}
+	}
+}
+
+func TestAboutPageScrolls(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir()})
+	a.width, a.height = 100, 24
+	a.page = pageAbout
+	first := a.View()
+	if !strings.Contains(first, "MCTL · ") {
+		t.Fatalf("about page should show a scroll indicator")
+	}
+	a.aboutKey(tea.KeyMsg{Type: tea.KeyDown})
+	if a.about.offset != 1 {
+		t.Fatalf("offset = %d", a.about.offset)
+	}
+	second := a.View()
+	if first == second {
+		t.Fatal("scrolling should change the rendered content")
+	}
+	a.about.offset = 1 << 20
+	end := a.View()
+	if !strings.Contains(end, "网络测速") {
+		t.Fatalf("scrolled view should reach the last feature")
+	}
+}
+
+func TestLayoutFrameStructure(t *testing.T) {
+	for _, page := range []string{"launch", "versions", "download", "settings", "tools", "about", "logs"} {
+		out := RenderDemo(page, 118, 34)
+		lines := strings.Split(out, "\n")
+		if len(lines) != 34 {
+			t.Fatalf("%s: %d lines", page, len(lines))
+		}
+		if !strings.Contains(lines[0], "MCTL v") {
+			t.Fatalf("%s: header missing product/version", page)
+		}
+		if strings.Trim(lines[1], "─") != "" {
+			t.Fatalf("%s: second row should be a separator", page)
+		}
+		if !strings.Contains(out, "│") {
+			t.Fatalf("%s: sidebar separator missing", page)
+		}
+		if !strings.Contains(lines[2], "▌") {
+			t.Fatalf("%s: page title marker missing", page)
+		}
+		if !strings.Contains(lines[len(lines)-1], "tab") || !strings.Contains(lines[len(lines)-1], "?") {
+			t.Fatalf("%s: footer shortcuts missing", page)
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -124,9 +125,9 @@ func (a *App) renderToolList(w, h int, items []toolItem) string {
 		label := tr(it.label)
 		desc := tr(it.desc)
 		if i == a.tools.idx {
-			rows = append(rows, lipglossRow("  ▸ "+padRight(label, 16)+"  "+ansiTruncate(desc, max(inner-22, 8)), inner))
+			rows = append(rows, lipglossRow("  ▸ "+padRight(label, 18)+"  "+ansiTruncate(desc, max(inner-24, 8)), inner))
 		} else {
-			rows = append(rows, "    "+styleText.Render(padRight(label, 16))+"  "+styleFaint.Render(ansiTruncate(desc, max(inner-22, 8))))
+			rows = append(rows, "    "+styleText.Render(padRight(label, 18))+"  "+styleFaint.Render(ansiTruncate(desc, max(inner-24, 8))))
 		}
 	}
 	for len(rows) < maxRows {
@@ -135,7 +136,7 @@ func (a *App) renderToolList(w, h int, items []toolItem) string {
 	if len(rows) > maxRows {
 		rows = rows[:maxRows]
 	}
-	return panel(trf("常用工具 · %d", len(items)), w, h, a.page == pageTools, rows)
+	return panel(tr("常用工具")+fmt.Sprintf(" · %d/%d", min(a.tools.idx+1, len(items)), len(items)), w, h, a.page == pageTools, rows)
 }
 
 func (a *App) toolsKey(msg tea.KeyMsg) tea.Cmd {

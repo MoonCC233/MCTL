@@ -56,6 +56,7 @@ type App struct {
 	download  downloadPage
 	settings  settingsPage
 	tools     toolsPage
+	about     aboutPage
 	resources resourceBrowser
 	logs      logsPage
 
@@ -197,7 +198,7 @@ func (a *App) renderFooter() string {
 	case pageTools:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("+", "新建"), keyHint("f", "收藏"), keyHint("x", "导出"), keyHint("u", "导入")}
 	case pageAbout:
-		parts = []string{keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
+		parts = []string{keyHint("↑↓", "滚动"), keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
 	case pageLogs:
 		parts = []string{keyHint("↑↓", "滚动"), keyHint("f", "跟随"), keyHint("c", "清空"), keyHint("pgup/pgdn", "翻页")}
 	}
@@ -442,6 +443,8 @@ func (a *App) switchPage(p pageID) {
 		a.rt.ScanVersions()
 	case pageTools:
 		a.rt.ScanVersions()
+	case pageAbout:
+		a.about.offset = 0
 	case pageLogs:
 		a.logs.follow = true
 	}

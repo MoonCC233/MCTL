@@ -148,7 +148,7 @@ func (a *App) renderSettingsList(w, h int, cfg config.Config, items []settingIte
 	for len(rows) < maxRows {
 		rows = append(rows, "")
 	}
-	return panel("偏好设置", w, h, a.page == pageSettings, rows)
+	return panel(tr("偏好设置")+fmt.Sprintf(" · %d/%d", min(a.settings.idx+1, len(items)), len(items)), w, h, a.page == pageSettings, rows)
 }
 
 func (a *App) settingValue(cfg config.Config, it settingItem) string {

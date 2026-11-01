@@ -26,6 +26,7 @@ var english = map[string]string{
 	"管理已安装的版本与实例":            "Manage installed versions and instances",
 	"安装、更新与导入整合包":            "Install, update and import modpacks",
 	"修改会立即保存":                "Changes are saved immediately",
+	"偏好设置":                   "Preferences",
 	"维护、目录与常用操作":             "Maintenance, folders and tools",
 	"MCTL · Minecraft 终端启动器": "MCTL · Minecraft terminal launcher",
 	"Minecraft 终端启动器":        "Minecraft terminal launcher",

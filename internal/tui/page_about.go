@@ -1,12 +1,17 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/MoonCC233/MCTL/internal/config"
 )
+
+type aboutPage struct {
+	offset int
+}
 
 func (a *App) viewAbout(w, h int) []string {
 	cfg := a.store.Snapshot()
@@ -55,13 +60,23 @@ func (a *App) viewAbout(w, h int) []string {
 	rows = append(rows, "  "+styleMuted.Render(tr("仓库")+"  ")+styleBlue.Render("github.com/MoonCC233/MCTL"))
 	rows = append(rows, "  "+styleMuted.Render(tr("许可")+"  ")+styleText.Render("MIT"))
 	rows = append(rows, "", "  "+keyHint("o", "打开游戏目录")+"  "+keyHint("g", "打开配置目录")+"  "+keyHint("esc", "返回启动页"))
-	for len(rows) < panelContentHeight(contentH) {
-		rows = append(rows, "")
+	viewH := panelContentHeight(contentH)
+	total := len(rows)
+	if viewH > 0 {
+		a.about.offset = clamp(a.about.offset, 0, max(total-viewH, 0))
+		rows = rows[a.about.offset:]
+		for len(rows) < viewH {
+			rows = append(rows, "")
+		}
+		if len(rows) > viewH {
+			rows = rows[:viewH]
+		}
 	}
-	if len(rows) > panelContentHeight(contentH) {
-		rows = rows[:panelContentHeight(contentH)]
+	title := tr("MCTL")
+	if total > viewH && viewH > 0 {
+		title += fmt.Sprintf(" · %d-%d/%d", a.about.offset+1, min(a.about.offset+viewH, total), total)
 	}
-	p := panel("MCTL", w-4, contentH, a.page == pageAbout, rows)
+	p := panel(title, w-4, contentH, a.page == pageAbout, rows)
 	for _, l := range strings.Split(p, "\n") {
 		lines = append(lines, "  "+l)
 	}
@@ -70,6 +85,20 @@ func (a *App) viewAbout(w, h int) []string {
 
 func (a *App) aboutKey(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
+	case "up", "k":
+		if a.about.offset > 0 {
+			a.about.offset--
+		}
+	case "down", "j":
+		a.about.offset++
+	case "pgup":
+		a.about.offset = max(a.about.offset-8, 0)
+	case "pgdown":
+		a.about.offset += 8
+	case "home":
+		a.about.offset = 0
+	case "end":
+		a.about.offset = 1 << 20
 	case "o":
 		a.openGameDir()
 	case "g":
