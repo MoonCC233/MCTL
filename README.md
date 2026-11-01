@@ -292,6 +292,14 @@ go test -tags live -v ./internal/minecraft -run TestLiveLoaderMetadata -count=1
 
 检查覆盖 Forge、NeoForge、Cleanroom、LabyMod、Quilt、Legacy Fabric、LiteLoader、OptiFine、Modrinth 在线整合包与资源接口，以及启动器发布源与更新日志。若在仓库 Secrets 中配置 `CURSEFORGE_API_KEY`，还会验证 CurseForge 搜索接口。
 
+真实加载器安装（会下载安装器与依赖，需数十 MB 到数百 MB 流量，默认跳过）：
+
+```bash
+MCTL_REAL_INSTALL=1 go test -tags live -v ./internal/minecraft -run TestLiveForgeInstall -count=1
+```
+
+该测试会准备原版 profile 与客户端 jar，下载官方 Forge 安装器并实际执行 `java -jar ... --installClient`，然后解析生成的版本配置。需要可访问 Forge Maven 与 Java 17+。
+
 GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 项目结构：
