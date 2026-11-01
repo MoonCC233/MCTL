@@ -23,7 +23,7 @@ type downloadPage struct {
 	installed     map[string]bool
 }
 
-var loaderModeNames = []string{"Minecraft 原版", "Fabric", "Quilt", "Legacy Fabric", "Forge", "NeoForge", "OptiFine"}
+var loaderModeNames = []string{"Minecraft 原版", "Fabric", "Quilt", "Legacy Fabric", "LiteLoader", "Forge", "NeoForge", "OptiFine"}
 
 func (p *downloadPage) applyManifest(m *minecraft.VersionManifest, err error) {
 	p.loading = false
@@ -131,9 +131,10 @@ func (a *App) renderDownloadTabs() string {
 		tab("Fabric", p.mode == 1) + " " +
 		tab("Quilt", p.mode == 2) + " " +
 		tab("Legacy", p.mode == 3) + " " +
-		tab("Forge", p.mode == 4) + " " +
-		tab("NeoForge", p.mode == 5) + " " +
-		tab("OptiFine", p.mode == 6)
+		tab("Lite", p.mode == 4) + " " +
+		tab("Forge", p.mode == 5) + " " +
+		tab("NeoForge", p.mode == 6) + " " +
+		tab("OptiFine", p.mode == 7)
 }
 
 func (a *App) renderDownloadList(w, h int, list []minecraft.VersionEntry) string {
@@ -244,14 +245,18 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render("再写入 Legacy Fabric 配置并补全依赖"))
 		case 4:
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 LiteLoader 版本"))
+			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render("再写入 LiteLoader 启动配置"))
+		case 5:
 			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Forge 版本"))
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render("再运行 Forge 安装器并补全依赖"))
-		case 5:
+		case 6:
 			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 NeoForge 版本"))
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render("再运行 NeoForge 安装器并补全依赖"))
-		case 6:
+		case 7:
 			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 OptiFine 版本"))
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render("再写入 OptiFine 配置并补全依赖"))
@@ -342,12 +347,15 @@ func (a *App) downloadKey(msg tea.KeyMsg) tea.Cmd {
 				a.setToast("正在获取 Legacy Fabric 加载器…", 0)
 				a.rt.FetchLoaderVersions("legacyfabric", v.ID)
 			case 4:
+				a.setToast("正在获取 LiteLoader 版本…", 0)
+				a.rt.FetchLoaderVersions("liteloader", v.ID)
+			case 5:
 				a.setToast("正在获取 Forge 版本…", 0)
 				a.rt.FetchLoaderVersions("forge", v.ID)
-			case 5:
+			case 6:
 				a.setToast("正在获取 NeoForge 版本…", 0)
 				a.rt.FetchLoaderVersions("neoforge", v.ID)
-			case 6:
+			case 7:
 				a.setToast("正在获取 OptiFine 版本…", 0)
 				a.rt.FetchLoaderVersions("optifine", v.ID)
 			}

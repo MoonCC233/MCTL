@@ -26,6 +26,7 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		{"NeoForge", "neoforge", "1.21.1"},
 		{"Quilt", "quilt", "1.20.1"},
 		{"LegacyFabric", "legacyfabric", "1.8.9"},
+		{"LiteLoader", "liteloader", "1.12.2"},
 		{"OptiFine", "optifine", "1.20.1"},
 	}
 	t.Run("ModrinthSearch", func(t *testing.T) {
@@ -59,6 +60,8 @@ func TestLiveLoaderMetadata(t *testing.T) {
 				builds, err = FetchLegacyFabricLoaders(ctx, hc, tc.mc)
 			case "optifine":
 				builds, err = FetchOptiFineBuilds(ctx, hc, tc.mc)
+			case "liteloader":
+				builds, err = FetchLiteLoaderBuilds(ctx, hc, tc.mc)
 			default:
 				builds, err = FetchLoaderBuilds(ctx, hc, tc.kind, tc.mc)
 			}

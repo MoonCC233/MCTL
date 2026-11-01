@@ -601,6 +601,8 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			name = "Legacy Fabric"
 		case "optifine":
 			name = "OptiFine"
+		case "liteloader":
+			name = "LiteLoader"
 		}
 		if m.Err != nil {
 			a.openError("获取 "+name+" 版本失败", m.Err)
@@ -767,6 +769,8 @@ func (a *App) startInstall(kind, id, mc, loader string, entry *minecraft.Version
 		title = fmt.Sprintf("安装 Legacy Fabric %s · %s", loader, mc)
 	case "optifine":
 		title = fmt.Sprintf("安装 OptiFine · %s", mc)
+	case "liteloader":
+		title = fmt.Sprintf("安装 LiteLoader %s · %s", loader, mc)
 	case "forge":
 		title = fmt.Sprintf("安装 Forge %s · %s", loader, mc)
 	case "neoforge":

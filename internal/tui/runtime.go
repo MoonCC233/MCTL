@@ -18,7 +18,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.7"
+var Version = "1.0.8"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -315,6 +315,9 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 		} else if kind == "optifine" {
 			r.Logf("安装 OptiFine %s", loader)
 			actualID, err = inst.InstallOptiFine(ctx, mcVersion, loader)
+		} else if kind == "liteloader" {
+			r.Logf("安装 LiteLoader %s", loader)
+			actualID, err = inst.InstallLiteLoader(ctx, mcVersion, loader)
 		} else if kind == "forge" || kind == "neoforge" {
 			required := minecraft.InferJavaMajor(mcVersion)
 			r.Logf("准备 %s 安装器（Java %d）", kind, required)
@@ -518,6 +521,8 @@ func (r *Runtime) FetchLoaderVersions(kind, mcVersion string) {
 			builds, err = minecraft.FetchLegacyFabricLoaders(context.Background(), hc, mcVersion)
 		case "optifine":
 			builds, err = minecraft.FetchOptiFineBuilds(context.Background(), hc, mcVersion)
+		case "liteloader":
+			builds, err = minecraft.FetchLiteLoaderBuilds(context.Background(), hc, mcVersion)
 		default:
 			builds, err = minecraft.FetchLoaderBuilds(context.Background(), hc, kind, mcVersion)
 		}
