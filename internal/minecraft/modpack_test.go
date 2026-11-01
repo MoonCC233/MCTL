@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -19,7 +20,11 @@ func TestSafeJoin(t *testing.T) {
 	if _, err := safeJoin(root, "mods/example.jar"); err != nil {
 		t.Fatal(err)
 	}
-	for _, bad := range []string{"../outside.jar", `..\\outside.jar`, "/absolute.jar", ""} {
+	badPaths := []string{"../outside.jar", "../../outside.jar", "/absolute.jar", ""}
+	if runtime.GOOS == "windows" {
+		badPaths = append(badPaths, `..\outside.jar`)
+	}
+	for _, bad := range badPaths {
 		if _, err := safeJoin(root, bad); err == nil {
 			t.Fatalf("expected path rejection for %q", bad)
 		}

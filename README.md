@@ -223,11 +223,11 @@ go build ./...
 
 ## 发布
 
-推送形如 `v1.0.2` 的标签会触发 Release 工作流：
+推送形如 `v1.0.3` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.2
-git push origin v1.0.2
+git tag v1.0.3
+git push origin v1.0.3
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。
