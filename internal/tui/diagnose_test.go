@@ -56,6 +56,25 @@ func TestUpdateCheckModal(t *testing.T) {
 	}
 }
 
+func TestNewsModal(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir()})
+	a.handleEvent(newsMsg{Releases: []minecraft.ReleaseInfo{
+		{TagName: "v1.0.21", Name: "MCTL v1.0.21", HTMLURL: "https://example.invalid/rel", PublishedAt: "2026-11-01T09:00:00Z"},
+	}})
+	if a.modal.Kind != modalPicker || a.modal.Action != "open-news" {
+		t.Fatalf("modal = %#v", a.modal)
+	}
+	if len(a.modal.Items) != 1 || a.modal.Items[0].Value != "https://example.invalid/rel" {
+		t.Fatalf("items = %#v", a.modal.Items)
+	}
+	out := a.View()
+	for _, want := range []string{"新闻", "MCTL v1.0.21", "2026-11-01"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("news modal missing %q", want)
+		}
+	}
+}
+
 func TestUpdateCheckError(t *testing.T) {
 	a := testApp(t, config.Config{GameDir: t.TempDir()})
 	a.handleEvent(updateCheckMsg{Current: "1.0.16", Err: errors.New("更新服务不可用")})

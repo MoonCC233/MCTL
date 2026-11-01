@@ -37,6 +37,37 @@ type atomEntry struct {
 // FetchLatestRelease reads the newest release from a repository's public Atom
 // feed. The feed needs no API token and avoids the GitHub API rate limit.
 func FetchLatestRelease(ctx context.Context, hc *HTTPClient, owner, repo string) (*ReleaseInfo, error) {
+	feed, err := fetchReleaseFeed(ctx, hc, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	if len(feed.Entries) == 0 {
+		return nil, fmt.Errorf("没有找到发布版本")
+	}
+	info := releaseInfoFromEntry(feed.Entries[0])
+	if info.TagName == "" {
+		return nil, fmt.Errorf("最新版本缺少标签")
+	}
+	return &info, nil
+}
+
+// FetchRecentReleases returns the newest releases from the public feed.
+func FetchRecentReleases(ctx context.Context, hc *HTTPClient, owner, repo string, limit int) ([]ReleaseInfo, error) {
+	feed, err := fetchReleaseFeed(ctx, hc, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	if limit <= 0 || limit > len(feed.Entries) {
+		limit = len(feed.Entries)
+	}
+	out := make([]ReleaseInfo, 0, limit)
+	for _, entry := range feed.Entries[:limit] {
+		out = append(out, releaseInfoFromEntry(entry))
+	}
+	return out, nil
+}
+
+func fetchReleaseFeed(ctx context.Context, hc *HTTPClient, owner, repo string) (*atomFeed, error) {
 	if hc == nil {
 		return nil, fmt.Errorf("缺少 HTTP 客户端")
 	}
@@ -54,10 +85,10 @@ func FetchLatestRelease(ctx context.Context, hc *HTTPClient, owner, repo string)
 	if err := xml.Unmarshal(data, &feed); err != nil {
 		return nil, fmt.Errorf("解析版本信息: %w", err)
 	}
-	if len(feed.Entries) == 0 {
-		return nil, fmt.Errorf("没有找到发布版本")
-	}
-	entry := feed.Entries[0]
+	return &feed, nil
+}
+
+func releaseInfoFromEntry(entry atomEntry) ReleaseInfo {
 	tag := ""
 	if href, err := url.Parse(entry.Link.Href); err == nil {
 		tag = strings.TrimSpace(path.Base(href.Path))
@@ -65,16 +96,13 @@ func FetchLatestRelease(ctx context.Context, hc *HTTPClient, owner, repo string)
 	if tag == "" {
 		tag = strings.TrimSpace(entry.Title)
 	}
-	if tag == "" {
-		return nil, fmt.Errorf("最新版本缺少标签")
-	}
-	return &ReleaseInfo{
+	return ReleaseInfo{
 		TagName:     tag,
 		Name:        strings.TrimSpace(entry.Title),
 		HTMLURL:     entry.Link.Href,
 		PublishedAt: entry.Updated,
 		Body:        entry.Content,
-	}, nil
+	}
 }
 
 // CompareVersions compares dotted version strings, ignoring a leading v.

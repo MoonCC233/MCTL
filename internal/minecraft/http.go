@@ -15,7 +15,7 @@ import (
 )
 
 // UserAgent identifies MCTL to download servers.
-const UserAgent = "MCTL/1.0.21 (Minecraft launcher)"
+const UserAgent = "MCTL/1.0.22 (Minecraft launcher)"
 
 // HTTPClient wraps retries, mirror rewriting and checksum verification.
 type HTTPClient struct {
@@ -28,7 +28,8 @@ type HTTPClient struct {
 func NewHTTPClient(source Source) *HTTPClient {
 	return &HTTPClient{
 		Client: &http.Client{
-			Timeout: 90 * time.Second,
+			Timeout:   90 * time.Second,
+			Transport: newTransport(),
 		},
 		Source:  source,
 		Retries: 3,

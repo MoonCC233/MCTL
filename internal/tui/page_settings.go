@@ -37,6 +37,7 @@ func (a *App) settingItems() []settingItem {
 	return []settingItem{
 		{key: "game_dir", section: "游戏", label: "游戏目录", desc: "Minecraft 数据目录，版本、模组和存档都保存在这里。", kind: settingText},
 		{key: "download_source", section: "游戏", label: "下载源", desc: "BMCLAPI 镜像通常在国内更快，Mojang 官方源为原始地址。", kind: settingChoice},
+		{key: "theme", section: "界面", label: "主题", desc: "切换终端配色：OpenCode 暗色、午夜蓝或浅色。", kind: settingChoice},
 		{key: "java_path", section: "Java", label: "Java 路径", desc: "留空则自动检测。也可以填写 java 可执行文件或 JAVA_HOME 目录。", kind: settingText},
 		{key: "auto_java", section: "Java", label: "自动下载 Java", desc: "缺少兼容的 Java 时，从 Adoptium 自动下载所需 JRE。", kind: settingToggle},
 		{key: "detect_java", section: "Java", label: "检测 Java", desc: "重新扫描系统与常见安装目录中的 Java 运行时。", kind: settingAction},
@@ -50,6 +51,7 @@ func (a *App) settingItems() []settingItem {
 		{key: "ms_client_id", section: "账户", label: "微软客户端 ID", desc: "Azure 应用的客户端 ID，需要启用公共客户端设备代码流。", kind: settingText},
 		{key: "ms_login", section: "账户", label: "Microsoft 登录", desc: "使用设备代码在浏览器中登录 Microsoft 账户。", kind: settingAction},
 		{key: "cf_api_key", section: "整合包", label: "CurseForge Key", desc: "导入 CurseForge 整合包所需的 API Key，可在 CurseForge 开发者控制台申请。", kind: settingText},
+		{key: "proxy", section: "网络", label: "HTTP 代理", desc: "例如 http://127.0.0.1:7890；留空表示直连并使用环境变量代理。", kind: settingText},
 		{key: "open_game", section: "目录", label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", kind: settingAction},
 		{key: "open_config", section: "目录", label: "打开配置目录", desc: "打开 MCTL 配置与日志所在目录。", kind: settingAction},
 	}
@@ -154,6 +156,8 @@ func (a *App) settingValue(cfg config.Config, it settingItem) string {
 		return middleEllipsis(cfg.GameDir, 40)
 	case "download_source":
 		return minecraft.GetSource(cfg.DownloadSource).Name
+	case "theme":
+		return ThemeName(cfg.Theme)
 	case "java_path":
 		if cfg.JavaPath != "" {
 			return middleEllipsis(cfg.JavaPath, 40)
@@ -202,6 +206,11 @@ func (a *App) settingValue(cfg config.Config, it settingItem) string {
 			return "未配置"
 		}
 		return middleEllipsis(cfg.CurseForgeAPIKey, 40)
+	case "proxy":
+		if strings.TrimSpace(cfg.Proxy) == "" {
+			return "直连"
+		}
+		return middleEllipsis(cfg.Proxy, 40)
 	case "detect_java", "open_game", "open_config":
 		return "→"
 	}
@@ -270,6 +279,8 @@ func (a *App) rawSettingValue(cfg config.Config, it settingItem) string {
 		return cfg.MicrosoftClientID
 	case "cf_api_key":
 		return cfg.CurseForgeAPIKey
+	case "proxy":
+		return cfg.Proxy
 	}
 	return ""
 }
@@ -302,6 +313,20 @@ func (a *App) adjustSetting(it settingItem, cfg config.Config, dir int) {
 		a.saveCfg(func(c *config.Config) { c.DownloadSource = next })
 		a.rt.LoadManifest(true)
 		a.setToast("下载源: "+minecraft.GetSource(next).Name, 1)
+	case "theme":
+		ids := ThemeIDs()
+		idx := 0
+		current := NormalizeTheme(cfg.Theme)
+		for i, id := range ids {
+			if id == current {
+				idx = i
+				break
+			}
+		}
+		next := ids[(idx+dir+len(ids))%len(ids)]
+		ApplyTheme(next)
+		a.saveCfg(func(c *config.Config) { c.Theme = next })
+		a.setToast("主题: "+ThemeName(next), 1)
 	case "auto_java":
 		a.toggleSetting(it, cfg)
 	case "fullscreen":
@@ -415,5 +440,16 @@ func (a *App) submitSetting(key, value string) {
 	case "cf_api_key":
 		a.saveCfg(func(c *config.Config) { c.CurseForgeAPIKey = value })
 		a.setToast("CurseForge API Key 已保存", 1)
+	case "proxy":
+		if err := minecraft.SetProxy(value); err != nil {
+			a.openError("代理地址无效", err)
+			return
+		}
+		a.saveCfg(func(c *config.Config) { c.Proxy = value })
+		if value == "" {
+			a.setToast("已清除代理", 1)
+		} else {
+			a.setToast("代理已保存", 1)
+		}
 	}
 }

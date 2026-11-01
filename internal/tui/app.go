@@ -584,6 +584,25 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			Items: items,
 		}
 		return nil
+	case newsMsg:
+		if m.Err != nil {
+			a.openError("获取新闻失败", m.Err)
+			return nil
+		}
+		if len(m.Releases) == 0 {
+			a.setToast("暂无更新日志", 3)
+			return nil
+		}
+		items := make([]pickerItem, 0, len(m.Releases))
+		for _, rel := range m.Releases {
+			desc := rel.TagName
+			if t, err := time.Parse(time.RFC3339, rel.PublishedAt); err == nil {
+				desc = t.Format("2006-01-02") + " · " + desc
+			}
+			items = append(items, pickerItem{Label: rel.Name, Desc: desc, Value: rel.HTMLURL})
+		}
+		a.modal = modalState{Kind: modalPicker, Title: "新闻 / 更新日志", Items: items, Action: "open-news"}
+		return nil
 	case updateCheckMsg:
 		if m.Err != nil {
 			a.openError("检查更新失败", m.Err)

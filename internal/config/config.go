@@ -54,6 +54,8 @@ type Config struct {
 	IsolateGameDir    bool       `json:"isolate_game_dir"`
 	LastVersionType   string     `json:"last_version_type"`
 	WindowSizeCustom  bool       `json:"window_size_custom"`
+	Theme             string     `json:"theme,omitempty"`
+	Proxy             string     `json:"proxy,omitempty"`
 }
 
 // Store owns the configuration file and serializes writes.
@@ -168,6 +170,10 @@ func normalize(c *Config) {
 	if c.LastVersionType == "" {
 		c.LastVersionType = "release"
 	}
+	if c.Theme == "" {
+		c.Theme = "opencode"
+	}
+	c.Proxy = strings.TrimSpace(c.Proxy)
 }
 
 // Load reads the configuration, creating a default one when absent.

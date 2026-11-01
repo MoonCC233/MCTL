@@ -62,6 +62,17 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		t.Logf("Release feed: %s (%s)", info.TagName, info.HTMLURL)
 	})
 
+	t.Run("NewsFeed", func(t *testing.T) {
+		releases, err := FetchRecentReleases(ctx, hc, "MoonCC233", "MCTL", 5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(releases) == 0 || releases[0].TagName == "" {
+			t.Fatalf("releases = %#v", releases)
+		}
+		t.Logf("News feed: %d releases, latest=%s", len(releases), releases[0].TagName)
+	})
+
 	t.Run("ModrinthFiltered", func(t *testing.T) {
 		projects, err := SearchModpacksFiltered(ctx, hc, "create", ModpackFilter{GameVersion: "1.20.1", Loader: "fabric"}, 5)
 		if err != nil {

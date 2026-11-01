@@ -14,6 +14,7 @@ import (
 
 	"github.com/MoonCC233/MCTL/internal/config"
 	"github.com/MoonCC233/MCTL/internal/logbuf"
+	"github.com/MoonCC233/MCTL/internal/minecraft"
 	"github.com/MoonCC233/MCTL/internal/tui"
 )
 
@@ -80,6 +81,10 @@ func run() error {
 	}
 
 	logs := logbuf.New(6000)
+	tui.ApplyTheme(store.Cfg.Theme)
+	if err := minecraft.SetProxy(store.Cfg.Proxy); err != nil {
+		fmt.Fprintln(os.Stderr, "MCTL: 忽略无效代理:", err)
+	}
 	if dir, err := config.LogDir(); err == nil {
 		if err := os.MkdirAll(dir, 0o755); err == nil {
 			name := "mctl-" + time.Now().Format("20060102") + ".log"

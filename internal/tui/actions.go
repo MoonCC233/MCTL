@@ -480,6 +480,17 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		if err := openPath(url); err != nil {
 			a.setToast("打开浏览器失败: "+err.Error(), 2)
 		}
+	case action == "open-news":
+		if item.Value == "" {
+			a.setToast("没有可打开的发布页面", 3)
+			return nil
+		}
+		if err := openPath(item.Value); err != nil {
+			a.setToast("打开浏览器失败: "+err.Error(), 2)
+		}
+	case action == "news":
+		a.setToast("正在获取更新日志…", 0)
+		a.rt.FetchNews()
 	case action == "export-instance":
 		versionID, _ := data.(string)
 		dest := strings.TrimSpace(value)
@@ -654,6 +665,9 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openModsInfo()
 	case "cmd-new-instance":
 		a.openInstanceWizard()
+	case "cmd-news":
+		a.setToast("正在获取更新日志…", 0)
+		a.rt.FetchNews()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":

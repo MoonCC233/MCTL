@@ -103,6 +103,39 @@ func TestSearchModpacksFiltered(t *testing.T) {
 	}
 }
 
+func TestFetchRecentReleases(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/Owner/Repo/releases.atom", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/atom+xml")
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry><updated>2026-03-01T00:00:00Z</updated><link rel="alternate" href="https://example.invalid/releases/tag/v3"/><title>v3</title></entry>
+  <entry><updated>2026-02-01T00:00:00Z</updated><link rel="alternate" href="https://example.invalid/releases/tag/v2"/><title>v2</title></entry>
+  <entry><updated>2026-01-01T00:00:00Z</updated><link rel="alternate" href="https://example.invalid/releases/tag/v1"/><title>v1</title></entry>
+</feed>`))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	old := releasesFeedBase
+	defer func() { releasesFeedBase = old }()
+	releasesFeedBase = server.URL
+	hc := NewHTTPClient(Source{ID: "test"})
+	hc.Client = server.Client()
+
+	releases, err := FetchRecentReleases(context.Background(), hc, "Owner", "Repo", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(releases) != 2 || releases[0].TagName != "v3" || releases[1].TagName != "v2" {
+		t.Fatalf("releases = %#v", releases)
+	}
+	all, err := FetchRecentReleases(context.Background(), hc, "Owner", "Repo", 0)
+	if err != nil || len(all) != 3 {
+		t.Fatalf("all = %#v, err = %v", all, err)
+	}
+}
+
 func TestSearchModpacksAndLatestVersion(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v2/search", func(w http.ResponseWriter, r *http.Request) {

@@ -59,9 +59,39 @@ func TestVersionSubdirMapping(t *testing.T) {
 
 func TestToolsDemoListsInstanceTools(t *testing.T) {
 	out := RenderDemo("tools", 118, 34)
-	for _, want := range []string{"服务器列表", "截图管理", "本地资源", "模组信息", "存档管理", "导出实例", "导入实例", "新建实例", "实例设置", "收藏", "环境自检", "检查更新"} {
+	for _, want := range []string{"服务器列表", "截图管理", "本地资源", "模组信息", "存档管理", "导出实例", "导入实例", "新建实例", "实例设置", "收藏", "环境自检", "检查更新", "新闻"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("tools demo is missing %q", want)
+		}
+	}
+}
+
+func TestDemoPageContentMap(t *testing.T) {
+	pages := map[string][]string{
+		"launch":   {"启动", "账户", "版本"},
+		"versions": {"已安装", "详情", "实例设置"},
+		"download": {"版本列表", "Fabric", "Forge"},
+		"settings": {"设置", "Java", "主题"},
+		"tools":    {"常用工具", "新建实例", "新闻"},
+		"about":    {"关于", "支持", "MCTL"},
+		"logs":     {"日志", "跟随", "清空"},
+	}
+	nav := []string{"LAUNCH", "VERSIONS", "DOWNLOAD", "SETTINGS", "TOOLS", "ABOUT", "LOGS"}
+	for page, markers := range pages {
+		out := RenderDemo(page, 118, 34)
+		for _, m := range markers {
+			if !strings.Contains(out, m) {
+				t.Fatalf("%s page is missing %q", page, m)
+			}
+		}
+	}
+	// A wider terminal shows the full sidebar with English subtitles.
+	for page := range pages {
+		out := RenderDemo(page, 160, 44)
+		for _, label := range nav {
+			if !strings.Contains(out, label) {
+				t.Fatalf("%s page is missing navigation label %q", page, label)
+			}
 		}
 	}
 }

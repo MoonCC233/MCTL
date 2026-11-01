@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.21"
+var Version = "1.0.22"
 
 // Repository used for release checks and download links.
 const (
@@ -124,6 +124,11 @@ type updateCheckMsg struct {
 	Info    *minecraft.ReleaseInfo
 	Current string
 	Err     error
+}
+
+type newsMsg struct {
+	Releases []minecraft.ReleaseInfo
+	Err      error
 }
 
 type microsoftCodeMsg struct {
@@ -607,6 +612,19 @@ func (r *Runtime) RunDiagnose() {
 			r.Logf("自检 %s [%s]: %s", c.Name, c.Status, c.Detail)
 		}
 		r.Emit(diagnoseDoneMsg{Checks: checks})
+	}()
+}
+
+// FetchNews loads recent release notes.
+func (r *Runtime) FetchNews() {
+	go func() {
+		cfg := r.Store.Snapshot()
+		hc := minecraft.NewHTTPClient(minecraft.GetSource(cfg.DownloadSource))
+		releases, err := minecraft.FetchRecentReleases(context.Background(), hc, RepoOwner, RepoName, 8)
+		if err != nil {
+			r.Logf("获取新闻失败: %v", err)
+		}
+		r.Emit(newsMsg{Releases: releases, Err: err})
 	}()
 }
 

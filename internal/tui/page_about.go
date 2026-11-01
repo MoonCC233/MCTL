@@ -38,6 +38,7 @@ func (a *App) viewAbout(w, h int) []string {
 		"模组元数据与内嵌 jar 查看",
 		"新建实例向导（名称 / 目录 / 版本 / 加载器 / Java）",
 		"在线整合包筛选与收藏列表",
+		"三套终端主题与 HTTP 代理设置",
 	}
 	for _, f := range features {
 		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(f))
