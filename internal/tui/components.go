@@ -82,9 +82,9 @@ func panel(title string, w, h int, focused bool, lines []string) string {
 	}
 	bs := lipgloss.NewStyle().Foreground(border)
 	ts := lipgloss.NewStyle().Foreground(titleColor).Bold(focused)
-	t := " " + title + " "
+	t := " " + tr(title) + " "
 	if lipgloss.Width(t) > w-7 {
-		t = " " + ansi.Truncate(title, max(w-8, 0), "…") + " "
+		t = " " + ansi.Truncate(tr(title), max(w-8, 0), "…") + " "
 	}
 	dashes := w - 2 - lipgloss.Width(t) - 1
 	if dashes < 1 {
@@ -130,7 +130,7 @@ func joinColumns(left, right string, gap int) []string {
 }
 
 func keyHint(key, label string) string {
-	return styleKey.Render(key) + " " + styleMuted.Render(label)
+	return styleKey.Render(key) + " " + styleMuted.Render(tr(label))
 }
 
 func hints(parts ...string) string {
@@ -244,11 +244,11 @@ func spinner(frame int, label string) string {
 }
 
 func sectionLabel(s string) string {
-	return styleSection.Render(strings.ToUpper(s))
+	return styleSection.Render(strings.ToUpper(tr(s)))
 }
 
 func titleLine(title string) string {
-	return styleAccent.Render("▌") + " " + styleTitle.Render(title)
+	return styleAccent.Render("▌") + " " + styleTitle.Render(tr(title))
 }
 
 func statusColor(level int) lipgloss.Color {

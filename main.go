@@ -82,6 +82,7 @@ func run() error {
 
 	logs := logbuf.New(6000)
 	tui.ApplyTheme(store.Cfg.Theme)
+	tui.SetLanguage(store.Cfg.Language)
 	if err := minecraft.SetProxy(store.Cfg.Proxy); err != nil {
 		fmt.Fprintln(os.Stderr, "MCTL: 忽略无效代理:", err)
 	}

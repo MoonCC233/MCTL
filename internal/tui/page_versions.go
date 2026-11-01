@@ -221,7 +221,7 @@ func (a *App) openVersionSubdir(v minecraft.InstalledVersion, sub string) {
 
 func kv(k, v string, w int) string {
 	kw := 8
-	return "  " + styleMuted.Render(padRight(k, kw)) + "  " + styleText.Render(ansiTruncate(v, max(w-kw-6, 8)))
+	return "  " + styleMuted.Render(padRight(tr(k), kw)) + "  " + styleText.Render(ansiTruncate(v, max(w-kw-6, 8)))
 }
 
 func javaReq(v minecraft.InstalledVersion) string {

@@ -38,6 +38,7 @@ func (a *App) settingItems() []settingItem {
 		{key: "game_dir", section: "游戏", label: "游戏目录", desc: "Minecraft 数据目录，版本、模组和存档都保存在这里。", kind: settingText},
 		{key: "download_source", section: "游戏", label: "下载源", desc: "BMCLAPI 镜像通常在国内更快，Mojang 官方源为原始地址。", kind: settingChoice},
 		{key: "theme", section: "界面", label: "主题", desc: "切换终端配色：OpenCode 暗色、午夜蓝或浅色。", kind: settingChoice},
+		{key: "language", section: "界面", label: "语言", desc: "中文 / English", kind: settingChoice},
 		{key: "java_path", section: "Java", label: "Java 路径", desc: "留空则自动检测。也可以填写 java 可执行文件或 JAVA_HOME 目录。", kind: settingText},
 		{key: "auto_java", section: "Java", label: "自动下载 Java", desc: "缺少兼容的 Java 时，从 Adoptium 自动下载所需 JRE。", kind: settingToggle},
 		{key: "detect_java", section: "Java", label: "检测 Java", desc: "重新扫描系统与常见安装目录中的 Java 运行时。", kind: settingAction},
@@ -84,7 +85,7 @@ func (a *App) viewSettings(w, h int) []string {
 	if descH > 0 {
 		it := items[a.settings.idx]
 		descW := max(w-12, 16)
-		descText := wrapText(it.desc, descW)
+		descText := wrapText(tr(it.desc), descW)
 		if len(descText) > 2 {
 			descText = descText[:2]
 			descText[1] = ansiTruncate(descText[1], max(descW-1, 1)) + "…"
@@ -118,7 +119,7 @@ func (a *App) renderSettingsList(w, h int, cfg config.Config, items []settingIte
 			all = append(all, " "+sectionLabel(it.section))
 		}
 		itemLine[i] = len(all)
-		val := a.settingValue(cfg, it)
+		val := tr(a.settingValue(cfg, it))
 		labelW := 16
 		if inner < 34 {
 			labelW = 12
@@ -126,10 +127,10 @@ func (a *App) renderSettingsList(w, h int, cfg config.Config, items []settingIte
 		prefix := "   "
 		if i == a.settings.idx {
 			prefix = styleAccent.Render(" ▸ ")
-			line := prefix + padRight(styleText.Render(it.label), labelW) + "  " + styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8)))
+			line := prefix + padRight(styleText.Render(tr(it.label)), labelW) + "  " + styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8)))
 			all = append(all, lipglossRow(line, inner))
 		} else {
-			all = append(all, prefix+padRight(styleMuted.Render(it.label), labelW)+"  "+styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8))))
+			all = append(all, prefix+padRight(styleMuted.Render(tr(it.label)), labelW)+"  "+styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8))))
 		}
 	}
 	start := 0
@@ -158,6 +159,8 @@ func (a *App) settingValue(cfg config.Config, it settingItem) string {
 		return minecraft.GetSource(cfg.DownloadSource).Name
 	case "theme":
 		return ThemeName(cfg.Theme)
+	case "language":
+		return LanguageName(cfg.Language)
 	case "java_path":
 		if cfg.JavaPath != "" {
 			return middleEllipsis(cfg.JavaPath, 40)
@@ -249,8 +252,8 @@ func (a *App) editSetting(it settingItem, cfg config.Config) {
 	case settingText, settingNumber:
 		a.modal = modalState{
 			Kind:   modalInput,
-			Title:  it.label,
-			Label:  it.desc,
+			Title:  tr(it.label),
+			Label:  tr(it.desc),
 			Value:  []rune(a.rawSettingValue(cfg, it)),
 			Action: "setting:" + it.key,
 		}
@@ -327,6 +330,14 @@ func (a *App) adjustSetting(it settingItem, cfg config.Config, dir int) {
 		ApplyTheme(next)
 		a.saveCfg(func(c *config.Config) { c.Theme = next })
 		a.setToast("主题: "+ThemeName(next), 1)
+	case "language":
+		next := "en"
+		if NormalizeLanguage(cfg.Language) == "en" {
+			next = "zh"
+		}
+		SetLanguage(next)
+		a.saveCfg(func(c *config.Config) { c.Language = next })
+		a.setToast("Language: "+LanguageName(next), 1)
 	case "auto_java":
 		a.toggleSetting(it, cfg)
 	case "fullscreen":

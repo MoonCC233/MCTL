@@ -72,7 +72,7 @@ func RenderDemo(page string, width, height int) string {
 	if page == "all" {
 		var b strings.Builder
 		for _, p := range []pageID{pageLaunch, pageVersions, pageDownload, pageSettings, pageTools, pageAbout, pageLogs} {
-			fmt.Fprintf(&b, "── %s ──\n", pageNames[p])
+			fmt.Fprintf(&b, "── %s ──\n", pageLabel(int(p)))
 			b.WriteString(render(p))
 			b.WriteString("\n\n")
 		}

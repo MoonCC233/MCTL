@@ -146,7 +146,7 @@ func (a *App) filteredPalette() []pickerItem {
 	}
 	var out []pickerItem
 	for _, it := range a.modal.Items {
-		if strings.Contains(strings.ToLower(it.Label+" "+it.Desc), q) {
+		if strings.Contains(strings.ToLower(it.Label+" "+it.Desc+" "+tr(it.Label)+" "+tr(it.Desc)), q) {
 			out = append(out, it)
 		}
 	}
@@ -727,14 +727,14 @@ func (a *App) renderModal() string {
 	switch m.Kind {
 	case modalConfirm:
 		add("")
-		for _, l := range wrapText(m.Body, inner-2) {
+		for _, l := range wrapText(tr(m.Body), inner-2) {
 			add("  " + styleMuted.Render(l))
 		}
 		add("")
 		add("  " + keyHint("enter", "确认") + "  " + keyHint("esc", "取消"))
 	case modalInput:
 		add("")
-		for _, l := range wrapText(m.Label, inner-2) {
+		for _, l := range wrapText(tr(m.Label), inner-2) {
 			add("  " + styleMuted.Render(l))
 		}
 		add("")
@@ -757,9 +757,11 @@ func (a *App) renderModal() string {
 		}
 		for i := start; i < end; i++ {
 			it := m.Items[i]
-			line := "  " + padRight(ansiTruncate(it.Label, max(inner-22, 10)), max(inner-22, 10)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, 18))
+			label := tr(it.Label)
+			desc := tr(it.Desc)
+			line := "  " + padRight(ansiTruncate(label, max(inner-22, 10)), max(inner-22, 10)) + "  " + styleFaint.Render(ansiTruncate(desc, 18))
 			if i == m.Selected {
-				add(lipglossRow("  ▸ "+ansiTruncate(it.Label, max(inner-22, 10))+"  "+ansiTruncate(it.Desc, 18), inner))
+				add(lipglossRow("  ▸ "+ansiTruncate(label, max(inner-22, 10))+"  "+ansiTruncate(desc, 18), inner))
 			} else {
 				add(line)
 			}

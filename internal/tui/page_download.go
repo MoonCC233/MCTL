@@ -130,7 +130,7 @@ func (a *App) renderDownloadTabs(width int) string {
 		}
 		return lipgloss.NewStyle().Foreground(colorMuted).Padding(0, 1).Render(label)
 	}
-	return tab("原版", p.mode == 0) + " " +
+	return tab(tr("原版"), p.mode == 0) + " " +
 		tab("Fabric", p.mode == 1) + " " +
 		tab("Quilt", p.mode == 2) + " " +
 		tab("Legacy", p.mode == 3) + " " +

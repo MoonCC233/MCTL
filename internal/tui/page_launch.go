@@ -139,7 +139,7 @@ func (a *App) renderHero(w, h int, cfg config.Config) string {
 		}
 		content = append(content,
 			"",
-			"  "+accPrefix+styleMuted.Render("账户  ")+dot(colorGreen)+" "+styleText.Render(acc.Name)+" "+styleFaint.Render("· "+accKind),
+			"  "+accPrefix+styleMuted.Render(tr("账户")+"  ")+dot(colorGreen)+" "+styleText.Render(acc.Name)+" "+styleFaint.Render("· "+tr(accKind)),
 		)
 		content = append(content, "")
 
@@ -198,10 +198,10 @@ func (a *App) renderEnvironment(w, h int, cfg config.Config) string {
 	}
 	lines := []string{
 		"  " + styleMuted.Render("Java    ") + styleText.Render(ansiTruncate(java, max(inner-12, 10))),
-		"  " + styleMuted.Render("内存    ") + styleText.Render(fmt.Sprintf("%d MB", cfg.MaxMemory)),
-		"  " + styleMuted.Render("目录    ") + styleFaint.Render(middleEllipsis(cfg.GameDir, max(inner-12, 10))),
-		"  " + styleMuted.Render("模组    ") + styleText.Render(fmt.Sprintf("%d 个", mods)),
-		"  " + styleMuted.Render("下载源  ") + styleText.Render(minecraft.GetSource(cfg.DownloadSource).Name),
+		"  " + styleMuted.Render(tr("内存")+"    ") + styleText.Render(fmt.Sprintf("%d MB", cfg.MaxMemory)),
+		"  " + styleMuted.Render(tr("目录")+"    ") + styleFaint.Render(middleEllipsis(cfg.GameDir, max(inner-12, 10))),
+		"  " + styleMuted.Render(tr("模组")+"    ") + styleText.Render(fmt.Sprintf("%d 个", mods)),
+		"  " + styleMuted.Render(tr("下载源")+"  ") + styleText.Render(minecraft.GetSource(cfg.DownloadSource).Name),
 	}
 	for len(lines) < panelContentHeight(h) {
 		lines = append(lines, "")

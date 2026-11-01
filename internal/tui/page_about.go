@@ -22,7 +22,7 @@ func (a *App) viewAbout(w, h int) []string {
 	rows = append(rows, "")
 	rows = append(rows, "  "+styleAccent.Render("◆")+" "+styleBold.Render("MCTL")+" "+styleFaint.Render("v"+Version))
 	rows = append(rows, "")
-	for _, l := range wrapText(desc, max(inner-4, 20)) {
+	for _, l := range wrapText(tr(desc), max(inner-4, 20)) {
 		rows = append(rows, "  "+styleMuted.Render(l))
 	}
 	rows = append(rows, "", "  "+sectionLabel("支持"))
@@ -39,17 +39,18 @@ func (a *App) viewAbout(w, h int) []string {
 		"新建实例向导（名称 / 目录 / 版本 / 加载器 / Java）",
 		"在线整合包筛选与收藏列表",
 		"三套终端主题与 HTTP 代理设置",
+		"中英双语界面切换",
 		"网络测速与延迟/吞吐展示",
 	}
 	for _, f := range features {
-		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(f))
+		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(tr(f)))
 	}
 	rows = append(rows, "", "  "+sectionLabel("路径"))
-	rows = append(rows, "  "+styleMuted.Render("配置  ")+styleFaint.Render(middleEllipsis(confDir, max(inner-12, 12))))
-	rows = append(rows, "  "+styleMuted.Render("游戏  ")+styleFaint.Render(middleEllipsis(cfg.GameDir, max(inner-12, 12))))
+	rows = append(rows, "  "+styleMuted.Render(tr("配置")+"  ")+styleFaint.Render(middleEllipsis(confDir, max(inner-12, 12))))
+	rows = append(rows, "  "+styleMuted.Render(tr("游戏")+"  ")+styleFaint.Render(middleEllipsis(cfg.GameDir, max(inner-12, 12))))
 	rows = append(rows, "", "  "+sectionLabel("项目"))
-	rows = append(rows, "  "+styleMuted.Render("仓库  ")+styleBlue.Render("github.com/MoonCC233/MCTL"))
-	rows = append(rows, "  "+styleMuted.Render("许可  ")+styleText.Render("MIT"))
+	rows = append(rows, "  "+styleMuted.Render(tr("仓库")+"  ")+styleBlue.Render("github.com/MoonCC233/MCTL"))
+	rows = append(rows, "  "+styleMuted.Render(tr("许可")+"  ")+styleText.Render("MIT"))
 	rows = append(rows, "", "  "+keyHint("o", "打开游戏目录")+"  "+keyHint("g", "打开配置目录")+"  "+keyHint("esc", "返回启动页"))
 	for len(rows) < panelContentHeight(contentH) {
 		rows = append(rows, "")

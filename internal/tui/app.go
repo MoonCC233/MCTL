@@ -150,7 +150,7 @@ func (a *App) renderBase() string {
 func (a *App) renderHeader() string {
 	cfg := a.store.Snapshot()
 	left := " " + styleAccent.Render("◆") + " " + styleBold.Render("MCTL") + " " + styleFaint.Render("v"+Version) +
-		styleFaint.Render("  ·  Minecraft 终端启动器")
+		styleFaint.Render("  ·  "+tr("Minecraft 终端启动器"))
 	var right string
 	if a.rt.Launching() {
 		right = dot(colorGreen) + " " + styleGreen.Render("游戏运行中")
@@ -279,7 +279,7 @@ func (a *App) sidebarTop(w int, compact bool) []string {
 	}
 	for i := 0; i < int(pageCount); i++ {
 		sel := pageID(i) == a.page
-		label := pageNames[i]
+		label := pageLabel(i)
 		if compact {
 			if sel {
 				line := lipgloss.NewStyle().Background(colorPanel2).Foreground(colorAccent).Bold(true).Render(" ▸ " + label)
@@ -299,10 +299,14 @@ func (a *App) sidebarTop(w int, compact bool) []string {
 			line = padRight(line, w)
 			line = lipgloss.NewStyle().Background(colorPanel2).Render(line)
 			top = append(top, line)
-			top = append(top, lipgloss.NewStyle().Background(colorPanel2).Foreground(colorMuted).Render(padRight("   "+eng, w)))
+			if language != "en" {
+				top = append(top, lipgloss.NewStyle().Background(colorPanel2).Foreground(colorMuted).Render(padRight("   "+eng, w)))
+			}
 		} else {
 			top = append(top, " "+icon+" "+styleText.Render(label))
-			top = append(top, "   "+styleFaint.Render(eng))
+			if language != "en" {
+				top = append(top, "   "+styleFaint.Render(eng))
+			}
 		}
 		if i < int(pageCount)-1 {
 			top = append(top, "")
@@ -345,7 +349,7 @@ func (a *App) sidebarBottom(w int, compact bool) []string {
 		" " + styleBorder.Render(strings.Repeat("─", max(w-1, 0))),
 		" " + sectionLabel("账户"),
 		" " + dot(colorGreen) + " " + styleText.Render(acc.Name),
-		"   " + styleFaint.Render(accountKind),
+		"   " + styleFaint.Render(tr(accountKind)),
 		"",
 		" " + sectionLabel("当前版本"),
 		" " + styleText.Render(middleEllipsis(ver, w-2)),
@@ -380,7 +384,7 @@ func (a *App) renderPage(w, h int) []string {
 func pageHeader(title, subtitle string, w int) []string {
 	return []string{
 		"  " + titleLine(title),
-		"   " + styleMuted.Render(ansiTruncate(subtitle, max(w-4, 0))),
+		"   " + styleMuted.Render(ansiTruncate(tr(subtitle), max(w-4, 0))),
 		"",
 	}
 }

@@ -56,6 +56,7 @@ type Config struct {
 	WindowSizeCustom  bool       `json:"window_size_custom"`
 	Theme             string     `json:"theme,omitempty"`
 	Proxy             string     `json:"proxy,omitempty"`
+	Language          string     `json:"language,omitempty"`
 }
 
 // Store owns the configuration file and serializes writes.
@@ -172,6 +173,9 @@ func normalize(c *Config) {
 	}
 	if c.Theme == "" {
 		c.Theme = "opencode"
+	}
+	if c.Language != "en" {
+		c.Language = "zh"
 	}
 	c.Proxy = strings.TrimSpace(c.Proxy)
 }

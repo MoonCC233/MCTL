@@ -65,3 +65,14 @@ func TestSnapshotCopiesFavorites(t *testing.T) {
 		t.Fatal("snapshot must not alias favorites")
 	}
 }
+
+func TestNormalizeLanguage(t *testing.T) {
+	cases := map[string]string{"": "zh", "zh": "zh", "en": "en", "fr": "zh"}
+	for in, want := range cases {
+		cfg := Config{Language: in}
+		normalize(&cfg)
+		if cfg.Language != want {
+			t.Fatalf("normalize(%q) = %q, want %q", in, cfg.Language, want)
+		}
+	}
+}

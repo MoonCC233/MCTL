@@ -82,6 +82,9 @@ func speedTestOne(ctx context.Context, client *http.Client, target SpeedTarget, 
 		return res
 	}
 	elapsed := time.Since(start)
+	if elapsed <= 0 {
+		elapsed = time.Microsecond
+	}
 	res.Bytes = n
 	res.Latency = elapsed
 	if elapsed > 0 {

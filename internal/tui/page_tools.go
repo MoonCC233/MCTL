@@ -90,7 +90,7 @@ func (a *App) viewTools(w, h int) []string {
 	if hintH > 0 {
 		it := items[a.tools.idx]
 		hint := []string{
-			"  " + styleMuted.Render(ansiTruncate(it.desc, max(w-10, 16))),
+			"  " + styleMuted.Render(ansiTruncate(tr(it.desc), max(w-10, 16))),
 			"  " + keyHint("enter", "执行") + "  " + keyHint("+", "新建") + "  " + keyHint("x", "导出") + "  " + keyHint("u", "导入"),
 			"  " + keyHint("y", "测速") + "  " + keyHint("d", "自检") + "  " + keyHint("t", "更新") + "  " + keyHint("h", "新闻"),
 		}
@@ -120,10 +120,12 @@ func (a *App) renderToolList(w, h int, items []toolItem) string {
 	}
 	for i := start; i < end; i++ {
 		it := items[i]
+		label := tr(it.label)
+		desc := tr(it.desc)
 		if i == a.tools.idx {
-			rows = append(rows, lipglossRow("  ▸ "+padRight(it.label, 16)+"  "+ansiTruncate(it.desc, max(inner-22, 8)), inner))
+			rows = append(rows, lipglossRow("  ▸ "+padRight(label, 16)+"  "+ansiTruncate(desc, max(inner-22, 8)), inner))
 		} else {
-			rows = append(rows, "    "+styleText.Render(padRight(it.label, 16))+"  "+styleFaint.Render(ansiTruncate(it.desc, max(inner-22, 8))))
+			rows = append(rows, "    "+styleText.Render(padRight(label, 16))+"  "+styleFaint.Render(ansiTruncate(desc, max(inner-22, 8))))
 		}
 	}
 	for len(rows) < maxRows {
