@@ -1,0 +1,392 @@
+package tui
+
+import (
+	"fmt"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/MoonCC233/MCTL/internal/config"
+	"github.com/MoonCC233/MCTL/internal/minecraft"
+)
+
+const (
+	settingText = iota
+	settingNumber
+	settingToggle
+	settingChoice
+	settingAction
+)
+
+type settingItem struct {
+	key     string
+	section string
+	label   string
+	desc    string
+	kind    int
+}
+
+type settingsPage struct {
+	idx      int
+	detected *minecraft.JavaInfo
+}
+
+func (a *App) settingItems() []settingItem {
+	return []settingItem{
+		{key: "game_dir", section: "游戏", label: "游戏目录", desc: "Minecraft 数据目录，版本、模组和存档都保存在这里。", kind: settingText},
+		{key: "download_source", section: "游戏", label: "下载源", desc: "BMCLAPI 镜像通常在国内更快，Mojang 官方源为原始地址。", kind: settingChoice},
+		{key: "java_path", section: "Java", label: "Java 路径", desc: "留空则自动检测。也可以填写 java 可执行文件或 JAVA_HOME 目录。", kind: settingText},
+		{key: "auto_java", section: "Java", label: "自动下载 Java", desc: "缺少兼容的 Java 时，从 Adoptium 自动下载所需 JRE。", kind: settingToggle},
+		{key: "detect_java", section: "Java", label: "检测 Java", desc: "重新扫描系统与常见安装目录中的 Java 运行时。", kind: settingAction},
+		{key: "max_memory", section: "启动", label: "最大内存", desc: "游戏可使用的最大堆内存（MB）。大型整合包建议 4096 以上。", kind: settingNumber},
+		{key: "min_memory", section: "启动", label: "最小内存", desc: "JVM 初始堆内存（MB），通常保持 512 即可。", kind: settingNumber},
+		{key: "width", section: "启动", label: "窗口宽度", desc: "游戏窗口宽度。全屏模式下此值会被忽略。", kind: settingNumber},
+		{key: "height", section: "启动", label: "窗口高度", desc: "游戏窗口高度。全屏模式下此值会被忽略。", kind: settingNumber},
+		{key: "fullscreen", section: "启动", label: "全屏启动", desc: "启动游戏时直接进入全屏模式。", kind: settingToggle},
+		{key: "jvm_args", section: "启动", label: "JVM 参数", desc: "追加到 Java 命令行的参数，例如 -XX:+UseG1GC。", kind: settingText},
+		{key: "game_args", section: "启动", label: "游戏参数", desc: "追加到 Minecraft 主类的参数，例如 --demo。", kind: settingText},
+		{key: "open_game", section: "目录", label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", kind: settingAction},
+		{key: "open_config", section: "目录", label: "打开配置目录", desc: "打开 MCTL 配置与日志所在目录。", kind: settingAction},
+	}
+}
+
+func (a *App) viewSettings(w, h int) []string {
+	cfg := a.store.Snapshot()
+	items := a.settingItems()
+	if a.settings.idx >= len(items) {
+		a.settings.idx = len(items) - 1
+	}
+	confDir, _ := config.Dir()
+	lines := pageHeader("设置", "修改会立即保存 · "+middleEllipsis(confDir, max(w-24, 20)), w)
+	contentH := h - len(lines)
+	if contentH < 5 {
+		return fitLines(lines, h, w)
+	}
+	descH := 6
+	if contentH < 14 {
+		descH = 0
+	}
+	listH := contentH - descH
+	if descH > 0 {
+		listH--
+	}
+	list := a.renderSettingsList(w-4, listH, cfg, items)
+	for _, l := range strings.Split(list, "\n") {
+		lines = append(lines, "  "+l)
+	}
+	if descH > 0 {
+		it := items[a.settings.idx]
+		descW := max(w-12, 16)
+		descText := wrapText(it.desc, descW)
+		if len(descText) > 2 {
+			descText = descText[:2]
+			descText[1] = ansiTruncate(descText[1], max(descW-1, 1)) + "…"
+		}
+		var desc []string
+		for _, l := range descText {
+			desc = append(desc, "  "+styleMuted.Render(l))
+		}
+		for len(desc) < 2 {
+			desc = append(desc, "")
+		}
+		desc = append(desc, "", "  "+keyHint("enter", "编辑")+"  "+keyHint("←→", "调整")+"  "+keyHint("o", "打开游戏目录"))
+		d := panel("提示", w-4, descH, false, desc)
+		lines = append(lines, "")
+		for _, l := range strings.Split(d, "\n") {
+			lines = append(lines, "  "+l)
+		}
+	}
+	return fitLines(lines, h, w)
+}
+
+func (a *App) renderSettingsList(w, h int, cfg config.Config, items []settingItem) string {
+	inner := panelContentWidth(w)
+	maxRows := panelContentHeight(h)
+	var all []string
+	itemLine := make([]int, len(items))
+	lastSection := ""
+	for i, it := range items {
+		if it.section != lastSection {
+			lastSection = it.section
+			all = append(all, " "+sectionLabel(it.section))
+		}
+		itemLine[i] = len(all)
+		val := a.settingValue(cfg, it)
+		labelW := 16
+		if inner < 34 {
+			labelW = 12
+		}
+		prefix := "   "
+		if i == a.settings.idx {
+			prefix = styleAccent.Render(" ▸ ")
+			line := prefix + padRight(styleText.Render(it.label), labelW) + "  " + styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8)))
+			all = append(all, lipglossRow(line, inner))
+		} else {
+			all = append(all, prefix+padRight(styleMuted.Render(it.label), labelW)+"  "+styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8))))
+		}
+	}
+	start := 0
+	if len(all) > maxRows {
+		start = itemLine[a.settings.idx] - maxRows/2
+		if start < 0 {
+			start = 0
+		}
+		if start > len(all)-maxRows {
+			start = len(all) - maxRows
+		}
+	}
+	end := min(start+maxRows, len(all))
+	rows := append([]string{}, all[start:end]...)
+	for len(rows) < maxRows {
+		rows = append(rows, "")
+	}
+	return panel("偏好设置", w, h, a.page == pageSettings, rows)
+}
+
+func (a *App) settingValue(cfg config.Config, it settingItem) string {
+	switch it.key {
+	case "game_dir":
+		return middleEllipsis(cfg.GameDir, 40)
+	case "download_source":
+		return minecraft.GetSource(cfg.DownloadSource).Name
+	case "java_path":
+		if cfg.JavaPath != "" {
+			return middleEllipsis(cfg.JavaPath, 40)
+		}
+		if a.settings.detected != nil {
+			return fmt.Sprintf("自动 · Java %d", a.settings.detected.Major)
+		}
+		return "自动 · 未检测到"
+	case "auto_java":
+		if cfg.AutoJava {
+			return "开启"
+		}
+		return "关闭"
+	case "max_memory":
+		return fmt.Sprintf("%d MB", cfg.MaxMemory)
+	case "min_memory":
+		return fmt.Sprintf("%d MB", cfg.MinMemory)
+	case "width":
+		return strconv.Itoa(cfg.Width)
+	case "height":
+		return strconv.Itoa(cfg.Height)
+	case "fullscreen":
+		if cfg.Fullscreen {
+			return "开启"
+		}
+		return "关闭"
+	case "jvm_args":
+		if strings.TrimSpace(cfg.JVMArgs) == "" {
+			return "（无）"
+		}
+		return middleEllipsis(cfg.JVMArgs, 40)
+	case "game_args":
+		if strings.TrimSpace(cfg.GameArgs) == "" {
+			return "（无）"
+		}
+		return middleEllipsis(cfg.GameArgs, 40)
+	case "detect_java", "open_game", "open_config":
+		return "→"
+	}
+	return ""
+}
+
+func (a *App) settingsKey(msg tea.KeyMsg) tea.Cmd {
+	items := a.settingItems()
+	cfg := a.store.Snapshot()
+	it := items[a.settings.idx]
+	switch msg.String() {
+	case "up", "k":
+		a.settings.idx = (a.settings.idx - 1 + len(items)) % len(items)
+	case "down", "j":
+		a.settings.idx = (a.settings.idx + 1) % len(items)
+	case "enter":
+		a.editSetting(it, cfg)
+	case "left", "h":
+		a.adjustSetting(it, cfg, -1)
+	case "right", "l":
+		a.adjustSetting(it, cfg, 1)
+	case "o":
+		a.openGameDir()
+	}
+	return nil
+}
+
+func (a *App) editSetting(it settingItem, cfg config.Config) {
+	switch it.kind {
+	case settingToggle:
+		a.toggleSetting(it, cfg)
+	case settingChoice:
+		a.adjustSetting(it, cfg, 1)
+	case settingAction:
+		a.runSettingAction(it)
+	case settingText, settingNumber:
+		a.modal = modalState{
+			Kind:   modalInput,
+			Title:  it.label,
+			Label:  it.desc,
+			Value:  []rune(a.rawSettingValue(cfg, it)),
+			Action: "setting:" + it.key,
+		}
+	}
+}
+
+func (a *App) rawSettingValue(cfg config.Config, it settingItem) string {
+	switch it.key {
+	case "game_dir":
+		return cfg.GameDir
+	case "java_path":
+		return cfg.JavaPath
+	case "max_memory":
+		return strconv.Itoa(cfg.MaxMemory)
+	case "min_memory":
+		return strconv.Itoa(cfg.MinMemory)
+	case "width":
+		return strconv.Itoa(cfg.Width)
+	case "height":
+		return strconv.Itoa(cfg.Height)
+	case "jvm_args":
+		return cfg.JVMArgs
+	case "game_args":
+		return cfg.GameArgs
+	}
+	return ""
+}
+
+func (a *App) toggleSetting(it settingItem, cfg config.Config) {
+	switch it.key {
+	case "auto_java":
+		a.saveCfg(func(c *config.Config) { c.AutoJava = !c.AutoJava })
+		a.setToast("自动下载 Java: "+onOff(!cfg.AutoJava), 1)
+	case "fullscreen":
+		a.saveCfg(func(c *config.Config) { c.Fullscreen = !c.Fullscreen })
+		a.setToast("全屏启动: "+onOff(!cfg.Fullscreen), 1)
+	}
+}
+
+func onOff(b bool) string {
+	if b {
+		return "开启"
+	}
+	return "关闭"
+}
+
+func (a *App) adjustSetting(it settingItem, cfg config.Config, dir int) {
+	switch it.key {
+	case "download_source":
+		next := "bmclapi"
+		if cfg.DownloadSource == "bmclapi" {
+			next = "official"
+		}
+		a.saveCfg(func(c *config.Config) { c.DownloadSource = next })
+		a.rt.LoadManifest(true)
+		a.setToast("下载源: "+minecraft.GetSource(next).Name, 1)
+	case "auto_java":
+		a.toggleSetting(it, cfg)
+	case "fullscreen":
+		a.toggleSetting(it, cfg)
+	case "max_memory":
+		v := clamp(cfg.MaxMemory+dir*256, 512, 65536)
+		a.saveCfg(func(c *config.Config) { c.MaxMemory = v })
+	case "min_memory":
+		v := clamp(cfg.MinMemory+dir*256, 256, cfg.MaxMemory)
+		a.saveCfg(func(c *config.Config) { c.MinMemory = v })
+	case "width":
+		v := clamp(cfg.Width+dir*16, 320, 7680)
+		a.saveCfg(func(c *config.Config) { c.Width = v })
+	case "height":
+		v := clamp(cfg.Height+dir*16, 240, 4320)
+		a.saveCfg(func(c *config.Config) { c.Height = v })
+	}
+}
+
+func clamp(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+func (a *App) runSettingAction(it settingItem) {
+	switch it.key {
+	case "detect_java":
+		cfg := a.store.Snapshot()
+		a.rt.DetectJava(cfg.JavaPath)
+		a.setToast("正在检测 Java…", 0)
+	case "open_game":
+		a.openGameDir()
+	case "open_config":
+		dir, err := config.Dir()
+		if err != nil {
+			a.setToast("无法定位配置目录", 2)
+			return
+		}
+		if err := openPath(dir); err != nil {
+			a.setToast("打开配置目录失败: "+err.Error(), 2)
+		}
+	}
+}
+
+func (a *App) submitSetting(key, value string) {
+	value = strings.TrimSpace(value)
+	switch key {
+	case "game_dir":
+		if value == "" {
+			a.setToast("游戏目录不能为空", 2)
+			return
+		}
+		abs, err := filepath.Abs(value)
+		if err != nil {
+			a.setToast("路径无效: "+err.Error(), 2)
+			return
+		}
+		a.saveCfg(func(c *config.Config) { c.GameDir = abs })
+		a.rt.ScanVersions()
+		a.setToast("游戏目录已更新", 1)
+	case "java_path":
+		a.saveCfg(func(c *config.Config) { c.JavaPath = value })
+		a.rt.DetectJava(value)
+		a.setToast("Java 路径已更新", 1)
+	case "max_memory":
+		v, err := strconv.Atoi(value)
+		if err != nil || v < 512 {
+			a.setToast("请输入不小于 512 的整数", 2)
+			return
+		}
+		a.saveCfg(func(c *config.Config) { c.MaxMemory = clamp(v, 512, 65536) })
+		a.setToast("最大内存已更新", 1)
+	case "min_memory":
+		v, err := strconv.Atoi(value)
+		if err != nil || v < 256 {
+			a.setToast("请输入不小于 256 的整数", 2)
+			return
+		}
+		a.saveCfg(func(c *config.Config) { c.MinMemory = clamp(v, 256, c.MaxMemory) })
+		a.setToast("最小内存已更新", 1)
+	case "width":
+		v, err := strconv.Atoi(value)
+		if err != nil || v < 320 {
+			a.setToast("宽度不能小于 320", 2)
+			return
+		}
+		a.saveCfg(func(c *config.Config) { c.Width = clamp(v, 320, 7680) })
+	case "height":
+		v, err := strconv.Atoi(value)
+		if err != nil || v < 240 {
+			a.setToast("高度不能小于 240", 2)
+			return
+		}
+		a.saveCfg(func(c *config.Config) { c.Height = clamp(v, 240, 4320) })
+	case "jvm_args":
+		a.saveCfg(func(c *config.Config) { c.JVMArgs = value })
+		a.setToast("JVM 参数已保存", 1)
+	case "game_args":
+		a.saveCfg(func(c *config.Config) { c.GameArgs = value })
+		a.setToast("游戏参数已保存", 1)
+	}
+}

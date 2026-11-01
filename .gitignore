@@ -1,0 +1,21 @@
+# Build output
+/dist/
+/mctl
+/mctl.exe
+*.exe
+*.test
+*.out
+
+# Local configuration and logs
+.mctl/
+*.log
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Go workspace files
+go.work
+go.work.sum
