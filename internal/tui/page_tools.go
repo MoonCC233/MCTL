@@ -94,7 +94,7 @@ func (a *App) viewTools(w, h int) []string {
 	if hintH > 0 {
 		listH--
 	}
-	list := a.renderToolList(w-4, listH, items)
+	list := a.renderToolList(2, len(lines), w-4, listH, items)
 	for _, l := range strings.Split(list, "\n") {
 		lines = append(lines, "  "+l)
 	}
@@ -102,8 +102,8 @@ func (a *App) viewTools(w, h int) []string {
 		it := items[a.tools.idx]
 		hint := []string{
 			"  " + styleMuted.Render(ansiTruncate(tr(it.desc), max(w-10, 16))),
-			"  " + keyHint("enter", "执行") + "  " + keyHint("+", "新建") + "  " + keyHint("x", "导出") + "  " + keyHint("u", "导入"),
-			"  " + keyHint("y", "测速") + "  " + keyHint("d", "自检") + "  " + keyHint("t", "更新") + "  " + keyHint("h", "新闻"),
+			"",
+			"  " + styleFaint.Render(tr("单击条目执行 · 滚轮滚动列表")),
 		}
 		p := panel("提示", w-4, hintH, false, hint)
 		lines = append(lines, "")
@@ -114,9 +114,10 @@ func (a *App) viewTools(w, h int) []string {
 	return fitLines(lines, h, w)
 }
 
-func (a *App) renderToolList(w, h int, items []toolItem) string {
+func (a *App) renderToolList(x, y, w, h int, items []toolItem) string {
 	inner := panelContentWidth(w)
 	maxRows := panelContentHeight(h)
+	a.addHit(x, y, x+w-1, y+h-1, "wheel", "tools")
 	start := 0
 	if a.tools.idx >= maxRows {
 		start = a.tools.idx - maxRows + 1
@@ -138,6 +139,7 @@ func (a *App) renderToolList(w, h int, items []toolItem) string {
 		} else {
 			rows = append(rows, "    "+styleText.Render(padRight(label, 18))+"  "+styleFaint.Render(ansiTruncate(desc, max(inner-24, 8))))
 		}
+		a.addHit(x+1, y+1+(i-start), x+w-2, y+1+(i-start), "tool-row", i)
 	}
 	for len(rows) < maxRows {
 		rows = append(rows, "")

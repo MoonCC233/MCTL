@@ -80,7 +80,7 @@ func (a *App) viewDownload(w, h int) []string {
 		sub += tr(" · 搜索：") + p.filter
 	}
 	lines := pageHeader("下载", sub, w)
-	lines = append(lines, "  "+a.renderDownloadTabs(w))
+	lines = append(lines, "  "+a.renderDownloadTabs(w, len(lines)))
 	contentH := h - len(lines)
 	if contentH < 5 {
 		return fitLines(lines, h, w)
@@ -110,8 +110,8 @@ func (a *App) viewDownload(w, h int) []string {
 		rightW = 22
 		leftW = w - 4 - gap - rightW
 	}
-	left := a.renderDownloadList(leftW, contentH, list)
-	right := a.renderDownloadDetail(rightW, contentH, list)
+	left := a.renderDownloadList(2, len(lines), leftW, contentH, list)
+	right := a.renderDownloadDetail(2+leftW+gap, len(lines), rightW, contentH, list)
 	cols := joinColumns(left, right, gap)
 	for _, l := range cols {
 		lines = append(lines, "  "+l)
@@ -119,9 +119,10 @@ func (a *App) viewDownload(w, h int) []string {
 	return fitLines(lines, h, w)
 }
 
-func (a *App) renderDownloadTabs(width int) string {
+func (a *App) renderDownloadTabs(width, y int) string {
 	p := &a.download
 	if width < 74 {
+		a.addHit(2, y, width-2, y, "download-next-mode", nil)
 		return styleMuted.Render(tr("类型: ")) + styleAccent.Render(tr(loaderModeNames[p.mode])) + "  " + styleFaint.Render(tr("←→ 切换"))
 	}
 	tab := func(label string, selected bool) string {
@@ -130,21 +131,27 @@ func (a *App) renderDownloadTabs(width int) string {
 		}
 		return lipgloss.NewStyle().Foreground(colorMuted).Padding(0, 1).Render(label)
 	}
-	return tab(tr("原版"), p.mode == 0) + " " +
-		tab("Fabric", p.mode == 1) + " " +
-		tab("Quilt", p.mode == 2) + " " +
-		tab("Legacy", p.mode == 3) + " " +
-		tab("Lite", p.mode == 4) + " " +
-		tab("Forge", p.mode == 5) + " " +
-		tab("Neo", p.mode == 6) + " " +
-		tab("Opti", p.mode == 7) + " " +
-		tab("Clean", p.mode == 8) + " " +
-		tab("Laby", p.mode == 9)
+	labels := []string{tr("原版"), "Fabric", "Quilt", "Legacy", "Lite", "Forge", "Neo", "Opti", "Clean", "Laby"}
+	var b strings.Builder
+	x := 2
+	for i, label := range labels {
+		rendered := tab(label, p.mode == i)
+		w := lipgloss.Width(rendered)
+		a.addHit(x, y, x+w-1, y, "download-tab", i)
+		b.WriteString(rendered)
+		x += w
+		if i < len(labels)-1 {
+			b.WriteString(" ")
+			x++
+		}
+	}
+	return b.String()
 }
 
-func (a *App) renderDownloadList(w, h int, list []minecraft.VersionEntry) string {
+func (a *App) renderDownloadList(x, y, w, h int, list []minecraft.VersionEntry) string {
 	inner := panelContentWidth(w)
 	maxRows := panelContentHeight(h)
+	a.addHit(x, y, x+w-1, y+h-1, "wheel", "download")
 	var rows []string
 	if len(list) == 0 {
 		rows = append(rows, "", "  "+styleFaint.Render("没有匹配的版本"))
@@ -174,6 +181,7 @@ func (a *App) renderDownloadList(w, h int, list []minecraft.VersionEntry) string
 			} else {
 				rows = append(rows, " "+mark+" "+padRight(name, nameW)+"  "+styleMuted.Render(padRight(typ, 6))+"  "+styleFaint.Render(padRight(date, 10)))
 			}
+			a.addHit(x+1, y+1+(i-start), x+w-2, y+1+(i-start), "download-row", i)
 		}
 	}
 	for len(rows) < panelContentHeight(h) {
@@ -207,7 +215,7 @@ func typeLabel(t string) string {
 	}
 }
 
-func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) string {
+func (a *App) renderDownloadDetail(x, y, w, h int, list []minecraft.VersionEntry) string {
 	inner := panelContentWidth(w)
 	var rows []string
 	if len(list) == 0 || a.download.idx >= len(list) {
@@ -232,45 +240,45 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 		switch a.download.mode {
 		case 0:
 			if a.download.installed[v.ID] {
-				rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("修复 / 重新安装")))
+				rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("修复 / 重新安装")))
 			} else {
-				rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("安装此版本")))
+				rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("安装此版本")))
 			}
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将下载客户端、依赖库与资源文件")))
 		case 1:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Fabric 加载器")))
+			rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("选择 Fabric 加载器")))
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render(tr("再写入 Fabric 配置并补全依赖")))
 		case 2:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Quilt 加载器")))
+			rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("选择 Quilt 加载器")))
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render(tr("再写入 Quilt 配置并补全依赖")))
 		case 3:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Legacy Fabric 加载器")))
+			rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("选择 Legacy Fabric 加载器")))
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render(tr("再写入 Legacy Fabric 配置并补全依赖")))
 		case 4:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 LiteLoader 版本")))
+			rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("选择 LiteLoader 版本")))
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render(tr("再写入 LiteLoader 启动配置")))
 		case 5:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Forge 版本")))
+			rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("选择 Forge 版本")))
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render(tr("再运行 Forge 安装器并补全依赖")))
 		case 6:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 NeoForge 版本")))
+			rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("选择 NeoForge 版本")))
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render(tr("再运行 NeoForge 安装器并补全依赖")))
 		case 7:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 OptiFine 版本")))
+			rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("选择 OptiFine 版本")))
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 ")+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render(tr("再写入 OptiFine 配置并补全依赖")))
 		case 8:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 Cleanroom 版本")))
+			rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("选择 Cleanroom 版本")))
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将先安装原版 1.12.2，")))
 			rows = append(rows, "  "+styleFaint.Render(tr("再运行 Cleanroom 安装器（需要 Java 25）")))
 		case 9:
-			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("选择 LabyMod 通道")))
+			rows = append(rows, "  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("选择 LabyMod 通道")))
 			rows = append(rows, "", "  "+styleFaint.Render(tr("将从官方自定义清单和依赖库生成")))
 			rows = append(rows, "  "+styleFaint.Render(tr("可直接启动的 LabyMod 版本")))
 		}
@@ -280,6 +288,13 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 	}
 	if len(rows) > panelContentHeight(h) {
 		rows = rows[:panelContentHeight(h)]
+	}
+	a.addHit(x, y, x+w-1, y+h-1, "wheel", "download")
+	if len(list) > 0 && a.download.idx < len(list) {
+		actionY := y + 1 + 10
+		if actionY <= y+h-2 {
+			a.addHit(x+1, actionY, x+w-2, actionY, "download-action", "enter")
+		}
 	}
 	return panel("详情", w, h, false, rows)
 }

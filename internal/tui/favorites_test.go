@@ -4,8 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
-
 	"github.com/MoonCC233/MCTL/internal/config"
 	"github.com/MoonCC233/MCTL/internal/minecraft"
 )
@@ -17,7 +15,7 @@ func TestFavoriteToggleInPicker(t *testing.T) {
 		Items:  []pickerItem{{Label: "Create", Desc: "1.0", Value: "create-id"}},
 		Action: "install-online-modpack",
 	}
-	a.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	a.togglePickerFavorite()
 	if !a.store.Snapshot().IsFavorite("modpack", "create-id") {
 		t.Fatal("favorite should be stored")
 	}
@@ -25,7 +23,7 @@ func TestFavoriteToggleInPicker(t *testing.T) {
 		t.Fatalf("label = %q", a.modal.Items[0].Label)
 	}
 
-	a.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	a.togglePickerFavorite()
 	if a.store.Snapshot().IsFavorite("modpack", "create-id") {
 		t.Fatal("favorite should be removed")
 	}
@@ -51,9 +49,9 @@ func TestFavoritesList(t *testing.T) {
 		t.Fatalf("items = %#v", a.modal.Items)
 	}
 
-	a.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	a.togglePickerFavorite()
 	if a.store.Snapshot().IsFavorite("modpack", "pack-id") {
-		t.Fatal("d should remove the favorite")
+		t.Fatal("clicking the favorite control should remove the favorite")
 	}
 }
 

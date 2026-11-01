@@ -80,7 +80,7 @@ func (a *App) viewSettings(w, h int) []string {
 	if descH > 0 {
 		listH--
 	}
-	list := a.renderSettingsList(w-4, listH, cfg, items)
+	list := a.renderSettingsList(2, len(lines), w-4, listH, cfg, items)
 	for _, l := range strings.Split(list, "\n") {
 		lines = append(lines, "  "+l)
 	}
@@ -99,7 +99,7 @@ func (a *App) viewSettings(w, h int) []string {
 		for len(desc) < 2 {
 			desc = append(desc, "")
 		}
-		desc = append(desc, "", "  "+keyHint("enter", "编辑")+"  "+keyHint("←→", "调整")+"  "+keyHint("o", "打开游戏目录"))
+		desc = append(desc, "", "  "+styleFaint.Render(tr("单击条目编辑或切换 · 滚轮滚动")))
 		d := panel("提示", w-4, descH, false, desc)
 		lines = append(lines, "")
 		for _, l := range strings.Split(d, "\n") {
@@ -109,9 +109,10 @@ func (a *App) viewSettings(w, h int) []string {
 	return fitLines(lines, h, w)
 }
 
-func (a *App) renderSettingsList(w, h int, cfg config.Config, items []settingItem) string {
+func (a *App) renderSettingsList(x, y, w, h int, cfg config.Config, items []settingItem) string {
 	inner := panelContentWidth(w)
 	maxRows := panelContentHeight(h)
+	a.addHit(x, y, x+w-1, y+h-1, "wheel", "settings")
 	var all []string
 	itemLine := make([]int, len(items))
 	lastSection := ""
@@ -147,6 +148,14 @@ func (a *App) renderSettingsList(w, h int, cfg config.Config, items []settingIte
 	}
 	end := min(start+maxRows, len(all))
 	rows := append([]string{}, all[start:end]...)
+	for i := range items {
+		line := itemLine[i]
+		if line < start || line >= end {
+			continue
+		}
+		rowY := y + 1 + line - start
+		a.addHit(x+1, rowY, x+w-2, rowY, "settings-row", i)
+	}
 	for len(rows) < maxRows {
 		rows = append(rows, "")
 	}

@@ -1,0 +1,190 @@
+package tui
+
+import (
+	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/MoonCC233/MCTL/internal/config"
+	"github.com/MoonCC233/MCTL/internal/minecraft"
+)
+
+func mouseApp(t *testing.T) *App {
+	t.Helper()
+	a := testApp(t, config.Config{GameDir: t.TempDir(), SelectedVersion: "1.20.1"})
+	a.width, a.height = 100, 30
+	a.launch.versions = []minecraft.InstalledVersion{
+		{ID: "1.20.1", MCVersion: "1.20.1", Loader: "Vanilla", Type: "release", Complete: true},
+	}
+	a.versions.list = a.launch.versions
+	return a
+}
+
+func findHit(t *testing.T, a *App, action string, data any) hitRegion {
+	t.Helper()
+	a.View()
+	for _, h := range a.hits {
+		if h.action != action {
+			continue
+		}
+		if data == nil || h.data == data {
+			return h
+		}
+	}
+	t.Fatalf("no hit for action %q data %#v", action, data)
+	return hitRegion{}
+}
+
+func clickRegion(a *App, h hitRegion) {
+	x := (h.x0 + h.x1) / 2
+	y := (h.y0 + h.y1) / 2
+	a.handleMouse(tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
+}
+
+func TestMouseSidebarSwitchesPage(t *testing.T) {
+	a := mouseApp(t)
+	clickRegion(a, findHit(t, a, "page", pageSettings))
+	if a.page != pageSettings {
+		t.Fatalf("page = %v", a.page)
+	}
+	clickRegion(a, findHit(t, a, "page", pageTools))
+	if a.page != pageTools {
+		t.Fatalf("page = %v", a.page)
+	}
+}
+
+func TestMouseLaunchRows(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageLaunch
+	clickRegion(a, findHit(t, a, "launch-version", nil))
+	if a.modal.Kind != modalPicker || a.modal.Title != "选择游戏版本" {
+		t.Fatalf("version picker = %#v", a.modal)
+	}
+
+	b := mouseApp(t)
+	b.page = pageLaunch
+	clickRegion(b, findHit(t, b, "launch-account", nil))
+	if b.modal.Kind != modalAccounts {
+		t.Fatalf("account modal = %#v", b.modal)
+	}
+}
+
+func TestMouseSettingsRowOpensEditor(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageSettings
+	clickRegion(a, findHit(t, a, "settings-row", 0))
+	if a.modal.Kind != modalInput || a.modal.Action != "setting:game_dir" {
+		t.Fatalf("modal = %#v", a.modal)
+	}
+}
+
+func TestMouseToolRowRunsTool(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageTools
+	// "收藏" is the fourth tool and opens the favorites picker.
+	items := a.toolItems()
+	idx := -1
+	for i, it := range items {
+		if it.action == "favorites" {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		t.Fatal("favorites tool missing")
+	}
+	clickRegion(a, findHit(t, a, "tool-row", idx))
+	if a.modal.Kind != modalPicker || a.modal.Action != "favorites-kind" {
+		t.Fatalf("favorites modal = %#v", a.modal)
+	}
+}
+
+func TestMouseModalItemAndConfirm(t *testing.T) {
+	a := mouseApp(t)
+	a.modal = modalState{
+		Kind:   modalPicker,
+		Items:  []pickerItem{{Label: "整合包", Desc: "Modpacks", Value: "modpacks"}},
+		Action: "community-resource",
+	}
+	clickRegion(a, findHit(t, a, "modal-item", 0))
+	if a.modal.Action != "community-pack-source" {
+		t.Fatalf("modal = %#v", a.modal)
+	}
+
+	b := mouseApp(t)
+	b.modal = modalState{Kind: modalConfirm, Title: "测试", Body: "确认操作", Action: "favorites"}
+	clickRegion(b, findHit(t, b, "modal-confirm", nil))
+	if b.modal.Action != "favorites-kind" {
+		t.Fatalf("confirm did not run the action: %#v", b.modal)
+	}
+
+	c := mouseApp(t)
+	c.modal = modalState{Kind: modalConfirm, Title: "测试", Body: "取消操作", Action: "favorites"}
+	clickRegion(c, findHit(t, c, "modal-cancel", nil))
+	if c.modal.Kind != modalNone {
+		t.Fatalf("cancel should close the modal: %#v", c.modal)
+	}
+}
+
+func TestMouseWheelScrollsVersions(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageVersions
+	var list []minecraft.InstalledVersion
+	for _, id := range []string{"1.20.1", "1.20.2", "1.20.3", "1.20.4"} {
+		list = append(list, minecraft.InstalledVersion{ID: id, MCVersion: id, Loader: "Vanilla", Type: "release", Complete: true})
+	}
+	a.versions.list = list
+	h := findHit(t, a, "wheel", "versions")
+	a.handleMouse(tea.MouseMsg{
+		X: (h.x0 + h.x1) / 2, Y: (h.y0 + h.y1) / 2,
+		Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown,
+	})
+	if a.versions.idx != 1 {
+		t.Fatalf("index = %d", a.versions.idx)
+	}
+	a.handleMouse(tea.MouseMsg{
+		X: (h.x0 + h.x1) / 2, Y: (h.y0 + h.y1) / 2,
+		Action: tea.MouseActionPress, Button: tea.MouseButtonWheelUp,
+	})
+	if a.versions.idx != 0 {
+		t.Fatalf("index = %d", a.versions.idx)
+	}
+}
+
+func TestMouseHelpAndOutsideClose(t *testing.T) {
+	a := mouseApp(t)
+	clickRegion(a, findHit(t, a, "help", nil))
+	if a.modal.Kind != modalHelp {
+		t.Fatalf("modal = %#v", a.modal)
+	}
+	a.View()
+	a.handleMouse(tea.MouseMsg{X: 0, Y: 0, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
+	if a.modal.Kind != modalNone {
+		t.Fatalf("outside click should close the help modal: %#v", a.modal)
+	}
+}
+
+func TestMouseQuitButton(t *testing.T) {
+	a := mouseApp(t)
+	h := findHit(t, a, "quit", nil)
+	_, cmd := a.handleMouse(tea.MouseMsg{
+		X: (h.x0 + h.x1) / 2, Y: (h.y0 + h.y1) / 2,
+		Action: tea.MouseActionPress, Button: tea.MouseButtonLeft,
+	})
+	if cmd == nil {
+		t.Fatal("quit button should return a command")
+	}
+}
+
+func TestKeyboardNavigationDisabled(t *testing.T) {
+	a := mouseApp(t)
+	for _, key := range []string{"3", "tab", "q", "?"} {
+		a.handleKey(keyMsg(key))
+	}
+	if a.page != pageLaunch {
+		t.Fatalf("keyboard changed page to %v", a.page)
+	}
+	if a.modal.Kind != modalNone {
+		t.Fatalf("keyboard opened a modal: %#v", a.modal)
+	}
+}

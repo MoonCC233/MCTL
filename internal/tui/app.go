@@ -61,6 +61,17 @@ type App struct {
 	logs      logsPage
 
 	demo bool
+
+	hits       []hitRegion
+	hitOriginX int
+	hitOriginY int
+	modalX     int
+	modalY     int
+	modalW     int
+	modalH     int
+	mouseX     int
+	mouseY     int
+	lastClick  clickStamp
 }
 
 // New builds the application.
@@ -104,6 +115,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 	case tea.KeyMsg:
 		return a.handleKey(m)
+	case tea.MouseMsg:
+		return a.handleMouse(m)
 	case eventMsg:
 		cmd := a.handleEvent(m.Msg)
 		return a, tea.Batch(a.waitEvent(), cmd)
@@ -119,6 +132,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (a *App) View() string {
+	a.hits = a.hits[:0]
 	if a.width == 0 || a.height == 0 {
 		return "MCTL 正在初始化…"
 	}
@@ -130,14 +144,39 @@ func (a *App) View() string {
 	}
 	base := a.renderBase()
 	if a.modal.Kind != modalNone {
-		return overlayCenter(base, a.renderModal(), a.width, a.height)
+		start := len(a.hits)
+		a.hitOriginX, a.hitOriginY = 0, 0
+		box := a.renderModal()
+		boxLines := strings.Split(box, "\n")
+		boxW := 0
+		for _, l := range boxLines {
+			boxW = max(boxW, lipgloss.Width(l))
+		}
+		boxH := len(boxLines)
+		x := max((a.width-boxW)/2, 0)
+		y := max((a.height-boxH)/2, 0)
+		a.modalX, a.modalY, a.modalW, a.modalH = x, y, boxW, boxH
+		for i := start; i < len(a.hits); i++ {
+			h := &a.hits[i]
+			h.x0 += x
+			h.x1 += x
+			h.y0 += y
+			h.y1 += y
+			h.x0 = max(h.x0, x)
+			h.x1 = min(h.x1, x+boxW-1)
+			h.y0 = max(h.y0, y)
+			h.y1 = min(h.y1, y+boxH-1)
+		}
+		return overlayCenter(base, box, a.width, a.height)
 	}
+	a.modalX, a.modalY, a.modalW, a.modalH = 0, 0, 0, 0
 	return base
 }
 
 func (a *App) renderBase() string {
 	w, h := a.width, a.height
 	bodyH := h - 4
+	a.hitOriginX, a.hitOriginY = 0, 0
 	lines := []string{a.renderHeader()}
 	lines = append(lines, styleBorder.Render(strings.Repeat("─", w)))
 	lines = append(lines, a.renderBody(bodyH)...)
@@ -166,8 +205,11 @@ func (a *App) renderHeader() string {
 		src := tr(minecraft.GetSource(cfg.DownloadSource).Name)
 		right = styleMuted.Render(fmt.Sprintf("%s  ·  %d MB  ·  %s", java, cfg.MaxMemory, src))
 	}
-	right += " "
-	return padBetween(left, right, a.width)
+	right += "  " + styleMuted.Render("[?]") + " " + styleMuted.Render("[×]") + " "
+	line := padBetween(left, right, a.width)
+	a.addHit(a.width-8, 0, a.width-5, 0, "help", nil)
+	a.addHit(a.width-4, 0, a.width-1, 0, "quit", nil)
+	return line
 }
 
 func padBetween(left, right string, w int) string {
@@ -185,26 +227,7 @@ func ansiTruncate(s string, w int) string {
 }
 
 func (a *App) renderFooter() string {
-	cfg := a.store.Snapshot()
-	var parts []string
-	switch a.page {
-	case pageLaunch:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("a", "账户"), keyHint("i", "实例设置"), keyHint("p", "皮肤"), keyHint("n", "新闻")}
-	case pageVersions:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("i", "实例"), keyHint("x", "导出"), keyHint("+", "新建"), keyHint("d", "删除"), keyHint("/", "筛选")}
-	case pageDownload:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "安装"), keyHint("[ ]", "类型"), keyHint("c", "资源"), keyHint("i", "导入"), keyHint("m", "筛选"), keyHint("r", "刷新")}
-	case pageSettings:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
-	case pageTools:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("+", "新建"), keyHint("f", "收藏"), keyHint("x", "导出"), keyHint("u", "导入")}
-	case pageAbout:
-		parts = []string{keyHint("↑↓", "滚动"), keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
-	case pageLogs:
-		parts = []string{keyHint("↑↓", "滚动"), keyHint("f", "跟随"), keyHint("c", "清空"), keyHint("pgup/pgdn", "翻页")}
-	}
-	parts = append(parts, keyHint("tab", "切换"), keyHint("?", "帮助"), keyHint("q", "退出"))
-	left := " " + hints(parts...)
+	left := " " + styleMuted.Render(tr("单击选择 · 双击打开 · 滚轮滚动 · 顶部按钮帮助 / 退出"))
 	var right string
 	if a.modal.Kind == modalProgress {
 		pct := int(a.modal.Percent * 100)
@@ -222,7 +245,6 @@ func (a *App) renderFooter() string {
 	if lipgloss.Width(left)+lipgloss.Width(right)+1 > a.width {
 		left = ansiTruncate(left, max(a.width-lipgloss.Width(right)-1, 0))
 	}
-	_ = cfg
 	return padBetween(left, right, a.width)
 }
 
@@ -236,8 +258,11 @@ func (a *App) renderBody(h int) []string {
 		sidebarW = 20
 	}
 	mainW := w - sidebarW - 1
+	a.hitOriginX, a.hitOriginY = 0, 2
 	side := a.renderSidebar(h, sidebarW-1)
+	a.hitOriginX, a.hitOriginY = sidebarW, 2
 	page := a.renderPage(mainW, h)
+	a.hitOriginX, a.hitOriginY = 0, 0
 	out := make([]string, h)
 	for i := 0; i < h; i++ {
 		s := ""
@@ -271,6 +296,16 @@ func (a *App) renderSidebar(h, w int) []string {
 		lines = append(lines, "")
 	}
 	lines = append(lines, bottom...)
+	for i := range bottom {
+		plain := stripANSI(bottom[i])
+		y := len(lines) - len(bottom) + i
+		if strings.Contains(plain, tr("账户")) {
+			a.addHit(0, y, w-1, y+1, "sidebar-account", nil)
+		}
+		if strings.Contains(plain, tr("当前版本")) {
+			a.addHit(0, y, w-1, y+2, "sidebar-version", nil)
+		}
+	}
 	return fitLines(lines, h, w)
 }
 
@@ -280,6 +315,7 @@ func (a *App) sidebarTop(w int, compact bool) []string {
 		top = append(top, "", " "+sectionLabel("工作区"), "")
 	}
 	for i := 0; i < int(pageCount); i++ {
+		start := len(top)
 		sel := pageID(i) == a.page
 		label := pageLabel(i)
 		if compact {
@@ -313,6 +349,7 @@ func (a *App) sidebarTop(w int, compact bool) []string {
 		if i < int(pageCount)-1 {
 			top = append(top, "")
 		}
+		a.addHit(0, start, w-1, len(top)-1, "page", pageID(i))
 	}
 	return top
 }
@@ -392,41 +429,15 @@ func pageHeader(title, subtitle string, w int) []string {
 }
 
 func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Navigation and actions are mouse-driven. The keyboard is kept only for
+	// typing into text fields and as a ctrl+c escape hatch.
 	if msg.String() == "ctrl+c" {
 		return a.requestQuit()
 	}
-	if a.modal.Kind != modalNone {
+	if a.modal.Kind == modalInput {
 		return a.handleModalKey(msg)
 	}
-	switch msg.String() {
-	case "q":
-		return a.requestQuit()
-	case "?":
-		a.openHelp()
-		return a, nil
-	case ":":
-		a.openPalette()
-		return a, nil
-	case "tab":
-		a.switchPage((a.page + 1) % pageCount)
-		return a, nil
-	case "shift+tab":
-		a.switchPage((a.page - 1 + pageCount) % pageCount)
-		return a, nil
-	case "1", "2", "3", "4", "5", "6", "7":
-		for i := range pageNumbers {
-			if msg.String() == pageNumbers[i] {
-				a.switchPage(pageID(i))
-				return a, nil
-			}
-		}
-	case "esc":
-		if a.page != pageLaunch {
-			a.switchPage(pageLaunch)
-			return a, nil
-		}
-	}
-	return a, a.handlePageKey(msg)
+	return a, nil
 }
 
 func (a *App) switchPage(p pageID) {

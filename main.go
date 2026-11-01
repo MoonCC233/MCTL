@@ -98,7 +98,7 @@ func run() error {
 
 	rt := tui.NewRuntime(store, logs)
 	app := tui.New(store, rt)
-	program := tea.NewProgram(app, tea.WithAltScreen())
+	program := tea.NewProgram(app, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := program.Run(); err != nil {
 		return err
 	}

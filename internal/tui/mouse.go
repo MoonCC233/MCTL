@@ -1,0 +1,338 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
+)
+
+type hitRegion struct {
+	x0, y0, x1, y1 int
+	action         string
+	data           any
+}
+
+type clickStamp struct {
+	key string
+	at  time.Time
+}
+
+// addHit records a clickable rectangle in the current render pass. Coordinates
+// are relative to the active hit origin (sidebar or page area).
+func (a *App) addHit(x0, y0, x1, y1 int, action string, data any) {
+	if x0 > x1 {
+		x0, x1 = x1, x0
+	}
+	if y0 > y1 {
+		y0, y1 = y1, y0
+	}
+	a.hits = append(a.hits, hitRegion{
+		x0: a.hitOriginX + x0, y0: a.hitOriginY + y0,
+		x1: a.hitOriginX + x1, y1: a.hitOriginY + y1,
+		action: action, data: data,
+	})
+}
+
+func (a *App) hitAt(x, y int) (hitRegion, bool) {
+	for i := len(a.hits) - 1; i >= 0; i-- {
+		h := a.hits[i]
+		if x >= h.x0 && x <= h.x1 && y >= h.y0 && y <= h.y1 {
+			return h, true
+		}
+	}
+	return hitRegion{}, false
+}
+
+func stripANSI(s string) string { return ansi.Strip(s) }
+
+func (a *App) inModal(x, y int) bool {
+	return a.modalW > 0 && a.modalH > 0 &&
+		x >= a.modalX && x < a.modalX+a.modalW &&
+		y >= a.modalY && y < a.modalY+a.modalH
+}
+
+func (a *App) isDoubleClick(key string, now time.Time) bool {
+	if a.lastClick.key == key && now.Sub(a.lastClick.at) < 450*time.Millisecond {
+		a.lastClick = clickStamp{}
+		return true
+	}
+	a.lastClick = clickStamp{key: key, at: now}
+	return false
+}
+
+func keyMsg(key string) tea.KeyMsg {
+	switch key {
+	case "enter":
+		return tea.KeyMsg{Type: tea.KeyEnter}
+	case "esc":
+		return tea.KeyMsg{Type: tea.KeyEsc}
+	case "up":
+		return tea.KeyMsg{Type: tea.KeyUp}
+	case "down":
+		return tea.KeyMsg{Type: tea.KeyDown}
+	case "left":
+		return tea.KeyMsg{Type: tea.KeyLeft}
+	case "right":
+		return tea.KeyMsg{Type: tea.KeyRight}
+	case "pgup":
+		return tea.KeyMsg{Type: tea.KeyPgUp}
+	case "pgdown":
+		return tea.KeyMsg{Type: tea.KeyPgDown}
+	}
+	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
+}
+
+func (a *App) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	a.mouseX, a.mouseY = msg.X, msg.Y
+	if msg.Action == tea.MouseActionMotion {
+		return a, nil
+	}
+	if msg.Button == tea.MouseButtonWheelUp {
+		return a, a.mouseWheel(-1)
+	}
+	if msg.Button == tea.MouseButtonWheelDown {
+		return a, a.mouseWheel(1)
+	}
+	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
+		return a, nil
+	}
+	if a.modal.Kind != modalNone {
+		if a.inModal(msg.X, msg.Y) {
+			if h, ok := a.hitAt(msg.X, msg.Y); ok {
+				return a.activateHit(h)
+			}
+			return a, nil
+		}
+		if a.modal.Kind != modalProgress {
+			a.modal = modalState{}
+		}
+		return a, nil
+	}
+	if h, ok := a.hitAt(msg.X, msg.Y); ok {
+		return a.activateHit(h)
+	}
+	return a, nil
+}
+
+func (a *App) activateHit(h hitRegion) (tea.Model, tea.Cmd) {
+	switch h.action {
+	case "quit":
+		return a.requestQuit()
+	case "help":
+		a.openHelp()
+	case "page":
+		if p, ok := h.data.(pageID); ok {
+			a.switchPage(p)
+		}
+	case "sidebar-account":
+		a.openAccounts()
+	case "sidebar-version":
+		a.switchPage(pageVersions)
+	case "launch-version":
+		a.openVersionPicker()
+	case "launch-account":
+		a.openAccounts()
+	case "launch-start":
+		if a.rt.Launching() {
+			a.openConfirm("停止游戏", "确定要结束当前游戏进程吗？未保存的游戏进度可能丢失。", "stop-game", nil)
+		} else {
+			a.startLaunch(a.launch.selectedVersion(a.store.Snapshot()))
+		}
+	case "launch-news":
+		a.setToast("正在获取更新日志…", 0)
+		a.rt.FetchNews()
+	case "versions-row":
+		idx, _ := h.data.(int)
+		list := a.filteredVersions()
+		if idx >= 0 && idx < len(list) {
+			a.versions.idx = idx
+		}
+		if a.isDoubleClick(fmt.Sprintf("versions-row-%d", idx), time.Now()) {
+			return a, a.versionsKey(keyMsg("enter"))
+		}
+	case "versions-action":
+		if key, ok := h.data.(string); ok {
+			return a, a.versionsKey(keyMsg(key))
+		}
+	case "download-tab":
+		if mode, ok := h.data.(int); ok && mode >= 0 && mode < len(loaderModeNames) {
+			if a.download.mode != mode {
+				a.download.mode = mode
+				a.download.idx = 0
+				a.download.loaderLoading = false
+				if a.download.manifest == nil && !a.download.loading {
+					a.rt.LoadManifest(false)
+				}
+			}
+		}
+	case "download-next-mode":
+		if a.download.mode < len(loaderModeNames)-1 {
+			a.download.mode++
+		} else {
+			a.download.mode = 0
+		}
+		a.download.idx = 0
+		a.download.loaderLoading = false
+		if a.download.manifest == nil && !a.download.loading {
+			a.rt.LoadManifest(false)
+		}
+	case "download-row":
+		idx, _ := h.data.(int)
+		list := a.download.versions()
+		if idx >= 0 && idx < len(list) {
+			a.download.idx = idx
+		}
+		if a.isDoubleClick(fmt.Sprintf("download-row-%d", idx), time.Now()) {
+			return a, a.downloadKey(keyMsg("enter"))
+		}
+	case "download-action":
+		if key, ok := h.data.(string); ok {
+			return a, a.downloadKey(keyMsg(key))
+		}
+	case "settings-row":
+		if idx, ok := h.data.(int); ok {
+			items := a.settingItems()
+			if idx >= 0 && idx < len(items) {
+				a.settings.idx = idx
+				return a, a.settingsKey(keyMsg("enter"))
+			}
+		}
+	case "tool-row":
+		if idx, ok := h.data.(int); ok {
+			items := a.toolItems()
+			if idx >= 0 && idx < len(items) {
+				a.tools.idx = idx
+				return a, a.runTool(items[idx].action)
+			}
+		}
+	case "modal-item":
+		if idx, ok := h.data.(int); ok && idx >= 0 && idx < len(a.modal.Items) {
+			a.modal.Selected = idx
+			return a.handleModalKey(keyMsg("enter"))
+		}
+	case "modal-confirm":
+		return a.handleModalKey(keyMsg("enter"))
+	case "modal-cancel":
+		return a.handleModalKey(keyMsg("esc"))
+	case "modal-favorite":
+		a.togglePickerFavorite()
+	case "modal-key":
+		if key, ok := h.data.(string); ok {
+			return a.handleModalKey(keyMsg(key))
+		}
+	case "modal-close":
+		a.modal = modalState{}
+	}
+	return a, nil
+}
+
+func (a *App) mouseWheel(delta int) tea.Cmd {
+	if a.modal.Kind != modalNone {
+		key := "down"
+		if delta < 0 {
+			key = "up"
+		}
+		_, cmd := a.handleModalKey(keyMsg(key))
+		return cmd
+	}
+	kind := ""
+	if h, ok := a.hitAt(a.mouseX, a.mouseY); ok && h.action == "wheel" {
+		kind, _ = h.data.(string)
+	}
+	switch kind {
+	case "versions":
+		list := a.filteredVersions()
+		if len(list) > 0 {
+			a.versions.idx = clamp(a.versions.idx+delta, 0, len(list)-1)
+		}
+	case "download":
+		list := a.download.versions()
+		if len(list) > 0 {
+			a.download.idx = clamp(a.download.idx+delta, 0, len(list)-1)
+		}
+	case "settings":
+		n := len(a.settingItems())
+		if n > 0 {
+			a.settings.idx = clamp(a.settings.idx+delta, 0, n-1)
+		}
+	case "tools":
+		n := len(a.toolItems())
+		if n > 0 {
+			a.tools.idx = clamp(a.tools.idx+delta, 0, n-1)
+		}
+	case "about":
+		a.about.offset = max(a.about.offset+delta*3, 0)
+	case "logs":
+		return a.logsKey(keyMsg("down"))
+	default:
+		switch a.page {
+		case pageAbout:
+			a.about.offset = max(a.about.offset+delta*3, 0)
+		case pageLogs:
+			return a.logsKey(keyMsg("down"))
+		}
+	}
+	return nil
+}
+
+// registerModalHits maps rendered modal item rows to their indexes. Rows are
+// matched by label prefix so every list-based dialog becomes clickable without
+// duplicating each render path.
+func (a *App) registerModalHits(content []string, m *modalState) {
+	if len(m.Items) == 0 {
+		return
+	}
+	for lineIdx, raw := range content {
+		plain := strings.TrimSpace(ansi.Strip(raw))
+		plain = strings.TrimPrefix(plain, "▸ ")
+		if plain == "" {
+			continue
+		}
+		for i, it := range m.Items {
+			label := strings.TrimSpace(tr(it.Label))
+			if label == "" {
+				continue
+			}
+			probe := []rune(label)
+			if len(probe) > 12 {
+				probe = probe[:12]
+			}
+			if strings.HasPrefix(plain, string(probe)) {
+				a.addHit(0, 1+lineIdx, 9999, 1+lineIdx, "modal-item", i)
+				break
+			}
+		}
+	}
+}
+
+// registerModalButton makes a text label clickable inside the dialog box.
+func (a *App) registerModalButton(content []string, text, action string) {
+	a.registerModalLabel(content, text, action, nil)
+}
+
+// registerModalKey wires a footer label to the same handler a keyboard action
+// used to invoke.
+func (a *App) registerModalKey(content []string, text, key string) {
+	a.registerModalLabel(content, text, "modal-key", key)
+}
+
+func (a *App) registerModalLabel(content []string, text, action string, data any) {
+	for lineIdx := len(content) - 1; lineIdx >= 0; lineIdx-- {
+		plain := stripANSI(content[lineIdx])
+		if !strings.Contains(plain, text) {
+			continue
+		}
+		idx := strings.Index(plain, text)
+		if idx < 0 {
+			continue
+		}
+		x := lipgloss.Width(plain[:idx])
+		w := lipgloss.Width(text)
+		a.addHit(x, 1+lineIdx, x+w, 1+lineIdx, action, data)
+		return
+	}
+}

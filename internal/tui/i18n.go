@@ -212,6 +212,7 @@ var english = map[string]string{
 	"实例加载器安装与文件修复":                                                                                  "Instance loader install and file repair",
 	"网络测速与延迟/吞吐展示":                                                                                  "Network speed test with latency and throughput",
 	"启动页新闻与更新日志":                                                                                    "Launch page news and changelog",
+	"鼠标优先的列表、按钮与弹窗交互":                                                                               "Mouse-first lists, buttons and dialogs",
 
 	// Launch.
 	"启动游戏": "Launch game",
@@ -283,7 +284,11 @@ var english = map[string]string{
 	"将先安装原版 ":      "Installs vanilla ",
 	" · 搜索：":       " · search: ",
 	" · 跟随":        " · following",
-	"问题反馈":         "Feedback",
+	"单击选择 · 双击打开 · 滚轮滚动 · 顶部按钮帮助 / 退出": "Click select · double-click open · wheel scroll · [?] help / [×] quit",
+	"取消安装": "Cancel install",
+	"单击条目执行 · 滚轮滚动列表":  "Click an entry to run · wheel to scroll",
+	"单击条目编辑或切换 · 滚轮滚动": "Click an entry to edit or toggle · wheel to scroll",
+	"问题反馈": "Feedback",
 	"在浏览器中打开项目的 Issue 页面。": "Open the project's issue tracker in a browser.",
 	"新闻 / 公告":         "News",
 	"正在获取新闻…":         "Loading news…",

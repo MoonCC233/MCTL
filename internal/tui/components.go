@@ -130,7 +130,8 @@ func joinColumns(left, right string, gap int) []string {
 }
 
 func keyHint(key, label string) string {
-	return styleKey.Render(key) + " " + styleMuted.Render(tr(label))
+	// Mouse-first UI: hints render as clickable labels rather than key badges.
+	return styleAccent.Render(tr(label))
 }
 
 func hints(parts ...string) string {

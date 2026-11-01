@@ -144,6 +144,43 @@ func (a *App) paletteItems() []pickerItem {
 	}
 }
 
+// togglePickerFavorite bookmarks or unbookmarks the selected picker result.
+func (a *App) togglePickerFavorite() {
+	m := &a.modal
+	if m.Kind != modalPicker || len(m.Items) == 0 || m.Selected < 0 || m.Selected >= len(m.Items) {
+		return
+	}
+	kind := ""
+	switch m.Action {
+	case "install-online-modpack":
+		kind = "modpack"
+	case "install-resource":
+		kind = a.resources.kind
+	case "install-favorite":
+		kind, _ = m.Data.(string)
+	}
+	if kind == "" {
+		return
+	}
+	it := &m.Items[m.Selected]
+	name := strings.TrimPrefix(it.Label, "★ ")
+	on := !a.store.Snapshot().IsFavorite(kind, it.Value)
+	if err := a.store.SetFavorite(config.Favorite{Kind: kind, ID: it.Value, Name: name}, on); err != nil {
+		a.setToast("收藏失败: "+err.Error(), 2)
+		return
+	}
+	if on {
+		it.Label = "★ " + name
+		a.setToast("已收藏 "+name, 1)
+		return
+	}
+	it.Label = name
+	a.setToast("已取消收藏 "+name, 1)
+	if m.Action == "install-favorite" {
+		a.openFavoriteList(kind)
+	}
+}
+
 func (a *App) filteredPalette() []pickerItem {
 	q := strings.ToLower(string(a.modal.Query))
 	if q == "" {
@@ -230,39 +267,10 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.Selected = len(m.Items) - 1
 			}
 		case "f":
-			if len(m.Items) > 0 {
-				kind := ""
-				switch m.Action {
-				case "install-online-modpack":
-					kind = "modpack"
-				case "install-resource":
-					kind = a.resources.kind
-				}
-				if kind != "" {
-					it := m.Items[m.Selected]
-					name := strings.TrimPrefix(it.Label, "★ ")
-					on := !a.store.Snapshot().IsFavorite(kind, it.Value)
-					if err := a.store.SetFavorite(config.Favorite{Kind: kind, ID: it.Value, Name: name}, on); err != nil {
-						a.setToast("收藏失败: "+err.Error(), 2)
-					} else if on {
-						m.Items[m.Selected].Label = "★ " + name
-						a.setToast("已收藏 "+name, 1)
-					} else {
-						m.Items[m.Selected].Label = name
-						a.setToast("已取消收藏 "+name, 1)
-					}
-				}
-			}
+			a.togglePickerFavorite()
 		case "d":
-			if m.Action == "install-favorite" && len(m.Items) > 0 {
-				kind, _ := m.Data.(string)
-				id := m.Items[m.Selected].Value
-				if err := a.store.SetFavorite(config.Favorite{Kind: kind, ID: id}, false); err != nil {
-					a.setToast("取消收藏失败: "+err.Error(), 2)
-				} else {
-					a.setToast("已取消收藏", 1)
-					a.openFavoriteList(kind)
-				}
+			if m.Action == "install-favorite" {
+				a.togglePickerFavorite()
 			}
 		case "enter":
 			if len(m.Items) == 0 {
@@ -1130,6 +1138,43 @@ func (a *App) renderModal() string {
 	if len(content)+2 > maxH {
 		content = content[:max(maxH-2, 1)]
 	}
+	a.hitOriginX, a.hitOriginY = 0, 0
+	a.registerModalHits(content, m)
+	switch m.Kind {
+	case modalConfirm:
+		a.registerModalButton(content, tr("确认"), "modal-confirm")
+		a.registerModalButton(content, tr("取消"), "modal-cancel")
+	case modalInput:
+		a.registerModalButton(content, tr("确定"), "modal-confirm")
+		a.registerModalButton(content, tr("取消"), "modal-cancel")
+	case modalProgress:
+		a.registerModalButton(content, tr("取消安装"), "modal-cancel")
+	case modalHelp, modalError:
+		a.addHit(0, 0, 9999, 9999, "modal-close", nil)
+	}
+	if m.Kind == modalPicker {
+		switch m.Action {
+		case "install-online-modpack", "install-resource":
+			a.registerModalButton(content, tr("收藏"), "modal-favorite")
+		case "install-favorite":
+			a.registerModalButton(content, tr("取消收藏"), "modal-favorite")
+		}
+	}
+	a.registerModalButton(content, tr("关闭"), "modal-close")
+	a.registerModalButton(content, tr("取消"), "modal-cancel")
+	a.registerModalButton(content, tr("返回"), "modal-close")
+	switch m.Kind {
+	case modalConfirm, modalInput, modalHelp, modalError, modalProgress:
+	default:
+		for _, b := range []struct{ label, key string }{
+			{"刷新", "r"}, {"重新检测", "r"}, {"重新测速", "r"},
+			{"备份", "b"}, {"导入", "i"}, {"添加", "a"},
+			{"编辑", "e"}, {"删除", "d"},
+			{"打开目录", "enter"}, {"详情", "enter"}, {"选择", "enter"},
+		} {
+			a.registerModalKey(content, tr(b.label), b.key)
+		}
+	}
 	boxH := len(content) + 2
 	return panel(m.Title, boxW, boxH, true, content)
 }
@@ -1174,39 +1219,25 @@ func helpLines() []string {
 	return []string{
 		styleBold.Render("MCTL") + " " + styleFaint.Render("v"+Version) + "  " + muted("Minecraft 终端启动器"),
 		"",
-		styleSection.Render("导航"),
-		"  " + accent("tab / shift+tab") + muted("  切换页面"),
-		"  " + accent("1 - 7") + muted("            快速跳转页面"),
-		"  " + accent(":") + muted("                命令面板"),
-		"  " + accent("?") + muted("                帮助"),
-		"  " + accent("q") + muted("                退出"),
+		styleSection.Render("鼠标"),
+		"  " + accent("单击侧边栏") + muted("     切换页面"),
+		"  " + accent("单击列表项") + muted("     选中"),
+		"  " + accent("双击列表项") + muted("     启动 / 打开 / 安装"),
+		"  " + accent("滚轮") + muted("           滚动列表与页面"),
+		"  " + accent("单击顶部 [?]") + muted("    帮助"),
+		"  " + accent("单击顶部 [×]") + muted("    退出"),
+		"  " + accent("单击弹窗外部") + muted("   关闭弹窗"),
+		"  " + accent("单击弹窗按钮") + muted("   确认 / 取消"),
 		"",
-		styleSection.Render("启动页"),
-		"  " + accent("↑↓ / ←→") + muted("         选择项目 / 切换值"),
-		"  " + accent("enter") + muted("            启动游戏"),
-		"  " + accent("a") + muted("                账户管理（含 Microsoft 登录 / s 皮肤）"),
-		"  " + accent("i / p / n") + muted("        实例设置 / 皮肤 / 新闻"),
-		"  " + accent("s") + muted("                停止游戏"),
+		styleSection.Render("页面"),
+		"  " + accent("启动页") + muted("         单击版本或账户切换，单击绿色按钮启动 / 停止"),
+		"  " + accent("版本页") + muted("         双击版本启动，单击右侧操作行执行操作"),
+		"  " + accent("下载页") + muted("         单击页签切换类型，双击版本安装"),
+		"  " + accent("设置页") + muted("         单击条目编辑或切换"),
+		"  " + accent("工具页") + muted("         单击条目执行"),
+		"  " + accent("关于 / 日志") + muted("    滚轮滚动"),
 		"",
-		styleSection.Render("版本 / 下载"),
-		"  " + accent("enter") + muted("            启动 / 安装原版或加载器"),
-		"  " + accent("d / o / / / r") + muted("    删除 / 目录 / 筛选 / 刷新"),
-		"  " + accent("m / p / s / h / f") + muted("  模组 / 资源包 / 存档 / 截图 / 配置"),
-		"  " + accent("x / +") + muted("            导出 / 新建实例"),
-		"  " + accent("i / c / o") + muted("        导入 / 社区资源 / 在线整合包"),
-		"",
-		styleSection.Render("设置 / 工具 / 日志"),
-		"  " + accent("enter / ←→") + muted("       编辑 / 调整"),
-		"  " + accent("w / e / m / s / p") + muted("  整合包 / 在线 / 本地 / 存档 / 截图"),
-		"  " + accent("n") + muted("                服务器列表"),
-		"  " + accent("x / u") + muted("            导出 / 导入实例"),
-		"  " + accent("+") + muted("                新建实例（名称 / 目录 / 版本 / 加载器）"),
-		"  " + accent("d / t") + muted("            环境自检 / 检查更新"),
-		"  " + accent("h") + muted("                新闻 / 更新日志"),
-		"  " + accent("y") + muted("                网络测速"),
-		"  " + accent("f") + muted("                收藏（整合包 / 资源）"),
-		"  " + accent("b") + muted("                模组信息（元数据 / 内嵌 jar）"),
-		"  " + accent("i") + muted("                版本页：实例设置（内存 / JVM / 自动进服）"),
-		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),
+		styleSection.Render("说明"),
+		"  " + muted("只有文本输入框需要键盘，其余操作全部使用鼠标。"),
 	}
 }

@@ -58,8 +58,8 @@ func (a *App) viewVersions(w, h int) []string {
 		rightW = max(w-4-gap-leftW, 16)
 		leftW = w - 4 - gap - rightW
 	}
-	left := a.renderVersionList(leftW, contentH, list)
-	right := a.renderVersionDetail(rightW, contentH, list)
+	left := a.renderVersionList(2, len(lines), leftW, contentH, list)
+	right := a.renderVersionDetail(2+leftW+gap, len(lines), rightW, contentH, list)
 	cols := joinColumns(left, right, gap)
 	for _, l := range cols {
 		lines = append(lines, "  "+l)
@@ -67,12 +67,13 @@ func (a *App) viewVersions(w, h int) []string {
 	return fitLines(lines, h, w)
 }
 
-func (a *App) renderVersionList(w, h int, list []minecraft.InstalledVersion) string {
+func (a *App) renderVersionList(x, y, w, h int, list []minecraft.InstalledVersion) string {
 	inner := panelContentWidth(w)
 	maxRows := panelContentHeight(h)
 	if maxRows < 1 {
 		return panel("已安装", w, h, false, nil)
 	}
+	a.addHit(x, y, x+w-1, y+h-1, "wheel", "versions")
 	var rows []string
 	if len(list) == 0 {
 		rows = append(rows, "", "  "+styleFaint.Render(tr("没有已安装的版本")), "  "+styleFaint.Render(tr("按 n 前往下载页安装")))
@@ -113,6 +114,7 @@ func (a *App) renderVersionList(w, h int, list []minecraft.InstalledVersion) str
 				line = "    " + padRight(name, nameW) + "  " + styleMuted.Render(padRight(loader, 9)) + "  " + styleFaint.Render(padRight(mc, 9)) + marker
 			}
 			rows = append(rows, line)
+			a.addHit(x+1, y+1+(i-start), x+w-2, y+1+(i-start), "versions-row", i)
 		}
 	}
 	for len(rows) < panelContentHeight(h) {
@@ -129,7 +131,7 @@ func lipglossRow(s string, w int) string {
 	return styleSelected.Width(w).Render(s)
 }
 
-func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) string {
+func (a *App) renderVersionDetail(x, y, w, h int, list []minecraft.InstalledVersion) string {
 	inner := panelContentWidth(w)
 	var rows []string
 	if len(list) == 0 || a.versions.idx >= len(list) {
@@ -171,20 +173,28 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 			rows = append(rows, "", "  "+styleYellow.Render(tr("⚠ 客户端文件不完整，启动时会自动补全")))
 		}
 		rows = append(rows, "", "  "+styleBorder.Render(strings.Repeat("─", max(inner-4, 0))))
+		actionStart := len(rows)
 		rows = append(rows,
-			"  "+styleAccent.Render("enter")+" "+styleMuted.Render(tr("启动游戏")),
-			"  "+styleAccent.Render("d")+"     "+styleMuted.Render(tr("删除版本")),
-			"  "+styleAccent.Render("o")+"     "+styleMuted.Render(tr("打开版本目录")),
-			"  "+styleAccent.Render("m")+"     "+styleMuted.Render(tr("打开模组目录")),
-			"  "+styleAccent.Render("p")+"     "+styleMuted.Render(tr("打开资源包目录")),
-			"  "+styleAccent.Render("s")+"     "+styleMuted.Render(tr("打开存档目录")),
-			"  "+styleAccent.Render("h")+"     "+styleMuted.Render(tr("打开截图目录")),
-			"  "+styleAccent.Render("f")+"     "+styleMuted.Render(tr("打开配置目录")),
-			"  "+styleAccent.Render("i")+"     "+styleMuted.Render(tr("实例设置")),
-			"  "+styleAccent.Render("l")+"     "+styleMuted.Render(tr("实例安装 / 修复")),
-			"  "+styleAccent.Render("x")+"     "+styleMuted.Render(tr("导出实例")),
-			"  "+styleAccent.Render("+")+"     "+styleMuted.Render(tr("新建实例")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("启动游戏")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("删除版本")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("打开版本目录")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("打开模组目录")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("打开资源包目录")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("打开存档目录")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("打开截图目录")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("打开配置目录")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("实例设置")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("实例安装 / 修复")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("导出实例")),
+			"  "+styleAccent.Render("▸")+" "+styleMuted.Render(tr("新建实例")),
 		)
+		actionKeys := []string{"enter", "d", "o", "m", "p", "s", "h", "f", "i", "l", "x", "+"}
+		for i, key := range actionKeys {
+			rowY := y + 1 + actionStart + i
+			if rowY <= y+h-2 {
+				a.addHit(x+1, rowY, x+w-2, rowY, "versions-action", key)
+			}
+		}
 	}
 	for len(rows) < panelContentHeight(h) {
 		rows = append(rows, "")

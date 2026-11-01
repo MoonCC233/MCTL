@@ -17,6 +17,7 @@ func (a *App) viewAbout(w, h int) []string {
 	cfg := a.store.Snapshot()
 	confDir, _ := config.Dir()
 	lines := pageHeader("关于", "MCTL · Minecraft 终端启动器", w)
+	a.addHit(2, len(lines), w-2, h-1, "wheel", "about")
 	contentH := h - len(lines)
 	if contentH < 5 {
 		return fitLines(lines, h, w)
@@ -53,6 +54,7 @@ func (a *App) viewAbout(w, h int) []string {
 		"实例加载器安装与文件修复",
 		"网络测速与延迟/吞吐展示",
 		"启动页新闻与更新日志",
+		"鼠标优先的列表、按钮与弹窗交互",
 	}
 	for _, f := range features {
 		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(tr(f)))

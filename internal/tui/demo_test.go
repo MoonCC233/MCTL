@@ -89,9 +89,9 @@ func TestDemoPageContentMap(t *testing.T) {
 		"versions": {"已安装", "详情", "实例设置"},
 		"download": {"版本列表", "Fabric", "Forge"},
 		"settings": {"设置", "Java", "主题"},
-		"tools":    {"常用工具", "新建实例", "新闻"},
+		"tools":    {"常用工具", "导入整合包", "在线整合包"},
 		"about":    {"关于", "支持", "MCTL"},
-		"logs":     {"日志", "跟随", "清空"},
+		"logs":     {"日志"},
 	}
 	nav := []string{"LAUNCH", "VERSIONS", "DOWNLOAD", "SETTINGS", "TOOLS", "ABOUT", "LOGS"}
 	for page, markers := range pages {
@@ -155,8 +155,11 @@ func TestLayoutFrameStructure(t *testing.T) {
 		if !strings.Contains(lines[2], "▌") {
 			t.Fatalf("%s: page title marker missing", page)
 		}
-		if !strings.Contains(lines[len(lines)-1], "tab") || !strings.Contains(lines[len(lines)-1], "?") {
-			t.Fatalf("%s: footer shortcuts missing", page)
+		if !strings.Contains(lines[0], "[×]") {
+			t.Fatalf("%s: header close button missing", page)
+		}
+		if !strings.Contains(lines[len(lines)-1], "滚轮") {
+			t.Fatalf("%s: mouse hints missing", page)
 		}
 	}
 }

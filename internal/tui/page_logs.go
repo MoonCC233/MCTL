@@ -21,6 +21,7 @@ func (a *App) viewLogs(w, h int) []string {
 	}
 	sub := trf("%d 行 · %s · 日志同时写入配置目录", len(lines), state)
 	head := pageHeader("运行日志", sub, w)
+	a.addHit(2, len(head), w-2, h-1, "wheel", "logs")
 	contentH := h - len(head)
 	if contentH < 4 {
 		return fitLines(head, h, w)

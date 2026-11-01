@@ -81,7 +81,7 @@ func (a *App) viewLaunch(w, h int) []string {
 	heroH := min(12, max(contentH-7, 7))
 	infoH := contentH - heroH
 	heroW := w - 4
-	hero := a.renderHero(heroW, heroH, cfg)
+	hero := a.renderHero(2, len(lines), heroW, heroH, cfg)
 	for _, l := range strings.Split(hero, "\n") {
 		lines = append(lines, "  "+l)
 	}
@@ -91,17 +91,28 @@ func (a *App) viewLaunch(w, h int) []string {
 		rightW := w - 4 - gap - leftW
 		left := a.renderEnvironment(leftW, infoH, cfg)
 		rightLines := strings.Split(a.renderRecentLog(rightW, infoH), "\n")
+		newsH := 0
 		if infoH >= 11 {
-			newsH := clamp(infoH/2, 5, 9)
+			newsH = clamp(infoH/2, 5, 9)
 			logH := infoH - newsH
 			if logH >= 5 {
 				rightLines = append(strings.Split(a.renderNews(rightW, newsH), "\n"), strings.Split(a.renderRecentLog(rightW, logH), "\n")...)
+			} else {
+				newsH = 0
 			}
 		}
 		cols := joinColumns(left, strings.Join(rightLines, "\n"), gap)
 		lines = append(lines, "")
+		colsY := len(lines)
 		for _, l := range cols {
 			lines = append(lines, "  "+l)
+		}
+		if newsH > 0 {
+			newsX := 2 + leftW + gap
+			for i := 0; i < len(a.launch.news) && i < newsH-2; i++ {
+				y := colsY + 1 + i
+				a.addHit(newsX, y, newsX+rightW-1, y, "launch-news", nil)
+			}
 		}
 	}
 	return fitLines(lines, h, w)
@@ -162,10 +173,11 @@ func (a *App) refreshLaunchNews(force bool) {
 	a.rt.FetchLaunchNews()
 }
 
-func (a *App) renderHero(w, h int, cfg config.Config) string {
+func (a *App) renderHero(x, y, w, h int, cfg config.Config) string {
 	p := &a.launch
 	inner := panelContentWidth(w)
 	var content []string
+	versionRow, accountRow, buttonRow := -1, -1, -1
 	if len(p.versions) == 0 {
 		content = append(content,
 			"",
@@ -174,6 +186,7 @@ func (a *App) renderHero(w, h int, cfg config.Config) string {
 			"",
 			centerText(styleFaint.Render("— 安装后即可从这里启动 —"), inner),
 		)
+		versionRow = 1
 	} else {
 		if p.versionIdx < 0 || p.versionIdx >= len(p.versions) {
 			p.versionIdx = 0
@@ -188,6 +201,7 @@ func (a *App) renderHero(w, h int, cfg config.Config) string {
 			"",
 			"  "+prefix+styleBold.Render(middleEllipsis(v.ID, max(inner-8, 10))),
 		)
+		versionRow = 1
 		meta := v.Loader
 		if v.MCVersion != "" && v.MCVersion != v.ID {
 			meta += " · Minecraft " + v.MCVersion
@@ -208,12 +222,14 @@ func (a *App) renderHero(w, h int, cfg config.Config) string {
 			"",
 			"  "+accPrefix+styleMuted.Render(tr("账户")+"  ")+dot(colorGreen)+" "+styleText.Render(acc.Name)+" "+styleFaint.Render("· "+tr(accKind)),
 		)
+		accountRow = len(content) - 1
 		content = append(content, "")
 
 		button := "  " + tr("启动游戏") + "  "
 		if a.rt.Launching() {
 			button = "  " + tr("游戏运行中") + "  "
 		}
+		buttonRow = len(content)
 		if focus && a.launchFocus() == 2 && !a.rt.Launching() {
 			content = append(content, centerText(lipgloss.NewStyle().Foreground(colorBg).Background(colorGreen).Bold(true).Padding(0, 3).Render(button), inner))
 		} else {
@@ -240,6 +256,21 @@ func (a *App) renderHero(w, h int, cfg config.Config) string {
 	}
 	if len(content) > panelContentHeight(h) {
 		content = content[:panelContentHeight(h)]
+	}
+	if len(p.versions) == 0 {
+		if versionRow >= 0 && versionRow < panelContentHeight(h) {
+			a.addHit(x+1, y+1+versionRow, x+w-2, y+1+versionRow, "page", pageDownload)
+		}
+	} else {
+		if versionRow >= 0 && versionRow < panelContentHeight(h) {
+			a.addHit(x+1, y+1+versionRow, x+w-2, y+1+versionRow, "launch-version", nil)
+		}
+		if accountRow >= 0 && accountRow < panelContentHeight(h) {
+			a.addHit(x+1, y+1+accountRow, x+w-2, y+1+accountRow, "launch-account", nil)
+		}
+		if buttonRow >= 0 && buttonRow < panelContentHeight(h) {
+			a.addHit(x+1, y+1+buttonRow, x+w-2, y+1+buttonRow, "launch-start", nil)
+		}
 	}
 	return panel("当前实例", w, h, true, content)
 }
