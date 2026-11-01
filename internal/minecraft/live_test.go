@@ -23,6 +23,9 @@ func skipIfUnreachable(t *testing.T, err error) {
 		"deadline exceeded", "connection", "connectex", "timeout",
 		"no such host", "network is unreachable", "eof",
 		"tls handshake", "server misbehaving", "actively refused",
+		// Upstream outages and rate limiting are not contract failures.
+		"http 429", "http 500", "http 502", "http 503", "http 504",
+		"too many requests", "bad gateway", "service unavailable", "gateway timeout",
 	} {
 		if strings.Contains(msg, marker) {
 			t.Skipf("endpoint unreachable: %v", err)
