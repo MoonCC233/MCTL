@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -80,10 +79,10 @@ func compareVersions(a, b string) int {
 	for i := 0; i < n; i++ {
 		var ai, bi int
 		if i < len(pa) {
-			ai, _ = strconv.Atoi(pa[i])
+			ai = leadingNumber(pa[i])
 		}
 		if i < len(pb) {
-			bi, _ = strconv.Atoi(pb[i])
+			bi = leadingNumber(pb[i])
 		}
 		if ai != bi {
 			if ai > bi {
@@ -93,4 +92,15 @@ func compareVersions(a, b string) int {
 		}
 	}
 	return 0
+}
+
+func leadingNumber(s string) int {
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			break
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n
 }

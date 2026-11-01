@@ -23,7 +23,7 @@ type downloadPage struct {
 	installed     map[string]bool
 }
 
-var loaderModeNames = []string{"Minecraft 原版", "Fabric", "Quilt", "Legacy Fabric", "LiteLoader", "Forge", "NeoForge", "OptiFine"}
+var loaderModeNames = []string{"Minecraft 原版", "Fabric", "Quilt", "Legacy Fabric", "LiteLoader", "Forge", "NeoForge", "OptiFine", "Cleanroom"}
 
 func (p *downloadPage) applyManifest(m *minecraft.VersionManifest, err error) {
 	p.loading = false
@@ -133,8 +133,9 @@ func (a *App) renderDownloadTabs() string {
 		tab("Legacy", p.mode == 3) + " " +
 		tab("Lite", p.mode == 4) + " " +
 		tab("Forge", p.mode == 5) + " " +
-		tab("NeoForge", p.mode == 6) + " " +
-		tab("OptiFine", p.mode == 7)
+		tab("Neo", p.mode == 6) + " " +
+		tab("Opti", p.mode == 7) + " " +
+		tab("Clean", p.mode == 8)
 }
 
 func (a *App) renderDownloadList(w, h int, list []minecraft.VersionEntry) string {
@@ -260,6 +261,10 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 OptiFine 版本"))
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render("再写入 OptiFine 配置并补全依赖"))
+		case 8:
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Cleanroom 版本"))
+			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 1.12.2，"))
+			rows = append(rows, "  "+styleFaint.Render("再运行 Cleanroom 安装器（需要 Java 25）"))
 		}
 	}
 	for len(rows) < panelContentHeight(h) {
@@ -358,6 +363,9 @@ func (a *App) downloadKey(msg tea.KeyMsg) tea.Cmd {
 			case 7:
 				a.setToast("正在获取 OptiFine 版本…", 0)
 				a.rt.FetchLoaderVersions("optifine", v.ID)
+			case 8:
+				a.setToast("正在获取 Cleanroom 版本…", 0)
+				a.rt.FetchLoaderVersions("cleanroom", v.ID)
 			}
 			return nil
 		}

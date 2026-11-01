@@ -48,6 +48,8 @@ func FetchLoaderBuilds(ctx context.Context, hc *HTTPClient, kind, mcVersion stri
 		return fetchForgeBuilds(ctx, hc, mcVersion)
 	case "neoforge":
 		return fetchNeoForgeBuilds(ctx, hc, mcVersion)
+	case "cleanroom":
+		return FetchCleanroomBuilds(ctx, hc, mcVersion)
 	default:
 		return nil, fmt.Errorf("未知加载器: %s", kind)
 	}
@@ -122,7 +124,10 @@ func sortLoaderBuilds(out []LoaderBuild) {
 		if out[i].Stable != out[j].Stable {
 			return out[i].Stable
 		}
-		return compareVersions(out[i].Version, out[j].Version) > 0
+		if c := compareVersions(out[i].Version, out[j].Version); c != 0 {
+			return c > 0
+		}
+		return out[i].Version > out[j].Version
 	})
 }
 
@@ -162,6 +167,10 @@ func (b LoaderBuild) InstallerURL() string {
 		return fmt.Sprintf("%s/%s/neoforge-%s-installer.jar",
 			strings.TrimSuffix(neoforgeMavenBase, "/"),
 			url.PathEscape(b.Version), url.PathEscape(b.Version))
+	case "cleanroom":
+		return fmt.Sprintf("%s/%s/cleanroom-%s-installer.jar",
+			strings.TrimSuffix(cleanroomMavenBase, "/"),
+			url.PathEscape(b.Version), url.PathEscape(b.Version))
 	default:
 		return fmt.Sprintf("%s/%s-%s/forge-%s-%s-installer.jar",
 			strings.TrimSuffix(forgeMavenBase, "/"),
@@ -179,6 +188,13 @@ func LoaderVersionCandidates(kind, mcVersion, loaderVersion string) []string {
 			loaderVersion,
 			"neoforge-" + loaderVersion,
 			mcVersion + "-neoforge-" + loaderVersion,
+		}
+	case "cleanroom":
+		return []string{
+			"cleanroom-" + loaderVersion,
+			mcVersion + "-cleanroom-" + loaderVersion,
+			"1.12.2-cleanroom-" + loaderVersion,
+			loaderVersion,
 		}
 	default:
 		return []string{
@@ -210,12 +226,19 @@ func FindLoaderVersion(gameDir, kind, mcVersion, loaderVersion string) (string, 
 		if !strings.Contains(low, needle) {
 			continue
 		}
-		if kind == "neoforge" {
+		switch kind {
+		case "neoforge":
 			if !strings.Contains(low, "neoforge") {
 				continue
 			}
-		} else if !strings.Contains(low, "forge") || strings.Contains(low, "neoforge") {
-			continue
+		case "cleanroom":
+			if !strings.Contains(low, "cleanroom") {
+				continue
+			}
+		default:
+			if !strings.Contains(low, "forge") || strings.Contains(low, "neoforge") {
+				continue
+			}
 		}
 		if _, err := ResolveVersion(gameDir, id); err == nil {
 			return id, nil

@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.9"
+var Version = "1.0.10"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -325,8 +325,11 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 		} else if kind == "liteloader" {
 			r.Logf("安装 LiteLoader %s", loader)
 			actualID, err = inst.InstallLiteLoader(ctx, mcVersion, loader)
-		} else if kind == "forge" || kind == "neoforge" {
+		} else if kind == "forge" || kind == "neoforge" || kind == "cleanroom" {
 			required := minecraft.InferJavaMajor(mcVersion)
+			if kind == "cleanroom" {
+				required = 25
+			}
 			r.Logf("准备 %s 安装器（Java %d）", kind, required)
 			var javaInfo *minecraft.JavaInfo
 			if cfg.AutoJava {
@@ -609,6 +612,8 @@ func (r *Runtime) FetchLoaderVersions(kind, mcVersion string) {
 			builds, err = minecraft.FetchOptiFineBuilds(context.Background(), hc, mcVersion)
 		case "liteloader":
 			builds, err = minecraft.FetchLiteLoaderBuilds(context.Background(), hc, mcVersion)
+		case "cleanroom":
+			builds, err = minecraft.FetchCleanroomBuilds(context.Background(), hc, mcVersion)
 		default:
 			builds, err = minecraft.FetchLoaderBuilds(context.Background(), hc, kind, mcVersion)
 		}
