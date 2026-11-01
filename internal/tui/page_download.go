@@ -335,6 +335,8 @@ func (a *App) downloadKey(msg tea.KeyMsg) tea.Cmd {
 		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
 	case "o":
 		a.openOnlineModpacks()
+	case "c":
+		a.openCommunityResources()
 	case "r":
 		a.rt.LoadManifest(true)
 		a.setToast("正在刷新版本列表", 0)

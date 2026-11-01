@@ -134,6 +134,8 @@ mctl
 | `←` `→` / `h` `l` | 切换版本或账户 |
 | `enter` | 激活当前焦点 |
 | `a` | 管理账户 |
+| `i` | 当前实例设置 |
+| `p` | 查询当前账户皮肤 |
 | `s` | 停止游戏 |
 | `d` | 前往下载页 |
 | `l` | 打开日志页 |
@@ -154,6 +156,8 @@ mctl
 | `h` | 打开截图目录 |
 | `f` | 打开配置目录 |
 | `i` | 实例设置（名称 / 内存 / JVM / 自动进服） |
+| `x` | 导出当前实例 |
+| `+` | 新建实例 |
 | `/` | 按名称、加载器或版本号筛选 |
 | `c` | 清除筛选 |
 | `r` | 刷新 |
@@ -168,6 +172,7 @@ mctl
 | `←` `→` / `[` `]` | 切换原版 / Fabric / Quilt / Legacy / LiteLoader / Forge / NeoForge / OptiFine / Cleanroom / LabyMod |
 | `i` | 导入本地 Modrinth / CurseForge 整合包 |
 | `o` | 搜索并安装 Modrinth 在线整合包 |
+| `c` | 社区资源（模组 / 资源包 / 光影 / 整合包 / 收藏） |
 | `m` | 切换正式版、快照、全部 |
 | `/` | 搜索版本 |
 | `r` | 刷新版本清单 |
@@ -298,11 +303,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.27` 的标签会触发 Release 工作流：
+推送形如 `v1.0.28` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.27
-git push origin v1.0.27
+git tag v1.0.28
+git push origin v1.0.28
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

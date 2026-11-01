@@ -131,6 +131,9 @@ var english = map[string]string{
 	// Tools.
 	"导入整合包":          "Import modpack",
 	"在线整合包":          "Online modpacks",
+	"社区资源":           "Community resources",
+	"整合包来源":          "Modpack source",
+	"需要 API Key":     "API key required",
 	"CurseForge 整合包": "CurseForge modpacks",
 	"收藏":             "Favorites",
 	"在线资源":           "Online resources",

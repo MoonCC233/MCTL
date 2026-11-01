@@ -181,6 +181,8 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 			"  "+styleAccent.Render("h")+"     "+styleMuted.Render("打开截图目录"),
 			"  "+styleAccent.Render("f")+"     "+styleMuted.Render("打开配置目录"),
 			"  "+styleAccent.Render("i")+"     "+styleMuted.Render("实例设置"),
+			"  "+styleAccent.Render("x")+"     "+styleMuted.Render("导出实例"),
+			"  "+styleAccent.Render("+")+"     "+styleMuted.Render("新建实例"),
 		)
 	}
 	for len(rows) < panelContentHeight(h) {
@@ -301,6 +303,14 @@ func (a *App) versionsKey(msg tea.KeyMsg) tea.Cmd {
 			}
 			a.showInstanceSettings(gameDir, v.ID, "")
 		}
+	case "x":
+		if len(list) > 0 {
+			v := list[a.versions.idx]
+			a.saveCfg(func(c *config.Config) { c.SelectedVersion = v.ID })
+			a.openExportInstance()
+		}
+	case "+":
+		a.openInstanceWizard()
 	case "o":
 		if len(list) > 0 {
 			if err := openPath(list[a.versions.idx].Dir); err != nil {

@@ -277,6 +277,11 @@ func (a *App) launchKey(msg tea.KeyMsg) tea.Cmd {
 		}
 	case "a":
 		a.openAccounts()
+	case "i":
+		a.openInstanceSettings()
+	case "p":
+		a.setToast("正在获取皮肤…", 0)
+		a.rt.FetchSkin()
 	case "d":
 		a.switchPage(pageDownload)
 	case "o":

@@ -188,11 +188,11 @@ func (a *App) renderFooter() string {
 	var parts []string
 	switch a.page {
 	case pageLaunch:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("←→", "切换"), keyHint("enter", "启动"), keyHint("a", "账户"), keyHint("l", "日志")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("a", "账户"), keyHint("i", "实例设置"), keyHint("p", "皮肤")}
 	case pageVersions:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("i", "实例设置"), keyHint("d", "删除"), keyHint("o", "版本目录"), keyHint("/", "筛选"), keyHint("r", "刷新")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("i", "实例"), keyHint("x", "导出"), keyHint("+", "新建"), keyHint("d", "删除"), keyHint("/", "筛选")}
 	case pageDownload:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "安装"), keyHint("[ ]", "类型"), keyHint("i", "导入"), keyHint("o", "在线整合包"), keyHint("m", "筛选"), keyHint("/", "搜索"), keyHint("r", "刷新")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "安装"), keyHint("[ ]", "类型"), keyHint("c", "资源"), keyHint("i", "导入"), keyHint("m", "筛选"), keyHint("r", "刷新")}
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
 	case pageTools:

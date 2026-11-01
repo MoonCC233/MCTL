@@ -201,6 +201,17 @@ func (a *App) openCurseForgeSearch() {
 	a.modal.Data = mcVersion
 }
 
+func (a *App) openCommunityResources() {
+	items := []pickerItem{
+		{Label: "模组", Desc: "Modrinth", Value: "mod"},
+		{Label: "资源包", Desc: "Resource Packs", Value: "resourcepack"},
+		{Label: "光影", Desc: "Shaders", Value: "shader"},
+		{Label: "整合包", Desc: "Modpacks", Value: "modpacks"},
+		{Label: "收藏", Desc: "Favorites", Value: "favorites"},
+	}
+	a.modal = modalState{Kind: modalPicker, Title: "社区资源", Items: items, Action: "community-resource"}
+}
+
 func (a *App) openOnlineModpacks() {
 	cfg := a.store.Snapshot()
 	mcVersion := ""
@@ -343,6 +354,26 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		filter, _ := data.(minecraft.ModpackFilter)
 		a.setToast("正在搜索在线整合包…", 0)
 		a.rt.SearchModpacks(query, filter)
+	case action == "community-resource":
+		switch item.Value {
+		case "mod", "resourcepack", "shader":
+			a.resources.kind = item.Value
+			a.openInput("在线资源 · "+resourceKindLabel(item.Value), "搜索 Modrinth "+resourceKindLabel(item.Value), "", "输入关键词", "search-resources")
+		case "modpacks":
+			items := []pickerItem{
+				{Label: "Modrinth", Desc: "在线整合包", Value: "modrinth"},
+				{Label: "CurseForge", Desc: "需要 API Key", Value: "curseforge"},
+			}
+			a.modal = modalState{Kind: modalPicker, Title: "整合包来源", Items: items, Action: "community-pack-source"}
+		case "favorites":
+			a.openFavorites()
+		}
+	case action == "community-pack-source":
+		if item.Value == "curseforge" {
+			a.openCurseForgeSearch()
+		} else {
+			a.openOnlineModpacks()
+		}
 	case action == "online-modpack-version":
 		a.openModpackLoaderPicker(strings.TrimSpace(value))
 	case action == "search-curseforge":
