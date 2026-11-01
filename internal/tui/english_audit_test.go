@@ -12,7 +12,7 @@ var uiChromeChinese = []string{
 	"启动游戏", "实例安装", "版本路径", "实例路径", "发布时间", "未安装", "正式", "快照",
 	"本地资源", "服务器列表", "截图管理", "新建实例", "环境自检", "检查更新", "网络测速",
 	"就绪", "切换", "退出", "调整", "翻页", "修改会立即保存", "自动 ·", "（无）",
-	"打开模组目录", "打开版本目录", "下载源", "账户", "帮助", "关于",
+	"打开模组目录", "打开版本目录", "下载源", "账户", "帮助", "关于", "新闻 / 公告",
 }
 
 func englishChromeLine(line string) bool {
@@ -49,7 +49,7 @@ func TestEnglishChromeIsTranslated(t *testing.T) {
 
 func TestLayoutRegions(t *testing.T) {
 	regions := map[string][]string{
-		"launch":   {"当前实例", "运行环境", "最近日志"},
+		"launch":   {"当前实例", "运行环境", "最近日志", "新闻 / 公告"},
 		"versions": {"已安装 ·", "详情"},
 		"download": {"版本列表 ·", "详情"},
 		"settings": {"偏好设置 ·"},

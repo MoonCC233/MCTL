@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.32"
+var Version = "1.0.33"
 
 // Repository used for release checks and download links.
 const (
@@ -127,6 +127,11 @@ type updateCheckMsg struct {
 }
 
 type newsMsg struct {
+	Releases []minecraft.ReleaseInfo
+	Err      error
+}
+
+type launchNewsMsg struct {
 	Releases []minecraft.ReleaseInfo
 	Err      error
 }
@@ -809,6 +814,19 @@ func (r *Runtime) RunSpeedTest() {
 			r.Logf("测速 %s: %d ms · %.2f MB/s", res.Target.Name, res.Latency.Milliseconds(), res.MBps)
 		}
 		r.Emit(speedTestMsg{Results: results})
+	}()
+}
+
+// FetchLaunchNews loads a few recent releases for the launch page.
+func (r *Runtime) FetchLaunchNews() {
+	go func() {
+		cfg := r.Store.Snapshot()
+		hc := minecraft.NewHTTPClient(minecraft.GetSource(cfg.DownloadSource))
+		releases, err := minecraft.FetchRecentReleases(context.Background(), hc, RepoOwner, RepoName, 4)
+		if err != nil {
+			r.Logf("获取新闻失败: %v", err)
+		}
+		r.Emit(launchNewsMsg{Releases: releases, Err: err})
 	}()
 }
 

@@ -19,6 +19,7 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **CurseForge 在线浏览**：使用设置中的 API Key 搜索整合包，下载后直接导入独立实例。
 - **皮肤 / 披风**：查询当前账户的公开皮肤与披风纹理，显示模型类型并可在浏览器中打开；离线 UUID 通常没有公开纹理。
 - **新闻 / 更新日志**：读取发布源并展示最近的版本说明，可直接打开发布页面。
+- **启动页新闻**：启动页读取最近发布记录并显示在侧栏，按 `n` 打开完整更新日志。
 - **网络测速**：测试 BMCLAPI、Mojang、Modrinth、GitHub 与 Adoptium 的延迟和吞吐，显示 MB/s。
 - **在线资源**：搜索 Modrinth 资源包、光影、模组和数据包，按当前实例的 Minecraft 版本与加载器匹配后下载到 `resourcepacks/`、`shaderpacks/`、`mods/`，数据包会先选择存档再安装到该存档的 `datapacks/`。
 - **世界下载**：填入世界 zip 链接，下载后解压到当前实例的 `saves/`，并自动避免重名。
@@ -138,6 +139,7 @@ mctl
 | `a` | 管理账户 |
 | `i` | 当前实例设置 |
 | `p` | 查询当前账户皮肤 |
+| `n` | 查看最新发布 / 更新日志 |
 | `s` | 停止游戏 |
 | `d` | 前往下载页 |
 | `l` | 打开日志页 |
@@ -307,11 +309,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.32` 的标签会触发 Release 工作流：
+推送形如 `v1.0.33` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.32
-git push origin v1.0.32
+git tag v1.0.33
+git push origin v1.0.33
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

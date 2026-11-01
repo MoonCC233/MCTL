@@ -80,6 +80,7 @@ func (a *App) Init() tea.Cmd {
 	a.rt.ScanVersions()
 	a.rt.LoadManifest(false)
 	a.rt.DetectJava(cfg.JavaPath)
+	a.refreshLaunchNews(false)
 	return tea.Batch(a.waitEvent(), tickCmd())
 }
 
@@ -188,7 +189,7 @@ func (a *App) renderFooter() string {
 	var parts []string
 	switch a.page {
 	case pageLaunch:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("a", "账户"), keyHint("i", "实例设置"), keyHint("p", "皮肤")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("a", "账户"), keyHint("i", "实例设置"), keyHint("p", "皮肤"), keyHint("n", "新闻")}
 	case pageVersions:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("i", "实例"), keyHint("x", "导出"), keyHint("+", "新建"), keyHint("d", "删除"), keyHint("/", "筛选")}
 	case pageDownload:
@@ -434,6 +435,8 @@ func (a *App) switchPage(p pageID) {
 	}
 	a.page = p
 	switch p {
+	case pageLaunch:
+		a.refreshLaunchNews(false)
 	case pageVersions:
 		a.rt.ScanVersions()
 	case pageDownload:
@@ -612,6 +615,12 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			items = append(items, pickerItem{Label: res.Target.Name, Desc: desc, Value: status})
 		}
 		a.modal = modalState{Kind: modalSpeed, Title: "网络测速", Items: items, Data: m.Results}
+		return nil
+	case launchNewsMsg:
+		a.launch.newsLoad = false
+		a.launch.newsAt = time.Now()
+		a.launch.news = m.Releases
+		a.launch.newsErr = m.Err
 		return nil
 	case newsMsg:
 		if m.Err != nil {

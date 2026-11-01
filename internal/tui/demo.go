@@ -54,6 +54,12 @@ func RenderDemo(page string, width, height int) string {
 		{ID: "1.21.1", Type: "release", MCVersion: "1.21.1", Loader: "Vanilla", JavaMajor: 21, Size: 92 << 20, Mods: 48, Complete: true, Dir: cfg.GameDir + `\versions\1.21.1`, ReleaseTime: now.AddDate(0, -3, 0).Format(time.RFC3339)},
 		{ID: "1.8.9", Type: "release", MCVersion: "1.8.9", Loader: "Vanilla", JavaMajor: 8, Size: 41 << 20, Mods: 48, Complete: false, Dir: cfg.GameDir + `\versions\1.8.9`, ReleaseTime: now.AddDate(-9, 0, 0).Format(time.RFC3339)},
 	}
+	a.launch.news = []minecraft.ReleaseInfo{
+		{TagName: "v1.0.32", Name: "MCTL v1.0.32", PublishedAt: now.Add(-26 * time.Hour).Format(time.RFC3339)},
+		{TagName: "v1.0.31", Name: "MCTL v1.0.31", PublishedAt: now.Add(-46 * time.Hour).Format(time.RFC3339)},
+		{TagName: "v1.0.30", Name: "MCTL v1.0.30", PublishedAt: now.Add(-70 * time.Hour).Format(time.RFC3339)},
+	}
+	a.launch.newsAt = now
 	a.versions.list = a.launch.versions
 	a.launch.versionIdx = 0
 	a.launch.focus = 2

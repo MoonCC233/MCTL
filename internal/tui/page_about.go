@@ -52,6 +52,7 @@ func (a *App) viewAbout(w, h int) []string {
 		"世界 zip 下载与投影管理",
 		"实例加载器安装与文件修复",
 		"网络测速与延迟/吞吐展示",
+		"启动页新闻与更新日志",
 	}
 	for _, f := range features {
 		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(tr(f)))

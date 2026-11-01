@@ -1185,7 +1185,7 @@ func helpLines() []string {
 		"  " + accent("↑↓ / ←→") + muted("         选择项目 / 切换值"),
 		"  " + accent("enter") + muted("            启动游戏"),
 		"  " + accent("a") + muted("                账户管理（含 Microsoft 登录 / s 皮肤）"),
-		"  " + accent("i / p") + muted("            实例设置 / 皮肤"),
+		"  " + accent("i / p / n") + muted("        实例设置 / 皮肤 / 新闻"),
 		"  " + accent("s") + muted("                停止游戏"),
 		"",
 		styleSection.Render("版本 / 下载"),

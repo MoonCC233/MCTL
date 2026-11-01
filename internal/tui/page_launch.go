@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -21,6 +22,10 @@ type launchPage struct {
 	stage      string
 	percent    float64
 	detail     string
+	news       []minecraft.ReleaseInfo
+	newsAt     time.Time
+	newsErr    error
+	newsLoad   bool
 }
 
 func (p *launchPage) selectedVersion(cfg config.Config) string {
@@ -85,14 +90,76 @@ func (a *App) viewLaunch(w, h int) []string {
 		leftW := (w - 4 - gap) / 2
 		rightW := w - 4 - gap - leftW
 		left := a.renderEnvironment(leftW, infoH, cfg)
-		right := a.renderRecentLog(rightW, infoH)
-		cols := joinColumns(left, right, gap)
+		rightLines := strings.Split(a.renderRecentLog(rightW, infoH), "\n")
+		if infoH >= 11 {
+			newsH := clamp(infoH/2, 5, 9)
+			logH := infoH - newsH
+			if logH >= 5 {
+				rightLines = append(strings.Split(a.renderNews(rightW, newsH), "\n"), strings.Split(a.renderRecentLog(rightW, logH), "\n")...)
+			}
+		}
+		cols := joinColumns(left, strings.Join(rightLines, "\n"), gap)
 		lines = append(lines, "")
 		for _, l := range cols {
 			lines = append(lines, "  "+l)
 		}
 	}
 	return fitLines(lines, h, w)
+}
+
+// renderNews shows the latest published releases on the launch page.
+func (a *App) renderNews(w, h int) string {
+	p := &a.launch
+	inner := panelContentWidth(w)
+	var lines []string
+	if len(p.news) == 0 {
+		msg := tr("正在获取新闻…")
+		if p.newsErr != nil {
+			msg = tr("新闻获取失败 · n 重试")
+		} else if !p.newsLoad && !p.newsAt.IsZero() {
+			msg = tr("暂无新闻")
+		}
+		lines = append(lines, "", "  "+styleFaint.Render(ansiTruncate(msg, max(inner-2, 8))))
+	} else {
+		for _, rel := range p.news {
+			date := ""
+			if t, err := time.Parse(time.RFC3339, rel.PublishedAt); err == nil {
+				date = t.Format("01-02")
+			}
+			title := strings.TrimSpace(rel.Name)
+			if title == "" {
+				title = rel.TagName
+			}
+			if title == "" {
+				continue
+			}
+			line := "  " + styleAccent.Render("•") + " " + styleText.Render(ansiTruncate(title, max(inner-6, 8)))
+			if date != "" {
+				line = "  " + styleFaint.Render(date) + " " + styleAccent.Render("•") + " " + styleText.Render(ansiTruncate(title, max(inner-12, 8)))
+			}
+			lines = append(lines, line)
+		}
+	}
+	for len(lines) < panelContentHeight(h) {
+		lines = append(lines, "")
+	}
+	if len(lines) > panelContentHeight(h) {
+		lines = lines[:panelContentHeight(h)]
+	}
+	return panel("新闻 / 公告", w, h, false, lines)
+}
+
+// refreshLaunchNews loads the release feed at most once every ten minutes.
+func (a *App) refreshLaunchNews(force bool) {
+	p := &a.launch
+	if p.newsLoad {
+		return
+	}
+	if !force && !p.newsAt.IsZero() && time.Since(p.newsAt) < 10*time.Minute {
+		return
+	}
+	p.newsLoad = true
+	a.rt.FetchLaunchNews()
 }
 
 func (a *App) renderHero(w, h int, cfg config.Config) string {
@@ -289,6 +356,9 @@ func (a *App) launchKey(msg tea.KeyMsg) tea.Cmd {
 	case "r":
 		a.rt.ScanVersions()
 		a.setToast("正在刷新版本列表", 0)
+	case "n":
+		a.setToast("正在获取更新日志…", 0)
+		a.rt.FetchNews()
 	case "s":
 		if a.rt.Launching() {
 			a.openConfirm("停止游戏", "确定要结束当前游戏进程吗？未保存的游戏进度可能丢失。", "stop-game", nil)
