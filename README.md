@@ -12,6 +12,7 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **加载器支持**：Fabric、Quilt、Legacy Fabric、LiteLoader、Forge、NeoForge 与 OptiFine；Forge/NeoForge 使用官方安装器，LiteLoader/OptiFine 使用嵌入或生成的版本配置安装。
 - **整合包导入**：导入 Modrinth `.mrpack` 或 CurseForge 整合包，创建独立实例目录，下载模组与覆盖文件，并复用已安装的基础版本。CurseForge 下载需要在设置中填写 API Key。
 - **在线整合包**：搜索 Modrinth 整合包目录，选择项目后自动获取最新稳定版本、下载 `.mrpack` 并创建独立实例。
+- **在线资源**：搜索 Modrinth 资源包、光影和模组，按当前实例的 Minecraft 版本与加载器匹配后下载到 `resourcepacks/`、`shaderpacks/` 或 `mods/`。
 - **Microsoft 登录**：设备代码流登录 Microsoft 账户，自动完成 Xbox Live、XSTS 与 Minecraft Services 认证；令牌过期时自动刷新。
 - **工具与关于页面**：集中提供整合包导入、目录打开、Java 检测、刷新、日志清理和版本信息。
 - **离线账户**：添加、切换和删除离线账户，自动生成与 Minecraft 一致的离线 UUID。
@@ -191,6 +192,7 @@ CurseForge 整合包使用其 API 解析文件下载地址，需要先在设置�
 | `enter` | 执行 |
 | `i` | 导入本地整合包 |
 | `w` | 搜索在线整合包 |
+| `e` | 搜索在线资源包、光影或模组 |
 | `o` | 打开游戏目录 |
 | `g` | 打开配置目录 |
 | `v` | 检测 Java |
@@ -244,7 +246,7 @@ go build ./...
 go test -tags live -v ./internal/minecraft -run TestLiveLoaderMetadata -count=1
 ```
 
-检查覆盖 Forge、NeoForge、Quilt、Legacy Fabric、LiteLoader、OptiFine 以及 Modrinth 在线整合包搜索。
+检查覆盖 Forge、NeoForge、Quilt、Legacy Fabric、LiteLoader、OptiFine，以及 Modrinth 在线整合包、资源包搜索与版本接口。
 
 GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
@@ -263,11 +265,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.8` 的标签会触发 Release 工作流：
+推送形如 `v1.0.9` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.8
-git push origin v1.0.8
+git tag v1.0.9
+git push origin v1.0.9
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

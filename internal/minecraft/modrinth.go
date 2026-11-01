@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -47,8 +49,9 @@ type ModrinthFile struct {
 	Hashes   map[string]string `json:"hashes"`
 }
 
-// SearchModpacks searches Modrinth for modpack projects.
-func SearchModpacks(ctx context.Context, hc *HTTPClient, query string, limit int) ([]ModrinthProject, error) {
+// SearchProjects searches Modrinth for a project type (modpack, resourcepack,
+// shader or mod).
+func SearchProjects(ctx context.Context, hc *HTTPClient, query, projectType string, limit int) ([]ModrinthProject, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -56,11 +59,11 @@ func SearchModpacks(ctx context.Context, hc *HTTPClient, query string, limit int
 	q.Set("query", strings.TrimSpace(query))
 	q.Set("limit", strconv.Itoa(limit))
 	q.Set("index", "downloads")
-	q.Set("facets", `[["project_type:modpack"]]`)
+	q.Set("facets", fmt.Sprintf(`[["project_type:%s"]]`, projectType))
 	u := strings.TrimRight(modrinthAPIBase, "/") + "/search?" + q.Encode()
 	data, err := hc.Get(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("搜索 Modrinth 整合包: %w", err)
+		return nil, fmt.Errorf("搜索 Modrinth %s: %w", projectType, err)
 	}
 	var resp modrinthSearchResponse
 	if err := json.Unmarshal(data, &resp); err != nil {
@@ -76,8 +79,13 @@ func SearchModpacks(ctx context.Context, hc *HTTPClient, query string, limit int
 	return out, nil
 }
 
-// FetchLatestModpackVersion returns the preferred version for a project.
-func FetchLatestModpackVersion(ctx context.Context, hc *HTTPClient, projectID string) (*ModrinthVersion, error) {
+// SearchModpacks searches Modrinth for modpack projects.
+func SearchModpacks(ctx context.Context, hc *HTTPClient, query string, limit int) ([]ModrinthProject, error) {
+	return SearchProjects(ctx, hc, query, "modpack", limit)
+}
+
+// FetchProjectVersions returns all published versions of a project.
+func FetchProjectVersions(ctx context.Context, hc *HTTPClient, projectID string) ([]ModrinthVersion, error) {
 	u := strings.TrimRight(modrinthAPIBase, "/") + "/project/" + url.PathEscape(projectID) + "/version"
 	data, err := hc.Get(ctx, u)
 	if err != nil {
@@ -87,20 +95,111 @@ func FetchLatestModpackVersion(ctx context.Context, hc *HTTPClient, projectID st
 	if err := json.Unmarshal(data, &versions); err != nil {
 		return nil, fmt.Errorf("解析 Modrinth 版本: %w", err)
 	}
-	if len(versions) == 0 {
-		return nil, fmt.Errorf("该整合包没有可用版本")
+	return versions, nil
+}
+
+// FetchLatestModpackVersion returns the preferred version for a project.
+func FetchLatestModpackVersion(ctx context.Context, hc *HTTPClient, projectID string) (*ModrinthVersion, error) {
+	versions, err := FetchProjectVersions(ctx, hc, projectID)
+	if err != nil {
+		return nil, err
 	}
-	chosen := &versions[0]
+	return SelectModrinthVersion(versions, "", "")
+}
+
+// SelectModrinthVersion chooses a release compatible with the game version and
+// loader. Empty filters pick the newest release.
+func SelectModrinthVersion(versions []ModrinthVersion, gameVersion, loader string) (*ModrinthVersion, error) {
+	var fallback *ModrinthVersion
 	for i := range versions {
-		if versions[i].VersionType == "release" {
-			chosen = &versions[i]
-			break
+		v := &versions[i]
+		if gameVersion != "" && len(v.GameVersions) > 0 && !containsString(v.GameVersions, gameVersion) {
+			continue
+		}
+		if loader != "" && len(v.Loaders) > 0 && !containsString(v.Loaders, loader) {
+			continue
+		}
+		if fallback == nil {
+			fallback = v
+		}
+		if v.VersionType == "release" {
+			return v, nil
 		}
 	}
-	if len(chosen.Files) == 0 {
-		return nil, fmt.Errorf("该整合包版本没有文件")
+	if fallback != nil {
+		return fallback, nil
 	}
-	return chosen, nil
+	if len(versions) == 0 {
+		return nil, fmt.Errorf("没有可用版本")
+	}
+	return nil, fmt.Errorf("没有适用于当前版本或加载器的文件")
+}
+
+func containsString(list []string, want string) bool {
+	for _, s := range list {
+		if strings.EqualFold(s, want) {
+			return true
+		}
+	}
+	return false
+}
+
+// ResourceInstall describes a downloaded online resource.
+type ResourceInstall struct {
+	Kind    string
+	Name    string
+	Path    string
+	Version string
+}
+
+// ResourceSubdir maps a Modrinth project type to its game directory.
+func ResourceSubdir(kind string) string {
+	switch kind {
+	case "resourcepack":
+		return "resourcepacks"
+	case "shader":
+		return "shaderpacks"
+	case "mod":
+		return "mods"
+	}
+	return ""
+}
+
+// InstallResource downloads the best matching file for an online resource.
+func InstallResource(ctx context.Context, hc *HTTPClient, kind, projectID, gameVersion, loader, gameDir string) (*ResourceInstall, error) {
+	sub := ResourceSubdir(kind)
+	if sub == "" {
+		return nil, fmt.Errorf("未知资源类型: %s", kind)
+	}
+	versions, err := FetchProjectVersions(ctx, hc, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if kind == "resourcepack" || kind == "shader" {
+		gameVersion, loader = "", ""
+	}
+	version, err := SelectModrinthVersion(versions, gameVersion, loader)
+	if err != nil {
+		return nil, err
+	}
+	file, err := PrimaryModrinthFile(version)
+	if err != nil {
+		return nil, err
+	}
+	destDir := filepath.Join(gameDir, sub)
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return nil, err
+	}
+	name := filepath.Base(file.Filename)
+	dest := filepath.Join(destDir, name)
+	sha := ""
+	if file.Hashes != nil {
+		sha = file.Hashes["sha1"]
+	}
+	if err := hc.DownloadFile(ctx, file.URL, dest, sha, nil); err != nil {
+		return nil, fmt.Errorf("下载 %s: %w", name, err)
+	}
+	return &ResourceInstall{Kind: kind, Name: name, Path: dest, Version: version.VersionNumber}, nil
 }
 
 // PrimaryModrinthFile returns the primary file of a version, or the first.

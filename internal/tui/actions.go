@@ -22,6 +22,15 @@ func (a *App) openOnlineModpacks() {
 	a.openInput("在线整合包", "搜索 Modrinth 整合包", "", "例如 Create / Cobblemon", "search-modpacks")
 }
 
+func (a *App) openResourceTypePicker() {
+	items := []pickerItem{
+		{Label: "资源包", Desc: "Resource Packs", Value: "resourcepack"},
+		{Label: "光影", Desc: "Shaders", Value: "shader"},
+		{Label: "模组", Desc: "Mods", Value: "mod"},
+	}
+	a.modal = modalState{Kind: modalPicker, Title: "在线资源", Items: items, Action: "choose-resource-kind"}
+}
+
 func (a *App) openMicrosoftLogin() {
 	cfg := a.store.Snapshot()
 	if strings.TrimSpace(cfg.MicrosoftClientID) == "" {
@@ -93,6 +102,15 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		a.rt.SearchModpacks(query)
 	case action == "install-online-modpack":
 		a.startOnlineModpack(item.Value, item.Label)
+	case action == "choose-resource-kind":
+		a.resources.kind = item.Value
+		a.openInput("在线资源 · "+resourceKindLabel(item.Value), "搜索 Modrinth "+resourceKindLabel(item.Value), "", "输入关键词", "search-resources")
+	case action == "search-resources":
+		query := strings.TrimSpace(value)
+		a.setToast("正在搜索在线资源…", 0)
+		a.rt.SearchResources(a.resources.kind, query)
+	case action == "install-resource":
+		a.startResourceInstall(a.resources.kind, item.Value, item.Label)
 	case action == "filter-versions":
 		a.versions.filter = strings.TrimSpace(value)
 		a.versions.idx = 0
@@ -180,6 +198,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
 	case "cmd-online-modpacks":
 		a.openOnlineModpacks()
+	case "cmd-online-resources":
+		a.openResourceTypePicker()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":

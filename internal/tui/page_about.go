@@ -28,7 +28,7 @@ func (a *App) viewAbout(w, h int) []string {
 	rows = append(rows, "", "  "+sectionLabel("支持"))
 	features := []string{
 		"原版 / Fabric / Quilt / Legacy Fabric / LiteLoader / Forge / NeoForge / OptiFine",
-		"本地整合包导入与 Modrinth 在线整合包搜索",
+		"本地整合包导入、在线整合包与资源搜索",
 		"离线账户与 Microsoft 设备代码登录",
 		"Java 检测、Adoptium 自动下载与启动参数",
 		"实时日志、命令面板与演示模式",

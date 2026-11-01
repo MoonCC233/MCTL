@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.8"
+var Version = "1.0.9"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -83,6 +84,12 @@ type launchExitMsg struct {
 }
 
 type modpacksMsg struct {
+	Projects []minecraft.ModrinthProject
+	Err      error
+}
+
+type resourcesMsg struct {
+	Kind     string
 	Projects []minecraft.ModrinthProject
 	Err      error
 }
@@ -440,6 +447,85 @@ func (r *Runtime) InstallOnlineModpack(projectID, name string) {
 		r.Emit(installDoneMsg{Kind: "modpack", ID: id, Err: err, Canceled: canceled})
 		r.ScanVersions()
 	}()
+}
+
+// SearchResources searches Modrinth for resource packs, shaders or mods.
+func (r *Runtime) SearchResources(kind, query string) {
+	cfg := r.Store.Snapshot()
+	src := minecraft.GetSource(cfg.DownloadSource)
+	go func() {
+		hc := minecraft.NewHTTPClient(src)
+		projects, err := minecraft.SearchProjects(context.Background(), hc, query, kind, 20)
+		if err != nil {
+			r.Logf("搜索在线资源失败: %v", err)
+		}
+		r.Emit(resourcesMsg{Kind: kind, Projects: projects, Err: err})
+	}()
+}
+
+// InstallResource downloads the best matching file for an online resource.
+func (r *Runtime) InstallResource(kind, projectID, name string) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "resource", ID: name, Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	ctx, cancel := context.WithCancel(context.Background())
+	r.installCancel = cancel
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		gameDir := cfg.GameDir
+		gameVersion, loader := "", ""
+		if list, err := minecraft.ScanVersions(cfg.GameDir); err == nil {
+			for _, v := range list {
+				if v.ID != cfg.SelectedVersion {
+					continue
+				}
+				if v.GameDir != "" {
+					gameDir = v.GameDir
+				}
+				gameVersion = v.MCVersion
+				loader = loaderKey(v.Loader)
+				break
+			}
+		}
+		hc := minecraft.NewHTTPClient(src)
+		res, err := minecraft.InstallResource(ctx, hc, kind, projectID, gameVersion, loader, gameDir)
+		canceled := ctx.Err() != nil
+		id := name
+		if err == nil {
+			id = res.Name
+			r.Logf("在线资源安装完成: %s", res.Path)
+		} else if canceled {
+			r.Logf("在线资源安装已取消")
+		} else {
+			r.Logf("在线资源安装失败: %v", err)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "resource", ID: id, Err: err, Canceled: canceled})
+	}()
+}
+
+func loaderKey(name string) string {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "fabric", "legacy fabric":
+		return "fabric"
+	case "quilt":
+		return "quilt"
+	case "forge":
+		return "forge"
+	case "neoforge":
+		return "neoforge"
+	}
+	return ""
 }
 
 // ImportModpack installs a Modrinth pack into an isolated instance.

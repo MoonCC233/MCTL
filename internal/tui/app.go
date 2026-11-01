@@ -50,12 +50,13 @@ type App struct {
 	toast    toastState
 	quitting bool
 
-	launch   launchPage
-	versions versionsPage
-	download downloadPage
-	settings settingsPage
-	tools    toolsPage
-	logs     logsPage
+	launch    launchPage
+	versions  versionsPage
+	download  downloadPage
+	settings  settingsPage
+	tools     toolsPage
+	resources resourceBrowser
+	logs      logsPage
 
 	demo bool
 }
@@ -193,7 +194,7 @@ func (a *App) renderFooter() string {
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
 	case pageTools:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("i", "导入整合包"), keyHint("w", "在线整合包"), keyHint("v", "检测 Java")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("i", "导入整合包"), keyHint("w", "在线整合包"), keyHint("e", "在线资源")}
 	case pageAbout:
 		parts = []string{keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
 	case pageLogs:
@@ -518,6 +519,8 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			label := "安装完成"
 			if m.Kind == "modpack" {
 				label = "整合包导入完成"
+			} else if m.Kind == "resource" {
+				label = "资源安装完成"
 			}
 			a.setToast(label+": "+m.ID, 1)
 			a.launch.stage = ""
@@ -550,6 +553,26 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			Data:     m.MC,
 			Selected: 0,
 		}
+		return nil
+	case resourcesMsg:
+		a.resources.kind = m.Kind
+		if m.Err != nil {
+			a.openError("搜索在线资源失败", m.Err)
+			return nil
+		}
+		if len(m.Projects) == 0 {
+			a.setToast("没有找到匹配的资源", 3)
+			return nil
+		}
+		items := make([]pickerItem, 0, len(m.Projects))
+		for _, p := range m.Projects {
+			desc := fmt.Sprintf("%d 次下载", p.Downloads)
+			if p.Author != "" {
+				desc = p.Author + " · " + desc
+			}
+			items = append(items, pickerItem{Label: p.Title, Desc: desc, Value: p.ID})
+		}
+		a.modal = modalState{Kind: modalPicker, Title: "在线资源 · " + resourceKindLabel(m.Kind), Items: items, Action: "install-resource"}
 		return nil
 	case modpacksMsg:
 		if m.Err != nil {
@@ -714,6 +737,29 @@ func (a *App) startLaunch(versionID string) {
 		}
 	}
 	a.rt.Launch(versionID, gameDir)
+}
+
+func (a *App) startResourceInstall(kind, projectID, name string) {
+	if kind == "" || projectID == "" {
+		a.setToast("无效的在线资源", 3)
+		return
+	}
+	if kind == "mod" && a.store.Snapshot().SelectedVersion == "" {
+		a.setToast("安装模组前请先在版本页选择版本", 3)
+		return
+	}
+	if a.rt.Busy() {
+		a.setToast("已有任务正在进行", 3)
+		return
+	}
+	a.modal = modalState{
+		Kind:    modalProgress,
+		Title:   "在线资源 · " + name,
+		Stage:   "获取版本",
+		Percent: 0,
+		Action:  "cancel-install",
+	}
+	a.rt.InstallResource(kind, projectID, name)
 }
 
 func (a *App) startOnlineModpack(projectID, name string) {

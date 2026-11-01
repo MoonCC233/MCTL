@@ -4,9 +4,64 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestSelectModrinthVersionFilters(t *testing.T) {
+	versions := []ModrinthVersion{
+		{ID: "fabric-1", VersionType: "release", GameVersions: []string{"1.20.1"}, Loaders: []string{"fabric"}},
+		{ID: "forge-1", VersionType: "release", GameVersions: []string{"1.20.1"}, Loaders: []string{"forge"}},
+	}
+	v, err := SelectModrinthVersion(versions, "1.20.1", "forge")
+	if err != nil || v.ID != "forge-1" {
+		t.Fatalf("v = %#v, err = %v", v, err)
+	}
+	if _, err := SelectModrinthVersion(versions, "1.19.4", "forge"); err == nil {
+		t.Fatal("expected version mismatch error")
+	}
+}
+
+func TestInstallResource(t *testing.T) {
+	var baseURL string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/project/pack-id/version", func(w http.ResponseWriter, r *http.Request) {
+		writeTestJSON(t, w, []any{
+			map[string]any{
+				"id": "v1", "project_id": "pack-id", "version_type": "release",
+				"version_number": "1.0", "game_versions": []string{"1.20.1"},
+				"files": []any{map[string]any{
+					"url": baseURL + "/files/pack.zip", "filename": "pack.zip", "primary": true,
+				}},
+			},
+		})
+	})
+	mux.HandleFunc("/files/pack.zip", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("pack"))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	baseURL = server.URL
+
+	old := modrinthAPIBase
+	defer func() { modrinthAPIBase = old }()
+	modrinthAPIBase = server.URL + "/v2"
+	hc := NewHTTPClient(Source{ID: "test"})
+	hc.Client = server.Client()
+	dir := t.TempDir()
+	res, err := InstallResource(context.Background(), hc, "resourcepack", "pack-id", "", "", dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Path != filepath.Join(dir, "resourcepacks", "pack.zip") {
+		t.Fatalf("path = %q", res.Path)
+	}
+	if data, err := os.ReadFile(res.Path); err != nil || string(data) != "pack" {
+		t.Fatalf("file = %q, err = %v", data, err)
+	}
+}
 
 func TestSearchModpacksAndLatestVersion(t *testing.T) {
 	mux := http.NewServeMux()

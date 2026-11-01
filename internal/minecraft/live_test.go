@@ -49,6 +49,25 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		t.Logf("Modrinth latest: %s (%s)", version.VersionNumber, file.Filename)
 	})
 
+	t.Run("ModrinthResourcePack", func(t *testing.T) {
+		projects, err := SearchProjects(ctx, hc, "faithful", "resourcepack", 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(projects) == 0 {
+			t.Fatal("Modrinth returned no resource packs")
+		}
+		versions, err := FetchProjectVersions(ctx, hc, projects[0].ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		version, err := SelectModrinthVersion(versions, "", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Modrinth resource pack: %q, version=%s", projects[0].Title, version.VersionNumber)
+	})
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var builds []LoaderBuild
