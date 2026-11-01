@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -513,6 +514,9 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			a.setToast("指定的 Java 无法使用，已回退到自动检测", 3)
 		}
 		return nil
+	case javaListMsg:
+		a.openJavaPicker(m.List)
+		return nil
 	case progressMsg:
 		if m.Scope == "install" {
 			if a.modal.Kind == modalProgress {
@@ -739,6 +743,17 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			items = append(items, pickerItem{Label: mod.Name, Desc: desc, Value: fmt.Sprint(mod.ID)})
 		}
 		a.modal = modalState{Kind: modalPicker, Title: "CurseForge 整合包", Items: items, Action: "install-curseforge", Data: m.Mods}
+		return nil
+	case curseForgeProjectMsg:
+		if m.Err != nil {
+			a.openError("CurseForge 项目", fmt.Errorf("%w\n可以改用「CurseForge 项目」按 ID 安装，或检查 API Key 的接口权限", m.Err))
+			return nil
+		}
+		if len(m.Files) == 0 {
+			a.setToast("该项目没有可用文件", 3)
+			return nil
+		}
+		a.openCurseForgeFiles(m.Mod, m.Files)
 		return nil
 	case resourcesMsg:
 		a.resources.kind = m.Kind
@@ -1007,6 +1022,44 @@ func (a *App) startDatapackInstall(projectID, name, worldDir string) {
 		Action: "cancel-install",
 	}
 	a.rt.InstallDatapack(projectID, name, worldDir)
+}
+
+// curseForgeFileData carries a project and its file list into the file picker.
+type curseForgeFileData struct {
+	Mod   minecraft.CurseForgeMod
+	Files []minecraft.CurseForgeFile
+}
+
+// openCurseForgeFiles lets the user pick a specific file of a CurseForge
+// project before installing it.
+func (a *App) openCurseForgeFiles(mod minecraft.CurseForgeMod, files []minecraft.CurseForgeFile) {
+	items := make([]pickerItem, 0, len(files))
+	for i, f := range files {
+		name := strings.TrimSpace(f.DisplayName)
+		if name == "" {
+			name = f.FileName
+		}
+		desc := strings.TrimSpace(f.FileDate)
+		switch f.ReleaseType {
+		case 1:
+			desc = "正式版 · " + desc
+		case 2:
+			desc = "Beta · " + desc
+		case 3:
+			desc = "Alpha · " + desc
+		}
+		if f.FileLength > 0 {
+			desc = fmt.Sprintf("%s · %s", desc, formatBytes(f.FileLength))
+		}
+		items = append(items, pickerItem{Label: name, Desc: desc, Value: strconv.Itoa(i)})
+	}
+	a.modal = modalState{
+		Kind:   modalPicker,
+		Title:  "CurseForge 文件 · " + mod.Name,
+		Items:  items,
+		Action: "install-curseforge-file",
+		Data:   curseForgeFileData{Mod: mod, Files: files},
+	}
 }
 
 func (a *App) startCurseForgeInstall(mod minecraft.CurseForgeMod) {

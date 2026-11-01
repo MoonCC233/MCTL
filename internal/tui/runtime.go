@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.40"
+var Version = "1.0.41"
 
 // Repository used for release checks and download links.
 const (
@@ -46,6 +46,10 @@ type javaMsg struct {
 	Info   *minecraft.JavaInfo
 	Err    error
 	Source string
+}
+
+type javaListMsg struct {
+	List []minecraft.JavaInfo
 }
 
 type progressMsg struct {
@@ -143,6 +147,12 @@ type speedTestMsg struct {
 type curseForgeModsMsg struct {
 	Mods []minecraft.CurseForgeMod
 	Err  error
+}
+
+type curseForgeProjectMsg struct {
+	Mod   minecraft.CurseForgeMod
+	Files []minecraft.CurseForgeFile
+	Err   error
 }
 
 type skinMsg struct {
@@ -318,6 +328,15 @@ func (r *Runtime) DetectJava(preferred string) {
 			r.Logf("已检测到 Java %s（%s）", info.Version, info.Path)
 		}
 		r.Emit(javaMsg{Info: info, Err: err, Source: source})
+	}()
+}
+
+// ScanJava detects every installed Java runtime in the background.
+func (r *Runtime) ScanJava(preferred string) {
+	go func() {
+		list := minecraft.ListJava(preferred)
+		r.Logf("Java 扫描完成：找到 %d 个运行时", len(list))
+		r.Emit(javaListMsg{List: list})
 	}()
 }
 
@@ -717,6 +736,35 @@ func (r *Runtime) SearchCurseForgeModpacks(query, gameVersion string) {
 			r.Logf("搜索 CurseForge 整合包失败: %v", err)
 		}
 		r.Emit(curseForgeModsMsg{Mods: mods, Err: err})
+	}()
+}
+
+// LoadCurseForgeProject resolves a project and its files by ID, which works
+// even when the account's key has no access to the search endpoint.
+func (r *Runtime) LoadCurseForgeProject(id int) {
+	cfg := r.Store.Snapshot()
+	src := minecraft.GetSource(cfg.DownloadSource)
+	go func() {
+		hc := minecraft.NewHTTPClient(src)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		mod, err := minecraft.GetCurseForgeMod(ctx, hc, cfg.CurseForgeAPIKey, id)
+		if err != nil {
+			r.Logf("读取 CurseForge 项目失败: %v", err)
+			r.Emit(curseForgeProjectMsg{Err: err})
+			return
+		}
+		files, err := minecraft.CurseForgeModFiles(ctx, hc, cfg.CurseForgeAPIKey, id, "")
+		if err != nil {
+			r.Logf("读取 CurseForge 文件失败: %v", err)
+			r.Emit(curseForgeProjectMsg{Err: err})
+			return
+		}
+		if len(files) > 0 {
+			mod.LatestFiles = files
+		}
+		r.Logf("CurseForge 项目 %s 提供 %d 个文件", mod.Name, len(files))
+		r.Emit(curseForgeProjectMsg{Mod: mod, Files: files})
 	}()
 }
 

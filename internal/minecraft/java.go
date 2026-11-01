@@ -164,27 +164,28 @@ func JavaCandidates(preferred string) []string {
 			add(filepath.Join(preferred, "bin", javaBinary()))
 		}
 	}
-	if home := os.Getenv("JAVA_HOME"); home != "" {
-		add(filepath.Join(home, "bin", javaBinary()))
+	for _, env := range []string{"JAVA_HOME", "JDK_HOME"} {
+		if home := os.Getenv(env); home != "" {
+			add(filepath.Join(home, "bin", javaBinary()))
+		}
 	}
 	if p, err := exec.LookPath(javaBinary()); err == nil {
 		add(p)
 	}
 	if runtime.GOOS == "windows" {
-		globs := []string{
-			`C:\Program Files\Java\*\bin\java.exe`,
-			`C:\Program Files\Eclipse Adoptium\*\bin\java.exe`,
-			`C:\Program Files\Microsoft\jdk-*\bin\java.exe`,
-			`C:\Program Files\Zulu\*\bin\java.exe`,
-			`C:\Program Files\BellSoft\*\bin\java.exe`,
-			`C:\Program Files\Amazon Corretto\*\bin\java.exe`,
-			`C:\Program Files\Semeru\*\bin\java.exe`,
-			`C:\Program Files\Common Files\Oracle\Java\javapath\java.exe`,
+		for _, home := range windowsRegistryJavaHomes() {
+			add(filepath.Join(home, "bin", "java.exe"))
 		}
+		for _, m := range windowsJavaPaths() {
+			add(m)
+		}
+		globs := []string{`C:\Program Files\Common Files\Oracle\Java\javapath\java.exe`}
 		if local := os.Getenv("LOCALAPPDATA"); local != "" {
 			globs = append(globs,
 				filepath.Join(local, "Programs", "Eclipse Adoptium", "*", "bin", "java.exe"),
 				filepath.Join(local, "Programs", "Microsoft", "jdk-*", "bin", "java.exe"),
+				filepath.Join(local, "Programs", "Zulu", "*", "bin", "java.exe"),
+				filepath.Join(local, "Programs", "BellSoft", "*", "bin", "java.exe"),
 				filepath.Join(local, "Packages", "Microsoft.4297127D64EC6_8wekyb3d8bbwe", "LocalCache", "Local", "runtime", "*", "*", "*", "bin", "java.exe"),
 			)
 		}
@@ -192,9 +193,12 @@ func JavaCandidates(preferred string) []string {
 			globs = append(globs, filepath.Join(appdata, ".minecraft", "runtime", "*", "*", "*", "bin", "java.exe"))
 		}
 		if home, err := os.UserHomeDir(); err == nil {
-			globs = append(globs, filepath.Join(home, ".jdks", "*", "bin", "java.exe"))
+			globs = append(globs,
+				filepath.Join(home, ".jdks", "*", "bin", "java.exe"),
+				filepath.Join(home, "scoop", "apps", "*jdk*", "current", "bin", "java.exe"),
+				filepath.Join(home, "scoop", "apps", "*java*", "current", "bin", "java.exe"),
+			)
 		}
-		globs = append(globs, `C:\Program Files (x86)\Java\*\bin\java.exe`)
 		for _, g := range globs {
 			matches, _ := filepath.Glob(g)
 			for _, m := range matches {
@@ -205,8 +209,16 @@ func JavaCandidates(preferred string) []string {
 		for _, g := range []string{
 			"/Library/Java/JavaVirtualMachines/*/Contents/Home/bin/java",
 			"/System/Library/Java/JavaVirtualMachines/*/Contents/Home/bin/java",
+			"/opt/homebrew/opt/openjdk*/bin/java",
+			"/usr/local/opt/openjdk*/bin/java",
 		} {
 			matches, _ := filepath.Glob(g)
+			for _, m := range matches {
+				add(m)
+			}
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			matches, _ := filepath.Glob(filepath.Join(home, ".sdkman", "candidates", "java", "*", "bin", "java"))
 			for _, m := range matches {
 				add(m)
 			}
@@ -217,8 +229,16 @@ func JavaCandidates(preferred string) []string {
 			"/usr/java/*/bin/java",
 			"/opt/java/*/bin/java",
 			"/opt/*/bin/java",
+			"/usr/local/*/bin/java",
+			"/snap/*/current/bin/java",
 		} {
 			matches, _ := filepath.Glob(g)
+			for _, m := range matches {
+				add(m)
+			}
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			matches, _ := filepath.Glob(filepath.Join(home, ".sdkman", "candidates", "java", "*", "bin", "java"))
 			for _, m := range matches {
 				add(m)
 			}

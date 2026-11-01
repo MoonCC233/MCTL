@@ -385,8 +385,8 @@ func (a *App) runSettingAction(it settingItem) {
 	switch it.key {
 	case "detect_java":
 		cfg := a.store.Snapshot()
-		a.rt.DetectJava(cfg.JavaPath)
-		a.setToast("正在检测 Java…", 0)
+		a.rt.ScanJava(cfg.JavaPath)
+		a.setToast("正在扫描 Java…", 0)
 	case "ms_login":
 		a.openMicrosoftLogin()
 	case "open_game":

@@ -16,7 +16,8 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **主题与代理**：内置 OpenCode 暗色、午夜蓝、浅色三套主题；支持 HTTP / HTTPS / SOCKS5 代理。
 - **中英双语界面**：导航、页面标题、动态副标题、设置项、工具列表与命令面板支持中文 / English 即时切换。
 - **实例图标**：为实例设置最多 4 个字符的图标，显示在版本列表与详情中。
-- **CurseForge 在线浏览**：使用设置中的 API Key 搜索整合包，下载后直接导入独立实例。
+- **CurseForge 在线浏览**：使用设置中的 API Key 搜索整合包，下载后直接导入独立实例；搜索接口受限时，可按项目 ID 或项目链接读取文件列表并安装。
+- **Java 扫描**：扫描所有磁盘的常见安装目录（含 D 盘等非系统盘）、Windows 注册表、`JAVA_HOME` / `JDK_HOME`、PATH、IDE 自带 JBR 与 SDKMAN 目录；检测结果以列表展示，单击即可选用或恢复自动检测。
 - **皮肤 / 披风**：查询当前账户的公开皮肤与披风纹理，显示模型类型并可在浏览器中打开；离线 UUID 通常没有公开纹理。
 - **新闻 / 更新日志**：读取发布源并展示最近的版本说明，可直接打开发布页面。
 - **启动页新闻**：启动页读取最近发布记录并显示在侧栏，单击新闻条目打开完整更新日志。
@@ -36,7 +37,7 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **模组信息**：读取 Fabric、Quilt、Forge、NeoForge 与旧版模组元数据，显示版本、加载器、启用状态和内嵌 jar。
 - **新建实例向导**：自定义实例名称、目录、Minecraft 版本、加载器、加载器版本与 Java 路径，一步安装到独立实例。
 - **离线账户**：添加、切换和删除离线账户，自动生成与 Minecraft 一致的离线 UUID。
-- **Java 管理**：扫描常见安装位置与 `JAVA_HOME`，检查版本兼容性；缺少 Java 时可从 Adoptium 下载 JRE。
+- **Java 管理**：扫描全部磁盘、注册表与环境变量，检查版本兼容性并列出所有运行时；缺少 Java 时可从 Adoptium 下载 JRE。
 - **双下载源**：BMCLAPI 镜像与 Mojang 官方源，可在设置中即时切换。
 - **启动参数**：自定义最小/最大内存、窗口尺寸、全屏、JVM 参数和游戏参数。
 - **日志系统**：启动器日志与游戏 stdout/stderr 实时进入日志页，并同步写入日志文件。
@@ -167,6 +168,17 @@ mctl
 
 登录成功后，访问令牌、刷新令牌和过期时间保存在本机 `config.json` 中；启动器会在令牌过期前自动刷新。若刷新失败，需要重新执行 Microsoft 登录。
 
+### Java 检测
+
+在设置页或工具页单击「检测 Java」，启动器会在后台扫描：
+
+- 所有磁盘的 `Program Files\Java`、Eclipse Adoptium、Microsoft、Zulu、BellSoft、Amazon Corretto、Semeru、AdoptOpenJDK、GraalVM 等目录
+- `Java\`、`jdk*\`、IDE 自带 JBR、Scoop 与 `.jdks`
+- Windows 注册表中的 JDK/JRE 安装路径
+- `JAVA_HOME`、`JDK_HOME`、PATH、SDKMAN、Minecraft 自带 runtime
+
+扫描结果以列表显示，标注主版本、发行商与完整路径；单击某一行即设为全局 Java，单击「自动检测」清除指定路径。列表按主版本从新到旧排列，便于选择 Java 25（Cleanroom）或 Java 17（1.17–1.20.4）。
+
 ### 整合包
 
 在工具页单击「导入整合包」，输入本地 `.mrpack` 或 CurseForge 压缩包路径即可导入。MCTL 会：
@@ -178,6 +190,13 @@ mctl
 5. 生成 `pack-*` 版本，出现在版本页和启动页中。
 
 CurseForge 整合包使用其 API 解析文件下载地址，需要先在设置页填写「CurseForge Key」。Modrinth 格式不需要额外密钥。
+
+若 API Key 没有搜索接口权限，工具页的「CurseForge 项目」可按项目 ID 或带数字后缀的项目链接读取文件列表，选择一个文件后直接下载并导入：
+
+```text
+285109
+https://www.curseforge.com/minecraft/modpacks/all-the-mods-9-715572
+```
 
 ### 工具页
 
@@ -217,15 +236,29 @@ go build ./...
 go test -tags live -v ./internal/minecraft -run TestLiveLoaderMetadata -count=1
 ```
 
-检查覆盖 Forge、NeoForge、Cleanroom、LabyMod、Quilt、Legacy Fabric、LiteLoader、OptiFine、Modrinth 在线整合包与资源接口，以及启动器发布源与更新日志。若在仓库 Secrets 中配置 `CURSEFORGE_API_KEY`，还会验证 CurseForge 搜索接口。
+检查覆盖 Forge、NeoForge、Cleanroom、LabyMod、Quilt、Legacy Fabric、LiteLoader、OptiFine、Modrinth 在线整合包与资源接口，以及启动器发布源与更新日志。若在仓库 Secrets 中配置 `CURSEFORGE_API_KEY`，还会验证 CurseForge 项目与文件接口；搜索接口需要 Key 具备搜索权限，否则会自动跳过。
 
 真实加载器安装（会下载安装器与依赖，需数十 MB 到数百 MB 流量，默认跳过）：
 
 ```bash
-MCTL_REAL_INSTALL=1 go test -tags live -v ./internal/minecraft -run TestLiveForgeInstall -count=1
+MCTL_REAL_INSTALL=1 go test -tags live -v ./internal/minecraft -run 'TestLiveForgeInstall|TestLiveNeoForgeInstall|TestLiveCleanroomInstall' -count=1
 ```
 
-该测试会准备原版 profile 与客户端 jar，下载官方 Forge 安装器并实际执行 `java -jar ... --installClient`，然后解析生成的版本配置。需要可访问 Forge Maven 与 Java 17+。
+测试会准备原版 profile 与客户端 jar，下载官方安装器并实际执行，然后解析生成的版本配置：
+
+- Forge 1.20.1 + 47.4.28：`java -jar ... --installClient`
+- NeoForge 1.21.1 + 21.1.265：同一套 `--installClient` 流程
+- Cleanroom 1.12.2 + 0.7.14-alpha：`client -d <dir> --version <id> -y`，需要 Java 25
+
+安装器运行在当前配置的代理下：MCTL 会把 `http.proxyHost` / `https.proxyHost` 传给安装器 JVM，并在游戏目录缺少 `launcher_profiles.json` 时自动创建最小配置。
+
+真实 CurseForge 下载（默认跳过）：
+
+```bash
+MCTL_REAL_DOWNLOAD=1 CURSEFORGE_API_KEY=... go test -tags live -v ./internal/minecraft -run TestLiveCurseForgeDownload -count=1
+```
+
+该测试读取项目文件列表，下载最小文件并校验压缩包内存在 `manifest.json`。
 
 GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
@@ -244,11 +277,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.40` 的标签会触发 Release 工作流：
+推送形如 `v1.0.41` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.40
-git push origin v1.0.40
+git tag v1.0.41
+git push origin v1.0.41
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

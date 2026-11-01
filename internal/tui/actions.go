@@ -302,6 +302,15 @@ func (a *App) openCurseForgeSearch() {
 	a.modal.Data = mcVersion
 }
 
+func (a *App) openCurseForgeProject() {
+	cfg := a.store.Snapshot()
+	if strings.TrimSpace(cfg.CurseForgeAPIKey) == "" {
+		a.openError("CurseForge", fmt.Errorf("请先在设置中填写 CurseForge API Key"))
+		return
+	}
+	a.openInput("CurseForge 项目", "项目 ID 或链接", "", "例如 285109 或 .../modpacks/rlcraft", "load-curseforge-project")
+}
+
 func (a *App) openCommunityResources() {
 	items := []pickerItem{
 		{Label: "模组", Desc: "Modrinth", Value: "mod"},
@@ -519,6 +528,28 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		query := strings.TrimSpace(value)
 		a.setToast("正在搜索 CurseForge…", 0)
 		a.rt.SearchCurseForgeModpacks(query, mcVersion)
+	case action == "load-curseforge-project":
+		id, err := minecraft.ParseCurseForgeID(value)
+		if err != nil {
+			a.openError("CurseForge", err)
+			return nil
+		}
+		a.setToast("正在读取 CurseForge 项目…", 0)
+		a.rt.LoadCurseForgeProject(id)
+	case action == "install-curseforge-file":
+		d, ok := data.(curseForgeFileData)
+		if !ok {
+			a.setToast("无效的 CurseForge 文件", 3)
+			return nil
+		}
+		idx, err := strconv.Atoi(item.Value)
+		if err != nil || idx < 0 || idx >= len(d.Files) {
+			a.setToast("无效的 CurseForge 文件", 3)
+			return nil
+		}
+		mod := d.Mod
+		mod.LatestFiles = []minecraft.CurseForgeFile{d.Files[idx]}
+		a.startCurseForgeInstall(mod)
 	case action == "install-curseforge":
 		mods, _ := data.([]minecraft.CurseForgeMod)
 		id := item.Value
@@ -709,6 +740,15 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 	case action == "news":
 		a.setToast("正在获取更新日志…", 0)
 		a.rt.FetchNews()
+	case action == "select-java":
+		path := item.Value
+		a.saveCfg(func(c *config.Config) { c.JavaPath = path })
+		a.rt.DetectJava(path)
+		if path == "" {
+			a.setToast("已切换为自动检测 Java", 1)
+		} else {
+			a.setToast("已选择 "+path, 1)
+		}
 	case action == "modal-context":
 		d, ok := data.(modalContextData)
 		if !ok {

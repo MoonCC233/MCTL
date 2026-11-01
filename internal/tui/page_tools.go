@@ -47,6 +47,7 @@ func (a *App) toolItems() []toolItem {
 		{label: "导入整合包", desc: "导入本地 Modrinth .mrpack 或 CurseForge 整合包到独立实例。", action: "import"},
 		{label: "在线整合包", desc: "按游戏版本与加载器筛选，搜索并安装 Modrinth 整合包。", action: "online-modpacks"},
 		{label: "CurseForge 整合包", desc: "使用 CurseForge API Key 搜索并安装整合包。", action: "curseforge-modpacks"},
+		{label: "CurseForge 项目", desc: "按项目 ID 或链接读取文件列表并安装，适用于搜索接口受限的 Key。", action: "curseforge-by-id"},
 		{label: "收藏", desc: "查看已收藏的整合包、资源包、光影和模组。", action: "favorites"},
 		{label: "在线资源", desc: "搜索 Modrinth 资源包、光影、模组或数据包并安装到当前实例。", action: "online-resources"},
 		{label: "存档管理", desc: "查看、打开、备份、导入或删除当前实例的存档。", action: "worlds"},
@@ -229,6 +230,8 @@ func (a *App) runTool(action string) tea.Cmd {
 		a.openOnlineModpacks()
 	case "curseforge-modpacks":
 		a.openCurseForgeSearch()
+	case "curseforge-by-id":
+		a.openCurseForgeProject()
 	case "favorites":
 		a.openFavorites()
 	case "online-resources":
@@ -282,8 +285,8 @@ func (a *App) runTool(action string) tea.Cmd {
 			a.setToast("打开配置目录失败: "+err.Error(), 2)
 		}
 	case "java":
-		a.rt.DetectJava(a.store.Snapshot().JavaPath)
-		a.setToast("正在检测 Java…", 0)
+		a.rt.ScanJava(a.store.Snapshot().JavaPath)
+		a.setToast("正在扫描 Java…", 0)
 	case "refresh":
 		a.rt.ScanVersions()
 		a.rt.LoadManifest(true)

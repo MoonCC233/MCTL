@@ -272,7 +272,7 @@ func (i *Installer) InstallLoader(ctx context.Context, kind, mcVersion, loaderVe
 	}
 
 	i.report(Progress{Stage: "运行安装器", Current: filepath.Base(installer)}, true)
-	if err := i.runInstaller(ctx, java.Path, installer); err != nil {
+	if err := i.runInstaller(ctx, java.Path, installer, kind, loaderVersion); err != nil {
 		return "", err
 	}
 	if err := ctx.Err(); err != nil {
@@ -289,10 +289,35 @@ func (i *Installer) InstallLoader(ctx context.Context, kind, mcVersion, loaderVe
 	return id, nil
 }
 
-func (i *Installer) runInstaller(ctx context.Context, javaPath, installer string) error {
-	attempts := [][]string{
-		{"-jar", installer, "--installClient", i.GameDir},
-		{"-jar", installer, "--installClient"},
+func (i *Installer) runInstaller(ctx context.Context, javaPath, installer, kind, loaderVersion string) error {
+	if err := ensureLauncherProfiles(i.GameDir); err != nil {
+		i.logf("创建 launcher_profiles.json 失败: %v", err)
+	}
+	jvm := []string{"-Djava.net.useSystemProxies=true"}
+	if host, port, ok := installerProxy(); ok {
+		jvm = append(jvm,
+			"-Dhttp.proxyHost="+host, "-Dhttp.proxyPort="+port,
+			"-Dhttps.proxyHost="+host, "-Dhttps.proxyPort="+port)
+	}
+	var extra [][]string
+	if kind == "cleanroom" {
+		// Cleanroom uses subcommands instead of Forge's --installClient flag.
+		extra = [][]string{
+			{"client", "-d", i.GameDir, "--version", loaderVersion, "-y", "--no-gui"},
+			{"client", "--version", loaderVersion, "-y", "--no-gui"},
+		}
+	} else {
+		extra = [][]string{
+			{"--installClient", i.GameDir},
+			{"--installClient"},
+		}
+	}
+	attempts := make([][]string, 0, len(extra))
+	for _, args := range extra {
+		line := append([]string{}, jvm...)
+		line = append(line, "-jar", installer)
+		line = append(line, args...)
+		attempts = append(attempts, line)
 	}
 	var lastErr error
 	for n, args := range attempts {

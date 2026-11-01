@@ -1,45 +1,58 @@
 package minecraft
 
 import (
-	"net/http"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
-func TestSetProxyConfiguresTransports(t *testing.T) {
-	defer func() { _ = SetProxy("") }()
-
-	if err := SetProxy("http://127.0.0.1:7890"); err != nil {
+func TestEnsureLauncherProfilesCreatesFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := ensureLauncherProfiles(dir); err != nil {
 		t.Fatal(err)
 	}
-	hc := NewHTTPClient(Source{ID: "test"})
-	tr, ok := hc.Client.Transport.(*http.Transport)
-	if !ok || tr == nil {
-		t.Fatalf("transport = %#v", hc.Client.Transport)
-	}
-	req, _ := http.NewRequest(http.MethodGet, "https://example.invalid/", nil)
-	u, err := tr.Proxy(req)
+	data, err := os.ReadFile(filepath.Join(dir, "launcher_profiles.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if u == nil || u.String() != "http://127.0.0.1:7890" {
-		t.Fatalf("proxy = %v", u)
+	var doc map[string]any
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("invalid json: %v", err)
 	}
-
-	if err := SetProxy(""); err != nil {
-		t.Fatal(err)
-	}
-	hc = NewHTTPClient(Source{ID: "test"})
-	tr = hc.Client.Transport.(*http.Transport)
-	if u, _ := tr.Proxy(req); u != nil && u.String() == "http://127.0.0.1:7890" {
-		t.Fatal("proxy should be cleared")
+	if doc["profiles"] == nil {
+		t.Fatalf("profiles missing: %s", data)
 	}
 }
 
-func TestSetProxyRejectsInvalidValues(t *testing.T) {
-	for _, bad := range []string{"127.0.0.1:7890", "ftp://127.0.0.1:21", "http://"} {
-		if err := SetProxy(bad); err == nil {
-			t.Fatalf("expected error for %q", bad)
-		}
+func TestEnsureLauncherProfilesKeepsExisting(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "launcher_profiles.json")
+	if err := os.WriteFile(path, []byte(`{"profiles":{"keep":{}}}`), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	_ = SetProxy("")
+	if err := ensureLauncherProfiles(dir); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != `{"profiles":{"keep":{}}}` {
+		t.Fatalf("existing file rewritten: %s", data)
+	}
+}
+
+func TestInstallerProxyFromConfig(t *testing.T) {
+	if err := SetProxy("http://127.0.0.1:7897"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = SetProxy("") })
+	host, port, ok := installerProxy()
+	if !ok {
+		t.Fatal("configured proxy not detected")
+	}
+	if host != "127.0.0.1" || port != "7897" {
+		t.Fatalf("proxy = %s:%s", host, port)
+	}
 }

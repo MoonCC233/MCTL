@@ -135,12 +135,44 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		}
 		mods, err := SearchCurseForgeModpacks(ctx, hc, key, "better", "1.20.1", 5)
 		if err != nil {
+			if strings.Contains(err.Error(), "无此接口权限") {
+				t.Skipf("this API key is not allowed to use the search endpoint: %v", err)
+			}
 			skipIfUnreachable(t, err)
 		}
 		if len(mods) == 0 {
 			t.Fatal("CurseForge returned no modpacks")
 		}
 		t.Logf("CurseForge: %d modpacks, first=%q", len(mods), mods[0].Name)
+	})
+
+	t.Run("CurseForgeProject", func(t *testing.T) {
+		key := strings.TrimSpace(os.Getenv("CURSEFORGE_API_KEY"))
+		if key == "" {
+			t.Skip("CURSEFORGE_API_KEY not configured")
+		}
+		mod, err := GetCurseForgeMod(ctx, hc, key, 285109)
+		if err != nil {
+			skipIfUnreachable(t, err)
+		}
+		if mod.ID != 285109 || mod.Name == "" {
+			t.Fatalf("project = %#v", mod)
+		}
+		files, err := CurseForgeModFiles(ctx, hc, key, mod.ID, "")
+		if err != nil {
+			skipIfUnreachable(t, err)
+		}
+		if len(files) == 0 {
+			t.Fatal("project has no files")
+		}
+		downloadable := 0
+		for _, f := range files {
+			if f.DownloadURL != "" {
+				downloadable++
+			}
+		}
+		t.Logf("CurseForge project: %s, files=%d, downloadable=%d, first=%s",
+			mod.Name, len(files), downloadable, files[0].DisplayName)
 	})
 
 	t.Run("ModrinthDatapack", func(t *testing.T) {

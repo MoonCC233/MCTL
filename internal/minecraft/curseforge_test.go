@@ -153,3 +153,94 @@ func TestDownloadCurseForgeModpackNoFile(t *testing.T) {
 		t.Fatal("expected missing file error")
 	}
 }
+
+func TestParseCurseForgeID(t *testing.T) {
+	cases := map[string]int{
+		"285109":   285109,
+		" 715572 ": 715572,
+		"https://www.curseforge.com/minecraft/modpacks/all-the-mods-9-715572": 715572,
+		"https://www.curseforge.com/minecraft/mc-mods/jei-238222/":            238222,
+	}
+	for raw, want := range cases {
+		got, err := ParseCurseForgeID(raw)
+		if err != nil {
+			t.Fatalf("%q: %v", raw, err)
+		}
+		if got != want {
+			t.Fatalf("%q = %d, want %d", raw, got, want)
+		}
+	}
+	for _, raw := range []string{"", "rlcraft", "https://www.curseforge.com/minecraft/modpacks/rlcraft", "https://www.curseforge.com/minecraft/modpacks/rlcraft/files/1234"} {
+		if _, err := ParseCurseForgeID(raw); err == nil {
+			t.Fatalf("%q should fail", raw)
+		}
+	}
+}
+
+func TestGetCurseForgeProjectAndFiles(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/mods/7", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("x-api-key") != "key" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		writeTestJSON(t, w, map[string]any{"data": map[string]any{
+			"id": 7, "name": "Pack", "slug": "pack", "classId": 4471,
+		}})
+	})
+	mux.HandleFunc("/v1/mods/7/files", func(w http.ResponseWriter, r *http.Request) {
+		writeTestJSON(t, w, map[string]any{"data": []any{
+			map[string]any{"id": 11, "displayName": "v1", "fileName": "pack.zip", "releaseType": 1, "downloadUrl": "https://example.invalid/pack.zip"},
+			map[string]any{"id": 12, "displayName": "v0", "fileName": "old.zip", "releaseType": 2},
+		}})
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	oldBase := curseForgeAPIBase
+	defer func() { curseForgeAPIBase = oldBase }()
+	curseForgeAPIBase = server.URL + "/v1"
+	hc := NewHTTPClient(Source{ID: "test"})
+	hc.Client = server.Client()
+
+	mod, err := GetCurseForgeMod(context.Background(), hc, "key", 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mod.ID != 7 || mod.Name != "Pack" {
+		t.Fatalf("mod = %#v", mod)
+	}
+	files, err := CurseForgeModFiles(context.Background(), hc, "key", 7, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 2 || files[0].ID != 11 {
+		t.Fatalf("files = %#v", files)
+	}
+}
+
+func TestDownloadCurseForgeFile(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/pack.zip", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("PK\x03\x04fake"))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	hc := NewHTTPClient(Source{ID: "test"})
+	hc.Client = server.Client()
+	dir := t.TempDir()
+	mod := CurseForgeMod{ID: 7, Name: "Pack"}
+	file := CurseForgeFile{ID: 11, FileName: "pack.zip", DownloadURL: server.URL + "/pack.zip"}
+	path, err := DownloadCurseForgeFile(context.Background(), hc, "key", mod, file, dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(data), "PK") {
+		t.Fatalf("downloaded %q", data)
+	}
+}

@@ -74,7 +74,7 @@ func TestLiveForgeInstall(t *testing.T) {
 	}
 	t.Log("forge installer downloaded")
 
-	if err := inst.runInstaller(ctx, java.Path, installer); err != nil {
+	if err := inst.runInstaller(ctx, java.Path, installer, "forge", "47.4.28"); err != nil {
 		t.Fatal(err)
 	}
 	t.Log("forge installer finished")

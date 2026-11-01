@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -435,5 +436,99 @@ func TestKeyboardNavigationDisabled(t *testing.T) {
 	}
 	if a.modal.Kind != modalNone {
 		t.Fatalf("keyboard opened a modal: %#v", a.modal)
+	}
+}
+
+func TestJavaListMessageOpensPicker(t *testing.T) {
+	a := mouseApp(t)
+	list := []minecraft.JavaInfo{
+		{Path: `D:\Program Files\Java\jdk-25.0.3.9\bin\java.exe`, Version: "25.0.3", Major: 25, Vendor: "Eclipse Adoptium"},
+		{Path: `D:\Program Files\Java\jdk-21\bin\java.exe`, Version: "21.0.11", Major: 21, Vendor: "Eclipse Adoptium"},
+	}
+	a.handleEvent(javaListMsg{List: list})
+	if a.modal.Kind != modalPicker || a.modal.Action != "select-java" {
+		t.Fatalf("java picker = %#v", a.modal)
+	}
+	if len(a.modal.Items) != 3 {
+		t.Fatalf("items = %#v", a.modal.Items)
+	}
+	if a.modal.Items[1].Value != list[0].Path {
+		t.Fatalf("first runtime = %#v", a.modal.Items[1])
+	}
+	clickRegion(a, findHit(t, a, "modal-item", 2))
+	if got := a.store.Snapshot().JavaPath; got != list[1].Path {
+		t.Fatalf("config java path = %q", got)
+	}
+}
+
+func TestJavaPickerAutomaticClearsOverride(t *testing.T) {
+	a := mouseApp(t)
+	a.saveCfg(func(c *config.Config) { c.JavaPath = `D:\Java\jdk-21\bin\java.exe` })
+	a.openJavaPicker([]minecraft.JavaInfo{{Path: `D:\Java\jdk-21\bin\java.exe`, Major: 21}})
+	if !strings.HasPrefix(a.modal.Items[1].Label, "★ ") {
+		t.Fatalf("current runtime should be marked: %#v", a.modal.Items[1])
+	}
+	clickRegion(a, findHit(t, a, "modal-item", 0))
+	if got := a.store.Snapshot().JavaPath; got != "" {
+		t.Fatalf("config java path should be cleared, got %q", got)
+	}
+}
+
+func TestJavaPickerEmptyListKeepsState(t *testing.T) {
+	a := mouseApp(t)
+	a.openJavaPicker(nil)
+	if a.modal.Kind != modalNone {
+		t.Fatalf("modal = %#v", a.modal)
+	}
+}
+
+func TestCurseForgeProjectFilesPicker(t *testing.T) {
+	a := mouseApp(t)
+	mod := minecraft.CurseForgeMod{ID: 285109, Name: "RLCraft"}
+	files := []minecraft.CurseForgeFile{
+		{ID: 11, DisplayName: "RLCraft 2.9.3", FileName: "rlcraft.zip", ReleaseType: 1, FileLength: 2048, DownloadURL: "https://example.invalid/a.zip"},
+		{ID: 12, DisplayName: "RLCraft 2.9.2", FileName: "old.zip", ReleaseType: 2},
+	}
+	a.handleEvent(curseForgeProjectMsg{Mod: mod, Files: files})
+	if a.modal.Kind != modalPicker || a.modal.Action != "install-curseforge-file" {
+		t.Fatalf("file picker = %#v", a.modal)
+	}
+	if len(a.modal.Items) != 2 {
+		t.Fatalf("items = %#v", a.modal.Items)
+	}
+	data, ok := a.modal.Data.(curseForgeFileData)
+	if !ok || data.Mod.ID != 285109 || len(data.Files) != 2 {
+		t.Fatalf("data = %#v", a.modal.Data)
+	}
+	if !strings.Contains(a.modal.Items[0].Desc, "正式版") {
+		t.Fatalf("first item = %#v", a.modal.Items[0])
+	}
+}
+
+func TestCurseForgeProjectErrorShowsDialog(t *testing.T) {
+	a := mouseApp(t)
+	a.handleEvent(curseForgeProjectMsg{Err: errors.New("403 forbidden")})
+	if a.modal.Kind != modalError {
+		t.Fatalf("modal = %#v", a.modal)
+	}
+}
+
+func TestCurseForgeByIDToolOpensInput(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir(), CurseForgeAPIKey: "key"})
+	a.width, a.height = 100, 30
+	a.page = pageTools
+	idx := -1
+	for i, it := range a.toolItems() {
+		if it.action == "curseforge-by-id" {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		t.Fatal("curseforge-by-id tool missing")
+	}
+	clickRegion(a, findHit(t, a, "tool-row", idx))
+	if a.modal.Kind != modalInput || a.modal.Action != "load-curseforge-project" {
+		t.Fatalf("modal = %#v", a.modal)
 	}
 }
