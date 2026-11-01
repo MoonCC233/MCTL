@@ -186,7 +186,7 @@ func (a *App) renderFooter() string {
 	case pageVersions:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("d", "删除"), keyHint("o", "目录"), keyHint("/", "筛选"), keyHint("r", "刷新")}
 	case pageDownload:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "安装"), keyHint("[ ]", "来源"), keyHint("m", "筛选"), keyHint("/", "搜索"), keyHint("r", "刷新")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "安装"), keyHint("[ ]", "类型"), keyHint("i", "导入整合包"), keyHint("m", "筛选"), keyHint("/", "搜索"), keyHint("r", "刷新")}
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
 	case pageLogs:
@@ -281,11 +281,15 @@ func (a *App) renderSidebar(h, w int) []string {
 			break
 		}
 	}
+	accountKind := "离线账户"
+	if acc.Type == "microsoft" {
+		accountKind = "Microsoft 账户"
+	}
 	bottom := []string{
 		" " + styleBorder.Render(strings.Repeat("─", max(w-1, 0))),
 		" " + sectionLabel("账户"),
 		" " + dot(colorGreen) + " " + styleText.Render(acc.Name),
-		"   " + styleFaint.Render("离线账户"),
+		"   " + styleFaint.Render(accountKind),
 		"",
 		" " + sectionLabel("当前版本"),
 		" " + styleText.Render(middleEllipsis(ver, w-2)),
@@ -461,13 +465,17 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			a.openError("安装失败", m.Err)
 			a.setToast("安装失败", 2)
 		} else {
-			a.setToast("安装完成: "+m.ID, 1)
+			label := "安装完成"
+			if m.Kind == "modpack" {
+				label = "整合包导入完成"
+			}
+			a.setToast(label+": "+m.ID, 1)
 			a.launch.stage = ""
 			a.launch.percent = 0
 		}
 		return nil
 	case fabricLoadersMsg:
-		a.download.fabricLoading = false
+		a.download.loaderLoading = false
 		if m.Err != nil {
 			a.openError("获取 Fabric 版本失败", m.Err)
 			return nil
@@ -490,6 +498,56 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			Items:    items,
 			Action:   "install-fabric-loader",
 			Data:     m.MC,
+			Selected: 0,
+		}
+		return nil
+	case microsoftCodeMsg:
+		if a.modal.Kind == modalProgress && a.modal.Action == "cancel-auth" {
+			a.modal.Stage = "等待 Microsoft 授权"
+			a.modal.Detail = fmt.Sprintf("%s · 代码 %s", m.Code.VerificationURI, m.Code.UserCode)
+		}
+		return nil
+	case microsoftDoneMsg:
+		a.modal = modalState{}
+		if m.Canceled {
+			a.setToast("已取消 Microsoft 登录", 3)
+			return nil
+		}
+		if m.Err != nil {
+			a.openError("Microsoft 登录失败", m.Err)
+			return nil
+		}
+		a.setToast("已登录 Microsoft 账户 "+m.Account.Name, 1)
+		a.openAccounts()
+		return nil
+	case loaderVersionsMsg:
+		a.download.loaderLoading = false
+		name := "Forge"
+		if m.Kind == "neoforge" {
+			name = "NeoForge"
+		}
+		if m.Err != nil {
+			a.openError("获取 "+name+" 版本失败", m.Err)
+			return nil
+		}
+		if len(m.Builds) == 0 {
+			a.setToast("该版本没有可用的 "+name+" 构建", 3)
+			return nil
+		}
+		items := make([]pickerItem, 0, len(m.Builds))
+		for _, b := range m.Builds {
+			desc := "测试版"
+			if b.Stable {
+				desc = "稳定版"
+			}
+			items = append(items, pickerItem{Label: b.Version, Desc: desc, Value: b.Version})
+		}
+		a.modal = modalState{
+			Kind:     modalPicker,
+			Title:    "选择 " + name + " 版本 · " + m.MC,
+			Items:    items,
+			Action:   "install-loader",
+			Data:     loaderPickerData{Kind: m.Kind, MC: m.MC},
 			Selected: 0,
 		}
 		return nil
@@ -566,7 +624,33 @@ func (a *App) startLaunch(versionID string) {
 	a.saveCfg(func(c *config.Config) { c.SelectedVersion = versionID })
 	a.launch.stage = "准备启动"
 	a.launch.percent = 0
-	a.rt.Launch(versionID)
+	gameDir := a.store.Snapshot().GameDir
+	for _, v := range a.launch.versions {
+		if v.ID == versionID && v.GameDir != "" {
+			gameDir = v.GameDir
+			break
+		}
+	}
+	a.rt.Launch(versionID, gameDir)
+}
+
+func (a *App) startModpackImport(path string) {
+	if path == "" {
+		a.setToast("请填写整合包路径", 3)
+		return
+	}
+	if a.rt.Busy() {
+		a.setToast("已有任务正在进行", 3)
+		return
+	}
+	a.modal = modalState{
+		Kind:    modalProgress,
+		Title:   "导入整合包",
+		Stage:   "准备中",
+		Percent: 0,
+		Action:  "cancel-install",
+	}
+	a.rt.ImportModpack(path)
 }
 
 func (a *App) startInstall(kind, id, mc, loader string, entry *minecraft.VersionEntry) {
@@ -575,8 +659,13 @@ func (a *App) startInstall(kind, id, mc, loader string, entry *minecraft.Version
 		return
 	}
 	title := "安装 " + id
-	if kind == "fabric" {
+	switch kind {
+	case "fabric":
 		title = fmt.Sprintf("安装 Fabric %s · %s", loader, mc)
+	case "forge":
+		title = fmt.Sprintf("安装 Forge %s · %s", loader, mc)
+	case "neoforge":
+		title = fmt.Sprintf("安装 NeoForge %s · %s", loader, mc)
 	}
 	a.modal = modalState{
 		Kind:    modalProgress,
@@ -585,7 +674,6 @@ func (a *App) startInstall(kind, id, mc, loader string, entry *minecraft.Version
 		Percent: 0,
 		Action:  "cancel-install",
 	}
-	a.download.installing = true
 	a.rt.Install(kind, id, mc, loader, entry)
 }
 

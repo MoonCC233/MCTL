@@ -13,6 +13,26 @@ import (
 
 var accountNameRe = regexp.MustCompile(`^[A-Za-z0-9_]{3,16}$`)
 
+type loaderPickerData struct {
+	Kind string
+	MC   string
+}
+
+func (a *App) openMicrosoftLogin() {
+	cfg := a.store.Snapshot()
+	if strings.TrimSpace(cfg.MicrosoftClientID) == "" {
+		a.openError("Microsoft 登录", fmt.Errorf("请先在设置中填写 Microsoft 客户端 ID；Azure 应用需要启用公共客户端设备代码流"))
+		return
+	}
+	a.modal = modalState{
+		Kind:   modalProgress,
+		Title:  "Microsoft 登录",
+		Stage:  "正在请求设备代码…",
+		Action: "cancel-auth",
+	}
+	a.rt.StartMicrosoftLogin(cfg.MicrosoftClientID)
+}
+
 func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd {
 	switch {
 	case action == "quit":
@@ -22,6 +42,7 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		if a.rt.Installing() {
 			a.rt.CancelInstall()
 		}
+		a.rt.CancelMicrosoftLogin()
 		a.quitting = true
 		return tea.Quit
 	case action == "stop-game":
@@ -29,7 +50,14 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		a.setToast("正在停止游戏…", 3)
 	case action == "delete-version":
 		id, _ := data.(string)
-		if err := minecraft.DeleteVersion(a.store.Snapshot().GameDir, id); err != nil {
+		gameDir := a.store.Snapshot().GameDir
+		for _, v := range a.launch.versions {
+			if v.ID == id && v.GameDir != "" {
+				gameDir = v.GameDir
+				break
+			}
+		}
+		if err := minecraft.DeleteVersion(gameDir, id); err != nil {
 			a.openError("删除版本失败", err)
 			return nil
 		}
@@ -46,6 +74,15 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		loader := item.Value
 		profileID := fmt.Sprintf("fabric-loader-%s-%s", loader, mc)
 		a.startInstall("fabric", profileID, mc, loader, nil)
+	case action == "install-loader":
+		d, _ := data.(loaderPickerData)
+		if d.Kind == "" || d.MC == "" || item.Value == "" {
+			return nil
+		}
+		id := fmt.Sprintf("%s-%s-%s", d.Kind, d.MC, item.Value)
+		a.startInstall(d.Kind, id, d.MC, item.Value, nil)
+	case action == "import-modpack":
+		a.startModpackImport(strings.TrimSpace(value))
 	case action == "filter-versions":
 		a.versions.filter = strings.TrimSpace(value)
 		a.versions.idx = 0
@@ -116,6 +153,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.switchPage(pageLogs)
 	case "cmd-account":
 		a.openAccounts()
+	case "cmd-ms-login":
+		a.openMicrosoftLogin()
 	case "cmd-java":
 		a.rt.DetectJava(cfg.JavaPath)
 		a.setToast("正在检测 Java…", 0)
@@ -123,6 +162,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.rt.ScanVersions()
 		a.rt.LoadManifest(true)
 		a.setToast("正在刷新版本与列表…", 0)
+	case "cmd-import-modpack":
+		a.openInput("导入整合包", "Modrinth .mrpack 文件路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":

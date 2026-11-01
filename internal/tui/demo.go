@@ -27,7 +27,7 @@ func RenderDemo(page string, width, height int) string {
 		AutoJava:        true,
 		Accounts: []config.Account{
 			{Name: "Alex", Type: "offline", UUID: minecraft.OfflineUUID("Alex")},
-			{Name: "Steve", Type: "offline", UUID: minecraft.OfflineUUID("Steve")},
+			{Name: "Steve", Type: "microsoft", UUID: minecraft.OfflineUUID("Steve")},
 		},
 	}
 	store := &config.Store{Cfg: cfg, Path: "demo"}

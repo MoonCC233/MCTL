@@ -32,6 +32,8 @@ func TestBuildLaunchPlan(t *testing.T) {
 				"--assetIndex", "${assets_index_name}",
 				"--uuid", "${auth_uuid}",
 				"--accessToken", "${auth_access_token}",
+				"--xuid", "${auth_xuid}",
+				"--userType", "${user_type}",
 				"--version", "${version_name}",
 				"--width", "${resolution_width}",
 				"--height", "${resolution_height}",
@@ -47,6 +49,9 @@ func TestBuildLaunchPlan(t *testing.T) {
 		GameDir:      dir,
 		VersionID:    "1.20.1",
 		PlayerName:   "Alex",
+		AccessToken:  "mc-token",
+		XUID:         "xuid-123",
+		UserType:     "msa",
 		Java:         &JavaInfo{Path: "java", Major: 17},
 		MinMemory:    512,
 		MaxMemory:    2048,
@@ -67,6 +72,7 @@ func TestBuildLaunchPlan(t *testing.T) {
 		"-Xms512M", "-Xmx2048M", "-Ddemo=true", "-Djava.library.path=",
 		"lib-1.0.jar", "1.20.1.jar", "-XX:+UseG1GC", "--username", "Alex",
 		"--width", "1280", "--height", "720", "--demo", "--assetIndex", "5",
+		"--xuid", "xuid-123", "--accessToken", "mc-token", "msa",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("args missing %q:\n%s", want, strings.Join(plan.Args, "\n"))

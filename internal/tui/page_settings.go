@@ -47,6 +47,8 @@ func (a *App) settingItems() []settingItem {
 		{key: "fullscreen", section: "启动", label: "全屏启动", desc: "启动游戏时直接进入全屏模式。", kind: settingToggle},
 		{key: "jvm_args", section: "启动", label: "JVM 参数", desc: "追加到 Java 命令行的参数，例如 -XX:+UseG1GC。", kind: settingText},
 		{key: "game_args", section: "启动", label: "游戏参数", desc: "追加到 Minecraft 主类的参数，例如 --demo。", kind: settingText},
+		{key: "ms_client_id", section: "账户", label: "微软客户端 ID", desc: "Azure 应用的客户端 ID，需要启用公共客户端设备代码流。", kind: settingText},
+		{key: "ms_login", section: "账户", label: "Microsoft 登录", desc: "使用设备代码在浏览器中登录 Microsoft 账户。", kind: settingAction},
 		{key: "open_game", section: "目录", label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", kind: settingAction},
 		{key: "open_config", section: "目录", label: "打开配置目录", desc: "打开 MCTL 配置与日志所在目录。", kind: settingAction},
 	}
@@ -187,6 +189,13 @@ func (a *App) settingValue(cfg config.Config, it settingItem) string {
 			return "（无）"
 		}
 		return middleEllipsis(cfg.GameArgs, 40)
+	case "ms_client_id":
+		if strings.TrimSpace(cfg.MicrosoftClientID) == "" {
+			return "未配置"
+		}
+		return middleEllipsis(cfg.MicrosoftClientID, 40)
+	case "ms_login":
+		return "登录"
 	case "detect_java", "open_game", "open_config":
 		return "→"
 	}
@@ -251,6 +260,8 @@ func (a *App) rawSettingValue(cfg config.Config, it settingItem) string {
 		return cfg.JVMArgs
 	case "game_args":
 		return cfg.GameArgs
+	case "ms_client_id":
+		return cfg.MicrosoftClientID
 	}
 	return ""
 }
@@ -318,6 +329,8 @@ func (a *App) runSettingAction(it settingItem) {
 		cfg := a.store.Snapshot()
 		a.rt.DetectJava(cfg.JavaPath)
 		a.setToast("正在检测 Java…", 0)
+	case "ms_login":
+		a.openMicrosoftLogin()
 	case "open_game":
 		a.openGameDir()
 	case "open_config":
@@ -388,5 +401,8 @@ func (a *App) submitSetting(key, value string) {
 	case "game_args":
 		a.saveCfg(func(c *config.Config) { c.GameArgs = value })
 		a.setToast("游戏参数已保存", 1)
+	case "ms_client_id":
+		a.saveCfg(func(c *config.Config) { c.MicrosoftClientID = value })
+		a.setToast("Microsoft 客户端 ID 已保存", 1)
 	}
 }

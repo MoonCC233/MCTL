@@ -9,9 +9,11 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **完整的终端界面**：启动、版本、下载、设置、日志五个页面，支持响应式布局。
 - **真实安装流程**：读取 Mojang 版本清单，下载客户端、依赖库、natives 和资源文件，校验 SHA-1。
 - **版本继承**：解析 `inheritsFrom`，合并父版本与子版本的库、参数和主类。
-- **Fabric 支持**：获取 Fabric Meta 加载器列表，安装原版后写入 Fabric 版本配置。
-- **Java 管理**：扫描常见安装位置与 `JAVA_HOME`，检查版本兼容性；缺少 Java 时可从 Adoptium 下载 JRE。
+- **加载器支持**：Fabric、Forge 与 NeoForge；Forge/NeoForge 使用官方安装器，并自动补全依赖。
+- **整合包导入**：导入 Modrinth `.mrpack`，创建独立实例目录，下载模组与覆盖文件，并复用已安装的基础版本。
+- **Microsoft 登录**：设备代码流登录 Microsoft 账户，自动完成 Xbox Live、XSTS 与 Minecraft Services 认证；令牌过期时自动刷新。
 - **离线账户**：添加、切换和删除离线账户，自动生成与 Minecraft 一致的离线 UUID。
+- **Java 管理**：扫描常见安装位置与 `JAVA_HOME`，检查版本兼容性；缺少 Java 时可从 Adoptium 下载 JRE。
 - **双下载源**：BMCLAPI 镜像与 Mojang 官方源，可在设置中即时切换。
 - **启动参数**：自定义最小/最大内存、窗口尺寸、全屏、JVM 参数和游戏参数。
 - **日志系统**：启动器日志与游戏 stdout/stderr 实时进入日志页，并同步写入日志文件。
@@ -136,8 +138,9 @@ mctl
 | 按键 | 功能 |
 | --- | --- |
 | `↑` `↓` | 选择版本 |
-| `enter` | 安装原版，或在 Fabric 模式下选择加载器 |
-| `←` `→` / `[` `]` | 切换原版 / Fabric |
+| `enter` | 安装原版，或在加载器模式下选择加载器版本 |
+| `←` `→` / `[` `]` | 切换原版 / Fabric / Forge / NeoForge |
+| `i` | 导入 Modrinth `.mrpack` 整合包 |
 | `m` | 切换正式版、快照、全部 |
 | `/` | 搜索版本 |
 | `r` | 刷新版本清单 |
@@ -150,6 +153,27 @@ mctl
 | `enter` | 编辑或执行 |
 | `←` `→` | 调整数值或选项 |
 | `o` | 打开游戏目录 |
+
+在账户弹窗中按 `m` 可以开始 Microsoft 设备代码登录。首次使用需要准备一个 Azure 应用：
+
+1. 在 Azure Portal 的「应用注册」中新建应用，账户类型选择支持个人 Microsoft 账户。
+2. 在「身份验证」中启用「允许公共客户端流」。
+3. 复制「应用程序（客户端）ID」，填入设置页的「微软客户端 ID」。
+4. 回到账户弹窗按 `m`，按提示打开浏览器并输入设备代码。
+
+登录成功后，访问令牌、刷新令牌和过期时间保存在本机 `config.json` 中；启动器会在令牌过期前自动刷新。若刷新失败，需要重新执行 Microsoft 登录。
+
+### 整合包
+
+下载页按 `i`，输入本地 `.mrpack` 路径即可导入。MCTL 会：
+
+1. 读取 `modrinth.index.json`。
+2. 在 `instances/<名称>-<短哈希>` 下创建独立实例。
+3. 安装声明的 Minecraft 版本与加载器。
+4. 下载模组和资源文件，并解压 `overrides/` 与 `client-overrides/`。
+5. 生成 `pack-*` 版本，出现在版本页和启动页中。
+
+当前整合包导入支持 Modrinth 格式；Quilt 与需要 CurseForge API 的格式尚未纳入。
 
 ### 日志页
 
@@ -171,7 +195,7 @@ mctl
 
 主要文件：
 
-- `config.json`：游戏目录、Java 路径、内存、窗口、下载源、账户等。
+- `config.json`：游戏目录、Java 路径、内存、窗口、下载源、Microsoft 客户端 ID、账户与令牌等。Microsoft 刷新令牌只保存在本机配置文件中，请勿分享该文件。
 - `logs/mctl-YYYYMMDD.log`：启动器与游戏日志。
 
 配置采用原子写入；如果 `config.json` 损坏，会保留为 `config.json.broken` 并回退到默认配置。
@@ -192,18 +216,18 @@ go build ./...
 ├── internal/
 │   ├── config/                 配置持久化与账户
 │   ├── logbuf/                 内存日志环形缓冲区与文件镜像
-│   ├── minecraft/              清单、版本解析、安装、Java、启动
+│   ├── minecraft/              清单、版本解析、安装、Java、启动、认证与整合包
 │   └── tui/                    Bubble Tea 界面、页面、弹窗与运行时
 └── .github/workflows/          CI 与 Release 工作流
 ```
 
 ## 发布
 
-推送形如 `v1.0.0` 的标签会触发 Release 工作流：
+推送形如 `v1.0.2` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.2
+git push origin v1.0.2
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

@@ -16,7 +16,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.0"
+var Version = "1.0.2"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -57,6 +57,13 @@ type fabricLoadersMsg struct {
 	Err     error
 }
 
+type loaderVersionsMsg struct {
+	Kind   string
+	MC     string
+	Builds []minecraft.LoaderBuild
+	Err    error
+}
+
 type launchStageMsg struct {
 	Stage   string
 	Percent float64
@@ -71,6 +78,16 @@ type launchStartedMsg struct {
 type launchExitMsg struct {
 	Err     error
 	Stopped bool
+}
+
+type microsoftCodeMsg struct {
+	Code minecraft.MicrosoftDeviceCode
+}
+
+type microsoftDoneMsg struct {
+	Account  config.Account
+	Err      error
+	Canceled bool
 }
 
 // Runtime owns background state shared by the pages.
@@ -89,6 +106,8 @@ type Runtime struct {
 
 	installing    bool
 	installCancel context.CancelFunc
+	authing       bool
+	authCancel    context.CancelFunc
 	launching     bool
 	stopping      bool
 	cmd           *exec.Cmd
@@ -138,7 +157,7 @@ func (r *Runtime) Manifest() *minecraft.VersionManifest {
 func (r *Runtime) Busy() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.installing || r.launching
+	return r.installing || r.launching || r.authing
 }
 
 // Installing reports whether an install is running.
@@ -235,7 +254,7 @@ func (r *Runtime) DetectJava(preferred string) {
 // Install starts an asynchronous vanilla or Fabric installation.
 func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.VersionEntry) {
 	r.mu.Lock()
-	if r.installing || r.launching {
+	if r.installing || r.launching || r.authing {
 		r.mu.Unlock()
 		r.Emit(installDoneMsg{Kind: kind, ID: id, Err: fmt.Errorf("已有任务正在进行")})
 		return
@@ -264,6 +283,22 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 				}
 				err = inst.InstallProfile(ctx, actualID, profile)
 			}
+		} else if kind == "forge" || kind == "neoforge" {
+			required := minecraft.InferJavaMajor(mcVersion)
+			r.Logf("准备 %s 安装器（Java %d）", kind, required)
+			var javaInfo *minecraft.JavaInfo
+			if cfg.AutoJava {
+				javaInfo, err = inst.EnsureJava(ctx, required, cfg.JavaPath)
+			} else {
+				javaInfo, err = minecraft.FindJavaFor(required, cfg.JavaPath)
+			}
+			if err == nil {
+				r.Logf("先安装原版 %s", mcVersion)
+				err = inst.InstallVersion(ctx, mcVersion, nil)
+			}
+			if err == nil {
+				actualID, err = inst.InstallLoader(ctx, kind, mcVersion, loader, javaInfo)
+			}
 		} else {
 			err = inst.InstallVersion(ctx, id, entry)
 		}
@@ -283,6 +318,46 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 		r.installCancel = nil
 		r.mu.Unlock()
 		r.Emit(installDoneMsg{Kind: kind, ID: actualID, Err: err, Canceled: canceled})
+		r.ScanVersions()
+	}()
+}
+
+// ImportModpack installs a Modrinth pack into an isolated instance.
+func (r *Runtime) ImportModpack(path string) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "modpack", Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	ctx, cancel := context.WithCancel(context.Background())
+	r.installCancel = cancel
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		inst := minecraft.NewInstaller(cfg.GameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
+			r.Emit(progressMsg{Scope: "install", P: p})
+		})
+		id, err := inst.ImportModpack(ctx, path, cfg.JavaPath, cfg.AutoJava)
+		canceled := ctx.Err() != nil
+		if err == nil {
+			_ = r.Store.Update(func(c *config.Config) {
+				c.SelectedVersion = id
+			})
+			r.Logf("整合包导入完成: %s", id)
+		} else if canceled {
+			r.Logf("整合包导入已取消")
+		} else {
+			r.Logf("整合包导入失败: %v", err)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "modpack", ID: id, Err: err, Canceled: canceled})
 		r.ScanVersions()
 	}()
 }
@@ -311,10 +386,83 @@ func (r *Runtime) FetchFabricLoaders(mcVersion string) {
 	}()
 }
 
-// Launch prepares files and starts the game.
-func (r *Runtime) Launch(versionID string) {
+// FetchLoaderVersions lists Forge or NeoForge builds for a game version.
+func (r *Runtime) FetchLoaderVersions(kind, mcVersion string) {
+	cfg := r.Store.Snapshot()
+	src := minecraft.GetSource(cfg.DownloadSource)
+	go func() {
+		hc := minecraft.NewHTTPClient(src)
+		builds, err := minecraft.FetchLoaderBuilds(context.Background(), hc, kind, mcVersion)
+		if err != nil {
+			r.Logf("获取 %s 版本失败: %v", kind, err)
+		}
+		r.Emit(loaderVersionsMsg{Kind: kind, MC: mcVersion, Builds: builds, Err: err})
+	}()
+}
+
+// StartMicrosoftLogin starts the device-code login flow.
+func (r *Runtime) StartMicrosoftLogin(clientID string) {
 	r.mu.Lock()
-	if r.launching || r.installing {
+	if r.authing || r.installing || r.launching {
+		r.mu.Unlock()
+		r.Emit(microsoftDoneMsg{Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.authing = true
+	ctx, cancel := context.WithCancel(context.Background())
+	r.authCancel = cancel
+	r.mu.Unlock()
+
+	go func() {
+		res, err := minecraft.LoginMicrosoft(ctx, clientID, func(code minecraft.MicrosoftDeviceCode) {
+			r.Emit(microsoftCodeMsg{Code: code})
+		})
+		canceled := ctx.Err() != nil
+		var account config.Account
+		if err == nil {
+			account = config.Account{
+				Name:         res.Name,
+				UUID:         res.UUID,
+				Type:         "microsoft",
+				AccessToken:  res.AccessToken,
+				RefreshToken: res.RefreshToken,
+				ExpiresAt:    res.ExpiresAt,
+				XUID:         res.XUID,
+				ClientID:     clientID,
+			}
+			if saveErr := r.Store.SetAccount(account); saveErr != nil {
+				err = saveErr
+			}
+		}
+		r.mu.Lock()
+		r.authing = false
+		r.authCancel = nil
+		r.mu.Unlock()
+		if canceled {
+			r.Logf("Microsoft 登录已取消")
+		} else if err != nil {
+			r.Logf("Microsoft 登录失败: %v", err)
+		} else {
+			r.Logf("Microsoft 账户已登录: %s", account.Name)
+		}
+		r.Emit(microsoftDoneMsg{Account: account, Err: err, Canceled: canceled})
+	}()
+}
+
+// CancelMicrosoftLogin cancels a pending device-code login.
+func (r *Runtime) CancelMicrosoftLogin() {
+	r.mu.Lock()
+	cancel := r.authCancel
+	r.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+// Launch prepares files and starts the game.
+func (r *Runtime) Launch(versionID, gameDir string) {
+	r.mu.Lock()
+	if r.launching || r.installing || r.authing {
 		r.mu.Unlock()
 		r.Emit(launchExitMsg{Err: fmt.Errorf("已有任务正在进行")})
 		return
@@ -326,8 +474,11 @@ func (r *Runtime) Launch(versionID string) {
 	go func() {
 		cfg := r.Store.Snapshot()
 		account := cfg.Account()
+		if gameDir == "" {
+			gameDir = cfg.GameDir
+		}
 		src := minecraft.GetSource(cfg.DownloadSource)
-		inst := minecraft.NewInstaller(cfg.GameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
+		inst := minecraft.NewInstaller(gameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
 			r.Emit(progressMsg{Scope: "launch", P: p})
 		})
 		fail := func(err error) {
@@ -338,8 +489,36 @@ func (r *Runtime) Launch(versionID string) {
 			r.Logf("启动失败: %v", err)
 			r.Emit(launchExitMsg{Err: err})
 		}
+		if account.Type == "microsoft" && (account.AccessToken == "" || time.Now().Unix() >= account.ExpiresAt-120) {
+			clientID := account.ClientID
+			if clientID == "" {
+				clientID = cfg.MicrosoftClientID
+			}
+			r.Logf("刷新 Microsoft 登录令牌")
+			res, rerr := minecraft.RefreshMicrosoft(context.Background(), clientID, account.RefreshToken)
+			if rerr != nil {
+				fail(fmt.Errorf("Microsoft 登录已失效: %w", rerr))
+				return
+			}
+			account.AccessToken = res.AccessToken
+			account.RefreshToken = res.RefreshToken
+			account.ExpiresAt = res.ExpiresAt
+			if res.Name != "" {
+				account.Name = res.Name
+			}
+			if res.UUID != "" {
+				account.UUID = res.UUID
+			}
+			if res.XUID != "" {
+				account.XUID = res.XUID
+			}
+			if err := r.Store.SetAccount(account); err != nil {
+				fail(fmt.Errorf("保存 Microsoft 登录信息: %w", err))
+				return
+			}
+		}
 		r.Logf("准备启动 %s（账户 %s）", versionID, account.Name)
-		rv, err := minecraft.ResolveVersion(cfg.GameDir, versionID)
+		rv, err := minecraft.ResolveVersion(gameDir, versionID)
 		if err != nil {
 			fail(err)
 			return
@@ -374,12 +553,18 @@ func (r *Runtime) Launch(versionID string) {
 		if uuid == "" {
 			uuid = minecraft.OfflineUUID(account.Name)
 		}
+		userType := "legacy"
+		if account.Type == "microsoft" {
+			userType = "msa"
+		}
 		plan, err := minecraft.BuildLaunchPlan(minecraft.LaunchOptions{
-			GameDir:         cfg.GameDir,
+			GameDir:         gameDir,
 			VersionID:       versionID,
 			PlayerName:      account.Name,
 			UUID:            uuid,
-			UserType:        "legacy",
+			AccessToken:     account.AccessToken,
+			XUID:            account.XUID,
+			UserType:        userType,
 			Java:            javaInfo,
 			MinMemory:       cfg.MinMemory,
 			MaxMemory:       cfg.MaxMemory,

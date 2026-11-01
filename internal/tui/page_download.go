@@ -11,7 +11,7 @@ import (
 )
 
 type downloadPage struct {
-	mode     int // 0 vanilla, 1 fabric
+	mode     int // 0 vanilla, 1 fabric, 2 forge, 3 neoforge
 	manifest *minecraft.VersionManifest
 	err      error
 	loading  bool
@@ -19,10 +19,11 @@ type downloadPage struct {
 	idx      int
 	filter   string
 
-	fabricLoading bool
-	installing    bool
+	loaderLoading bool
 	installed     map[string]bool
 }
+
+var loaderModeNames = []string{"Minecraft 原版", "Fabric", "Forge", "NeoForge"}
 
 func (p *downloadPage) applyManifest(m *minecraft.VersionManifest, err error) {
 	p.loading = false
@@ -45,7 +46,7 @@ func (p *downloadPage) versions() []minecraft.VersionEntry {
 	f := strings.ToLower(strings.TrimSpace(p.filter))
 	var out []minecraft.VersionEntry
 	for _, v := range p.manifest.Versions {
-		if p.mode == 0 {
+		if p.mode != 1 {
 			switch p.show {
 			case 0:
 				if v.Type != "release" {
@@ -70,10 +71,7 @@ func (p *downloadPage) versions() []minecraft.VersionEntry {
 
 func (a *App) viewDownload(w, h int) []string {
 	p := &a.download
-	modeName := "Minecraft 原版"
-	if p.mode == 1 {
-		modeName = "Fabric"
-	}
+	modeName := loaderModeNames[clamp(p.mode, 0, len(loaderModeNames)-1)]
 	sub := "正在获取版本列表…"
 	if p.manifest != nil {
 		sub = fmt.Sprintf("%s · %d 个版本 · 下载源 %s", modeName, len(p.versions()), minecraft.GetSource(a.store.Snapshot().DownloadSource).Name)
@@ -129,8 +127,8 @@ func (a *App) renderDownloadTabs() string {
 		}
 		return lipgloss.NewStyle().Foreground(colorMuted).Padding(0, 2).Render(label)
 	}
-	line := tab("游戏版本", p.mode == 0) + " " + tab("Fabric", p.mode == 1)
-	if p.mode == 0 {
+	line := tab("游戏版本", p.mode == 0) + " " + tab("Fabric", p.mode == 1) + " " + tab("Forge", p.mode == 2) + " " + tab("NeoForge", p.mode == 3)
+	if p.mode != 1 {
 		show := []string{"正式版", "快照", "全部"}[p.show]
 		line += "   " + styleFaint.Render("筛选: "+show+"  (m 切换)")
 	}
@@ -178,7 +176,7 @@ func (a *App) renderDownloadList(w, h int, list []minecraft.VersionEntry) string
 		rows = rows[:panelContentHeight(h)]
 	}
 	title := "版本列表"
-	if a.download.mode == 1 {
+	if a.download.mode != 0 {
 		title = "选择游戏版本"
 	}
 	return panel(fmt.Sprintf("%s · %d", title, len(list)), w, h, a.page == pageDownload, rows)
@@ -224,17 +222,26 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 			rows = append(rows, kv("状态", "未安装", inner))
 		}
 		rows = append(rows, "", "  "+styleBorder.Render(strings.Repeat("─", max(inner-4, 0))))
-		if a.download.mode == 0 {
+		switch a.download.mode {
+		case 0:
 			if a.download.installed[v.ID] {
 				rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("修复 / 重新安装"))
 			} else {
 				rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("安装此版本"))
 			}
 			rows = append(rows, "", "  "+styleFaint.Render("将下载客户端、依赖库与资源文件"))
-		} else {
+		case 1:
 			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Fabric 加载器"))
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
 			rows = append(rows, "  "+styleFaint.Render("再写入 Fabric 配置并补全依赖"))
+		case 2:
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Forge 版本"))
+			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render("再运行 Forge 安装器并补全依赖"))
+		case 3:
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 NeoForge 版本"))
+			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 "+v.ID+"，"))
+			rows = append(rows, "  "+styleFaint.Render("再运行 NeoForge 安装器并补全依赖"))
 		}
 	}
 	for len(rows) < panelContentHeight(h) {
@@ -271,26 +278,30 @@ func (a *App) downloadKey(msg tea.KeyMsg) tea.Cmd {
 			p.idx = len(list) - 1
 		}
 	case "left", "[":
-		if p.mode != 0 {
-			p.mode = 0
+		if p.mode > 0 {
+			p.mode--
 			p.idx = 0
+			p.loaderLoading = false
 		}
 	case "right", "]":
-		if p.mode != 1 {
-			p.mode = 1
+		if p.mode < len(loaderModeNames)-1 {
+			p.mode++
 			p.idx = 0
+			p.loaderLoading = false
 			if p.manifest == nil && !p.loading {
 				a.rt.LoadManifest(false)
 			}
 		}
 	case "m":
-		if p.mode == 0 {
+		if p.mode != 1 {
 			p.show = (p.show + 1) % 3
 			p.idx = 0
 			a.setToast("筛选: "+[]string{"正式版", "快照", "全部"}[p.show], 0)
 		}
 	case "/":
 		a.modal = modalState{Kind: modalInput, Title: "搜索版本", Label: "版本号或类型", Value: []rune(p.filter), Placeholder: "例如 1.21 / snapshot", Action: "filter-download"}
+	case "i":
+		a.openInput("导入整合包", "Modrinth .mrpack 文件路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
 	case "r":
 		a.rt.LoadManifest(true)
 		a.setToast("正在刷新版本列表", 0)
@@ -299,14 +310,23 @@ func (a *App) downloadKey(msg tea.KeyMsg) tea.Cmd {
 			return nil
 		}
 		v := list[p.idx]
-		if p.mode == 1 {
-			if p.fabricLoading {
-				a.setToast("正在获取 Fabric 版本，请稍候", 3)
+		if p.mode != 0 {
+			if p.loaderLoading {
+				a.setToast("正在获取加载器版本，请稍候", 3)
 				return nil
 			}
-			p.fabricLoading = true
-			a.setToast("正在获取 Fabric 加载器…", 0)
-			a.rt.FetchFabricLoaders(v.ID)
+			p.loaderLoading = true
+			if p.mode == 1 {
+				a.setToast("正在获取 Fabric 加载器…", 0)
+				a.rt.FetchFabricLoaders(v.ID)
+			} else {
+				kind := "forge"
+				if p.mode == 3 {
+					kind = "neoforge"
+				}
+				a.setToast("正在获取 "+loaderModeNames[p.mode]+" 版本…", 0)
+				a.rt.FetchLoaderVersions(kind, v.ID)
+			}
 			return nil
 		}
 		if p.installed[v.ID] {

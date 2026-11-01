@@ -20,6 +20,7 @@ type LaunchOptions struct {
 	PlayerName      string
 	UUID            string
 	AccessToken     string
+	XUID            string
 	UserType        string
 	Java            *JavaInfo
 	MinMemory       int
@@ -144,6 +145,10 @@ func BuildLaunchPlan(opts LaunchOptions) (*LaunchPlan, error) {
 	if userType == "" {
 		userType = "legacy"
 	}
+	xuid := opts.XUID
+	if xuid == "" {
+		xuid = "0"
+	}
 	launcherName := opts.LauncherName
 	if launcherName == "" {
 		launcherName = "MCTL"
@@ -161,7 +166,7 @@ func BuildLaunchPlan(opts LaunchOptions) (*LaunchPlan, error) {
 		"auth_uuid":           uuid,
 		"auth_access_token":   token,
 		"clientid":            "mctl",
-		"auth_xuid":           "0",
+		"auth_xuid":           xuid,
 		"user_type":           userType,
 		"version_type":        rv.Type,
 		"natives_directory":   nativeDir,

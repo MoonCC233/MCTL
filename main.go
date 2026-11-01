@@ -98,6 +98,7 @@ func run() error {
 	}
 	rt.Stop()
 	rt.CancelInstall()
+	rt.CancelMicrosoftLogin()
 	return nil
 }
 

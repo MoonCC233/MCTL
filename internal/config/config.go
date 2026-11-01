@@ -13,31 +13,37 @@ import (
 
 // Account is a Minecraft account known to the launcher.
 type Account struct {
-	Name string `json:"name"`
-	UUID string `json:"uuid"`
-	Type string `json:"type"` // "offline" or "microsoft"
+	Name         string `json:"name"`
+	UUID         string `json:"uuid"`
+	Type         string `json:"type"` // "offline" or "microsoft"
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	ExpiresAt    int64  `json:"expires_at,omitempty"`
+	XUID         string `json:"xuid,omitempty"`
+	ClientID     string `json:"client_id,omitempty"`
 }
 
 // Config is the persisted launcher configuration.
 type Config struct {
-	GameDir          string    `json:"game_dir"`
-	JavaPath         string    `json:"java_path"`
-	MinMemory        int       `json:"min_memory"`
-	MaxMemory        int       `json:"max_memory"`
-	JVMArgs          string    `json:"jvm_args"`
-	GameArgs         string    `json:"game_args"`
-	Width            int       `json:"width"`
-	Height           int       `json:"height"`
-	Fullscreen       bool      `json:"fullscreen"`
-	DownloadSource   string    `json:"download_source"`
-	SelectedVersion  string    `json:"selected_version"`
-	SelectedAccount  string    `json:"selected_account"`
-	Accounts         []Account `json:"accounts"`
-	AutoJava         bool      `json:"auto_java"`
-	ShowSnapshots    bool      `json:"show_snapshots"`
-	IsolateGameDir   bool      `json:"isolate_game_dir"`
-	LastVersionType  string    `json:"last_version_type"`
-	WindowSizeCustom bool      `json:"window_size_custom"`
+	GameDir           string    `json:"game_dir"`
+	JavaPath          string    `json:"java_path"`
+	MinMemory         int       `json:"min_memory"`
+	MaxMemory         int       `json:"max_memory"`
+	JVMArgs           string    `json:"jvm_args"`
+	GameArgs          string    `json:"game_args"`
+	Width             int       `json:"width"`
+	Height            int       `json:"height"`
+	Fullscreen        bool      `json:"fullscreen"`
+	DownloadSource    string    `json:"download_source"`
+	SelectedVersion   string    `json:"selected_version"`
+	SelectedAccount   string    `json:"selected_account"`
+	Accounts          []Account `json:"accounts"`
+	MicrosoftClientID string    `json:"microsoft_client_id,omitempty"`
+	AutoJava          bool      `json:"auto_java"`
+	ShowSnapshots     bool      `json:"show_snapshots"`
+	IsolateGameDir    bool      `json:"isolate_game_dir"`
+	LastVersionType   string    `json:"last_version_type"`
+	WindowSizeCustom  bool      `json:"window_size_custom"`
 }
 
 // Store owns the configuration file and serializes writes.

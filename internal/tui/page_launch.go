@@ -133,9 +133,13 @@ func (a *App) renderHero(w, h int, cfg config.Config) string {
 		if focus && a.launchFocus() == 1 {
 			accPrefix = styleAccent.Render("▸ ")
 		}
+		accKind := "离线"
+		if acc.Type == "microsoft" {
+			accKind = "Microsoft"
+		}
 		content = append(content,
 			"",
-			"  "+accPrefix+styleMuted.Render("账户  ")+dot(colorGreen)+" "+styleText.Render(acc.Name)+" "+styleFaint.Render("· 离线"),
+			"  "+accPrefix+styleMuted.Render("账户  ")+dot(colorGreen)+" "+styleText.Render(acc.Name)+" "+styleFaint.Render("· "+accKind),
 		)
 		content = append(content, "")
 
@@ -314,6 +318,9 @@ func (a *App) openAccountPicker() {
 	items := make([]pickerItem, 0, len(cfg.Accounts))
 	for _, acc := range cfg.Accounts {
 		desc := "离线账户"
+		if acc.Type == "microsoft" {
+			desc = "Microsoft 账户"
+		}
 		if acc.Name == cfg.SelectedAccount {
 			desc += " · 当前"
 		}

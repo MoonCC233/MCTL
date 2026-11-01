@@ -71,8 +71,15 @@ func (a *App) openAccounts() {
 	sel := 0
 	for i, acc := range cfg.Accounts {
 		desc := "离线账户 · " + minecraft.OfflineUUID(acc.Name)
+		if acc.Type == "microsoft" {
+			desc = "Microsoft 账户"
+		}
 		if acc.Name == cfg.SelectedAccount {
-			desc = "当前账户 · 离线"
+			if acc.Type == "microsoft" {
+				desc = "当前账户 · Microsoft"
+			} else {
+				desc = "当前账户 · 离线"
+			}
 			sel = i
 		}
 		items = append(items, pickerItem{Label: acc.Name, Desc: desc, Value: acc.Name})
@@ -88,10 +95,12 @@ func (a *App) paletteItems() []pickerItem {
 	return []pickerItem{
 		{Label: "启动游戏", Desc: "启动当前选择的版本", Value: "cmd-launch"},
 		{Label: "版本管理", Desc: "查看已安装的版本", Value: "cmd-page-versions"},
-		{Label: "下载", Desc: "安装 Minecraft 原版或 Fabric", Value: "cmd-page-download"},
-		{Label: "设置", Desc: "Java、内存与窗口设置", Value: "cmd-page-settings"},
+		{Label: "下载", Desc: "安装原版、Fabric、Forge 或 NeoForge", Value: "cmd-page-download"},
+		{Label: "导入整合包", Desc: "导入 Modrinth .mrpack 到独立实例", Value: "cmd-import-modpack"},
+		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
 		{Label: "运行日志", Desc: "查看启动器与游戏输出", Value: "cmd-page-logs"},
 		{Label: "添加离线账户", Desc: "创建新的离线账户", Value: "cmd-account"},
+		{Label: "Microsoft 登录", Desc: "使用设备代码登录微软账户", Value: "cmd-ms-login"},
 		{Label: "检测 Java", Desc: "重新扫描 Java 运行时", Value: "cmd-java"},
 		{Label: "刷新版本列表", Desc: "重新扫描游戏目录", Value: "cmd-refresh"},
 		{Label: "打开游戏目录", Desc: "在文件管理器中打开", Value: "cmd-folder"},
@@ -119,10 +128,15 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 	if m.Kind == modalProgress {
 		if key == "esc" {
-			if m.Action == "cancel-install" {
+			switch m.Action {
+			case "cancel-install":
 				a.rt.CancelInstall()
 				m.Stage = "正在取消"
 				a.setToast("正在取消安装…", 3)
+			case "cancel-auth":
+				a.rt.CancelMicrosoftLogin()
+				a.modal = modalState{}
+				a.setToast("已取消 Microsoft 登录", 3)
 			}
 			return a, nil
 		}
@@ -209,6 +223,8 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		case "a":
 			a.openInput("添加离线账户", "玩家名（3-16 位字母、数字或下划线）", "", "Steve", "add-account")
+		case "m":
+			a.openMicrosoftLogin()
 		case "d":
 			if len(m.Items) > 0 {
 				name := m.Items[m.Selected].Value
@@ -410,7 +426,7 @@ func (a *App) renderModal() string {
 			}
 		}
 		add("")
-		add("  " + keyHint("enter", "选择") + "  " + keyHint("a", "添加") + "  " + keyHint("d", "删除") + "  " + keyHint("esc", "关闭"))
+		add("  " + keyHint("enter", "选择") + "  " + keyHint("a", "离线") + "  " + keyHint("m", "Microsoft") + "  " + keyHint("d", "删除") + "  " + keyHint("esc", "关闭"))
 	case modalProgress:
 		add("")
 		stage := m.Stage
@@ -525,12 +541,13 @@ func helpLines() []string {
 		styleSection.Render("启动页"),
 		"  " + accent("↑↓ / ←→") + muted("         选择项目 / 切换值"),
 		"  " + accent("enter") + muted("            启动游戏"),
-		"  " + accent("a") + muted("                账户管理"),
+		"  " + accent("a") + muted("                账户管理（含 Microsoft 登录）"),
 		"  " + accent("s") + muted("                停止游戏"),
 		"",
 		styleSection.Render("版本 / 下载"),
-		"  " + accent("enter") + muted("            启动 / 安装"),
+		"  " + accent("enter") + muted("            启动 / 安装原版或加载器"),
 		"  " + accent("d / o / / / r") + muted("    删除 / 目录 / 筛选 / 刷新"),
+		"  " + accent("i") + muted("                导入 Modrinth 整合包"),
 		"",
 		styleSection.Render("设置 / 日志"),
 		"  " + accent("enter / ←→") + muted("       编辑 / 调整"),

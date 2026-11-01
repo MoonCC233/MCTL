@@ -14,6 +14,7 @@ import (
 type InstalledVersion struct {
 	ID          string
 	Dir         string
+	GameDir     string
 	Type        string
 	MCVersion   string
 	Loader      string
@@ -25,31 +26,64 @@ type InstalledVersion struct {
 	MainClass   string
 }
 
-// ScanVersions lists every version directory with a JSON document.
+// ScanVersions lists every version directory with a JSON document. Pack
+// instances are discovered under instances/<name> and only expose versions
+// marked with mctl-pack.json, so their internal base/loader profiles stay
+// hidden.
 func ScanVersions(gameDir string) ([]InstalledVersion, error) {
-	root := filepath.Join(gameDir, "versions")
-	entries, err := os.ReadDir(root)
+	out, err := scanVersionRoot(gameDir, gameDir, false)
+	if err != nil {
+		return nil, err
+	}
+	instances, err := os.ReadDir(filepath.Join(gameDir, "instances"))
+	if err == nil {
+		for _, e := range instances {
+			if !e.IsDir() {
+				continue
+			}
+			root := filepath.Join(gameDir, "instances", e.Name())
+			list, err := scanVersionRoot(root, root, true)
+			if err != nil {
+				continue
+			}
+			out = append(out, list...)
+		}
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+	sortInstalledVersions(out)
+	return out, nil
+}
+
+func scanVersionRoot(root, gameRoot string, packOnly bool) ([]InstalledVersion, error) {
+	entries, err := os.ReadDir(filepath.Join(root, "versions"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	mods := CountMods(gameDir)
+	mods := CountMods(gameRoot)
 	var out []InstalledVersion
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
 		}
 		id := e.Name()
-		jp := VersionJSONPath(gameDir, id)
+		if packOnly {
+			if _, err := os.Stat(filepath.Join(VersionPath(root, id), "mctl-pack.json")); err != nil {
+				continue
+			}
+		}
+		jp := VersionJSONPath(root, id)
 		raw, err := ReadVersionJSON(jp)
 		if err != nil {
 			continue
 		}
 		iv := InstalledVersion{
 			ID:          id,
-			Dir:         VersionPath(gameDir, id),
+			Dir:         VersionPath(root, id),
+			GameDir:     gameRoot,
 			Type:        raw.Type,
 			Mods:        mods,
 			ReleaseTime: raw.ReleaseTime,
@@ -58,7 +92,7 @@ func ScanVersions(gameDir string) ([]InstalledVersion, error) {
 		if iv.Type == "" {
 			iv.Type = "release"
 		}
-		if rv, err := ResolveVersion(gameDir, id); err == nil {
+		if rv, err := ResolveVersion(root, id); err == nil {
 			iv.Loader = detectLoader(id, rv.MainClass)
 			iv.MainClass = rv.MainClass
 			if rv.JavaVersion != nil {
@@ -78,9 +112,28 @@ func ScanVersions(gameDir string) ([]InstalledVersion, error) {
 		if st, err := os.Stat(filepath.Join(iv.Dir, id+".jar")); err == nil && st.Size() > 0 {
 			iv.Complete = true
 		}
-		iv.Size = dirSize(iv.Dir)
+		if !iv.Complete {
+			if clients, err := ClientDownloads(root, id); err == nil {
+				for vid := range clients {
+					st, err := os.Stat(filepath.Join(VersionPath(root, vid), vid+".jar"))
+					if err == nil && st.Size() > 0 {
+						iv.Complete = true
+						break
+					}
+				}
+			}
+		}
+		if packOnly {
+			iv.Size = dirSize(gameRoot)
+		} else {
+			iv.Size = dirSize(iv.Dir)
+		}
 		out = append(out, iv)
 	}
+	return out, nil
+}
+
+func sortInstalledVersions(out []InstalledVersion) {
 	sort.SliceStable(out, func(i, j int) bool {
 		ti, ei := time.Parse(time.RFC3339, out[i].ReleaseTime)
 		tj, ej := time.Parse(time.RFC3339, out[j].ReleaseTime)
@@ -89,7 +142,6 @@ func ScanVersions(gameDir string) ([]InstalledVersion, error) {
 		}
 		return strings.ToLower(out[i].ID) > strings.ToLower(out[j].ID)
 	})
-	return out, nil
 }
 
 func detectLoader(id, mainClass string) string {
