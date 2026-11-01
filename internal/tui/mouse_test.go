@@ -245,6 +245,28 @@ func TestMouseHoverUpdatesFooter(t *testing.T) {
 	}
 }
 
+func TestMouseModalHoverHighlight(t *testing.T) {
+	a := mouseApp(t)
+	a.modal = modalState{
+		Kind:   modalPicker,
+		Items:  []pickerItem{{Label: "整合包", Value: "modpacks"}, {Label: "收藏", Value: "favorites"}},
+		Action: "community-resource",
+	}
+	before := a.View()
+	h := findHit(t, a, "modal-item", 1)
+	a.handleMouse(tea.MouseMsg{
+		X: (h.x0 + h.x1) / 2, Y: (h.y0 + h.y1) / 2,
+		Action: tea.MouseActionMotion,
+	})
+	if a.hoverAction != "modal-item" || a.hoverData != 1 {
+		t.Fatalf("hover = %q %#v", a.hoverAction, a.hoverData)
+	}
+	after := a.View()
+	if before == after {
+		t.Fatal("hovering a dialog row should change its highlight")
+	}
+}
+
 func TestKeyboardNavigationDisabled(t *testing.T) {
 	a := mouseApp(t)
 	for _, key := range []string{"3", "tab", "q", "?"} {

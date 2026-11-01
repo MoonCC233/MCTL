@@ -154,6 +154,10 @@ func (a *App) openDownloadModePicker() {
 	a.modal = modalState{Kind: modalPicker, Title: tr("版本类型"), Items: items, Action: "context-download-mode"}
 }
 
+func (a *App) hoverRow(action string, idx int) bool {
+	return a.hoverAction == action && a.hoverData == idx
+}
+
 func (a *App) hoverHint() string {
 	if a.modal.Kind != modalNone {
 		return ""

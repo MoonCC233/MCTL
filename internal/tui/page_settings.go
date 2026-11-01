@@ -128,12 +128,15 @@ func (a *App) renderSettingsList(x, y, w, h int, cfg config.Config, items []sett
 			labelW = 12
 		}
 		prefix := "   "
+		line := prefix + padRight(styleMuted.Render(tr(it.label)), labelW) + "  " + styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8)))
 		if i == a.settings.idx {
 			prefix = styleAccent.Render(" ▸ ")
-			line := prefix + padRight(styleText.Render(tr(it.label)), labelW) + "  " + styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8)))
+			line = prefix + padRight(styleText.Render(tr(it.label)), labelW) + "  " + styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8)))
+		}
+		if i == a.settings.idx || a.hoverRow("settings-row", i) {
 			all = append(all, lipglossRow(line, inner))
 		} else {
-			all = append(all, prefix+padRight(styleMuted.Render(tr(it.label)), labelW)+"  "+styleText.Render(ansiTruncate(val, max(inner-labelW-5, 8))))
+			all = append(all, line)
 		}
 	}
 	start := 0

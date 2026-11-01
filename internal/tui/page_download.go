@@ -175,7 +175,7 @@ func (a *App) renderDownloadList(x, y, w, h int, list []minecraft.VersionEntry) 
 			name := ansiTruncate(v.ID, nameW)
 			typ := typeLabel(v.Type)
 			date := shortDate(v.ReleaseTime)
-			if sel {
+			if sel || a.hoverRow("download-row", i) {
 				line := " " + mark + " " + padRight(name, nameW) + "  " + padRight(typ, 6) + "  " + padRight(date, 10)
 				rows = append(rows, lipglossRow(line, inner))
 			} else {

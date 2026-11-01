@@ -134,7 +134,7 @@ func (a *App) renderToolList(x, y, w, h int, items []toolItem) string {
 		it := items[i]
 		label := tr(it.label)
 		desc := tr(it.desc)
-		if i == a.tools.idx {
+		if i == a.tools.idx || a.hoverRow("tool-row", i) {
 			rows = append(rows, lipglossRow("  ▸ "+padRight(label, 18)+"  "+ansiTruncate(desc, max(inner-24, 8)), inner))
 		} else {
 			rows = append(rows, "    "+styleText.Render(padRight(label, 18))+"  "+styleFaint.Render(ansiTruncate(desc, max(inner-24, 8))))

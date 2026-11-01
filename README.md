@@ -130,7 +130,7 @@ mctl
 | 单击顶部 `[×]` | 退出 |
 | 滚轮 | 滚动列表或页面 |
 | 右键列表项 | 更多操作（版本、下载） |
-| 悬停 | 底部显示当前可执行操作 |
+| 悬停 | 底部显示当前可执行操作，行会高亮 |
 | 单击弹窗外部 | 关闭弹窗 |
 | 单击弹窗按钮 | 确认 / 取消 / 收藏 |
 
@@ -244,11 +244,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.35` 的标签会触发 Release 工作流：
+推送形如 `v1.0.36` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.35
-git push origin v1.0.35
+git tag v1.0.36
+git push origin v1.0.36
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

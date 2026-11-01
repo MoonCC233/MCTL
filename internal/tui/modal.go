@@ -803,7 +803,7 @@ func (a *App) renderModal() string {
 			label := tr(it.Label)
 			desc := tr(it.Desc)
 			line := "  " + padRight(ansiTruncate(label, max(inner-22, 10)), max(inner-22, 10)) + "  " + styleFaint.Render(ansiTruncate(desc, 18))
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+ansiTruncate(label, max(inner-22, 10))+"  "+ansiTruncate(desc, 18), inner))
 			} else {
 				add(line)
@@ -835,7 +835,7 @@ func (a *App) renderModal() string {
 		for i := start; i < end; i++ {
 			it := m.Items[i]
 			line := "  " + styleText.Render(padRight(it.Label, 24)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-30, 10)))
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+padRight(it.Label, 24)+"  "+ansiTruncate(it.Desc, max(inner-30, 10)), inner))
 			} else {
 				add(line)
@@ -860,7 +860,7 @@ func (a *App) renderModal() string {
 		for i := start; i < end; i++ {
 			it := m.Items[i]
 			line := "  " + styleText.Render(padRight(it.Label, 28)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-34, 10)))
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+padRight(it.Label, 28)+"  "+ansiTruncate(it.Desc, max(inner-34, 10)), inner))
 			} else {
 				add(line)
@@ -889,7 +889,7 @@ func (a *App) renderModal() string {
 		for i := start; i < end; i++ {
 			it := m.Items[i]
 			line := "  " + styleText.Render(padRight(it.Label, 32)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-38, 10)))
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+padRight(it.Label, 32)+"  "+ansiTruncate(it.Desc, max(inner-38, 10)), inner))
 			} else {
 				add(line)
@@ -914,7 +914,7 @@ func (a *App) renderModal() string {
 		for i := start; i < end; i++ {
 			it := m.Items[i]
 			line := "  " + styleText.Render(padRight(it.Label, 22)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-28, 10)))
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+padRight(it.Label, 22)+"  "+ansiTruncate(it.Desc, max(inner-28, 10)), inner))
 			} else {
 				add(line)
@@ -943,7 +943,7 @@ func (a *App) renderModal() string {
 		add("")
 		for i, it := range m.Items {
 			line := "  " + styleText.Render(padRight(it.Label, 20)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-26, 10)))
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+padRight(it.Label, 20)+"  "+ansiTruncate(it.Desc, max(inner-26, 10)), inner))
 			} else {
 				add(line)
@@ -969,7 +969,7 @@ func (a *App) renderModal() string {
 			it := m.Items[i]
 			labelW := max(inner-38, 12)
 			line := "  " + styleText.Render(padRight(ansiTruncate(it.Label, labelW), labelW)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, 22))
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+padRight(ansiTruncate(it.Label, labelW), labelW)+"  "+ansiTruncate(it.Desc, 22), inner))
 			} else {
 				add(line)
@@ -1018,7 +1018,7 @@ func (a *App) renderModal() string {
 		add("")
 		for i, it := range m.Items {
 			line := "  " + styleText.Render(padRight(it.Label, 20)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-26, 10)))
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+padRight(it.Label, 20)+"  "+ansiTruncate(it.Desc, max(inner-26, 10)), inner))
 			} else if it.Value == "create" {
 				add("  " + styleAccent.Render("+") + " " + styleText.Render(padRight(it.Label, 19)) + "  " + styleMuted.Render(ansiTruncate(it.Desc, max(inner-26, 10))))
@@ -1070,7 +1070,7 @@ func (a *App) renderModal() string {
 		add("")
 		for i, it := range m.Items {
 			line := "  " + styleText.Render(padRight(it.Label, 16)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-24, 12)))
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+padRight(it.Label, 16)+"  "+ansiTruncate(it.Desc, max(inner-24, 12)), inner))
 			} else {
 				add(line)
@@ -1126,7 +1126,7 @@ func (a *App) renderModal() string {
 		}
 		for i := start; i < end; i++ {
 			it := list[i]
-			if i == m.Selected {
+			if i == m.Selected || a.hoverRow("modal-item", i) {
 				add(lipglossRow("  ▸ "+padRight(it.Label, 18)+"  "+ansiTruncate(it.Desc, max(inner-24, 10)), inner))
 			} else {
 				add("    " + styleText.Render(padRight(it.Label, 18)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-24, 10))))

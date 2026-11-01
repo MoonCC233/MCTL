@@ -108,7 +108,7 @@ func (a *App) renderVersionList(x, y, w, h int, list []minecraft.InstalledVersio
 				marker = styleYellow.Render("!")
 			}
 			var line string
-			if sel {
+			if sel || a.hoverRow("versions-row", i) {
 				line = lipglossRow("  ▸ "+padRight(name, nameW)+"  "+padRight(loader, 9)+"  "+padRight(mc, 9)+marker, inner)
 			} else {
 				line = "    " + padRight(name, nameW) + "  " + styleMuted.Render(padRight(loader, 9)) + "  " + styleFaint.Render(padRight(mc, 9)) + marker
