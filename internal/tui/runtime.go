@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.15"
+var Version = "1.0.16"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -99,6 +99,14 @@ type worldDoneMsg struct {
 	Name   string
 	Path   string
 	Err    error
+}
+
+type instanceDoneMsg struct {
+	Action string
+	Name   string
+	Path   string
+	Err    error
+	Warn   error
 }
 
 type microsoftCodeMsg struct {
@@ -564,6 +572,82 @@ func (r *Runtime) ImportWorld(gameDir, zipPath string) {
 			r.Logf("存档已导入: %s", name)
 		}
 		r.Emit(worldDoneMsg{Action: "import", Name: name, Path: zipPath, Err: err})
+	}()
+}
+
+// ExportInstance writes the selected version or pack instance to a zip file.
+func (r *Runtime) ExportInstance(versionID, dest string) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "export", Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		r.Logf("导出实例 %s 到 %s", versionID, dest)
+		archive, err := minecraft.ExportInstance(cfg.GameDir, versionID, dest, true)
+		name := versionID
+		if archive != nil && archive.Name != "" {
+			name = archive.Name
+		}
+		if err != nil {
+			r.Logf("导出实例失败: %v", err)
+		} else {
+			r.Logf("实例已导出: %s", dest)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "export", Name: name, Path: dest, Err: err})
+	}()
+}
+
+// ImportInstance extracts an instance archive and completes missing files.
+func (r *Runtime) ImportInstance(zipPath string) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "import", Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		r.Logf("导入实例: %s", zipPath)
+		archive, root, err := minecraft.ImportInstance(cfg.GameDir, zipPath)
+		var warn error
+		name := ""
+		if err == nil {
+			name = archive.Name
+			src := minecraft.GetSource(cfg.DownloadSource)
+			inst := minecraft.NewInstaller(root, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
+				r.Emit(progressMsg{Scope: "install", P: p})
+			})
+			warn = inst.EnsureInstalled(context.Background(), archive.VersionID)
+			if warn != nil {
+				r.Logf("实例已导入，但补全文件失败: %v", warn)
+			} else {
+				r.Logf("实例已导入: %s", root)
+			}
+			_ = r.Store.Update(func(c *config.Config) {
+				c.SelectedVersion = archive.VersionID
+			})
+		} else {
+			r.Logf("导入实例失败: %v", err)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "import", Name: name, Path: root, Err: err, Warn: warn})
+		r.ScanVersions()
 	}()
 }
 

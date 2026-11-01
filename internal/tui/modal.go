@@ -108,6 +108,8 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "本地资源", Desc: "启用、停用或删除模组/资源包/光影", Value: "cmd-local-resources"},
 		{Label: "截图管理", Desc: "查看或删除 Minecraft 截图", Value: "cmd-screenshots"},
 		{Label: "服务器列表", Desc: "添加、编辑或删除多人服务器", Value: "cmd-servers"},
+		{Label: "导出实例", Desc: "打包当前版本或整合包为 zip", Value: "cmd-export-instance"},
+		{Label: "导入实例", Desc: "从 MCTL 实例 zip 创建独立实例", Value: "cmd-import-instance"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
 		{Label: "工具", Desc: "目录、Java、日志与整合包导入", Value: "cmd-page-tools"},
 		{Label: "关于 MCTL", Desc: "版本、路径与项目信息", Value: "cmd-page-about"},
@@ -815,6 +817,7 @@ func helpLines() []string {
 		"  " + accent("enter / ←→") + muted("       编辑 / 调整"),
 		"  " + accent("w / e / m / s / p") + muted("  整合包 / 在线 / 本地 / 存档 / 截图"),
 		"  " + accent("n") + muted("                服务器列表"),
+		"  " + accent("x / u") + muted("            导出 / 导入实例"),
 		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),
 	}
 }

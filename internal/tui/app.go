@@ -195,7 +195,7 @@ func (a *App) renderFooter() string {
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
 	case pageTools:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("w", "在线整合包"), keyHint("e", "在线资源"), keyHint("m", "本地资源"), keyHint("s", "存档"), keyHint("n", "服务器")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("x", "导出"), keyHint("u", "导入"), keyHint("w", "整合包"), keyHint("e", "在线"), keyHint("s", "存档")}
 	case pageAbout:
 		parts = []string{keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
 	case pageLogs:
@@ -567,6 +567,25 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			a.openWorlds()
 		} else {
 			a.setToast("存档已备份: "+filepath.Base(m.Path), 1)
+		}
+		return nil
+	case instanceDoneMsg:
+		if a.modal.Kind == modalProgress && a.modal.Action == "instance-op" {
+			a.modal = modalState{}
+		}
+		if m.Err != nil {
+			a.openError("实例操作失败", m.Err)
+			return nil
+		}
+		if m.Action == "import" {
+			msg := "实例已导入: " + m.Name
+			if m.Warn != nil {
+				msg = "实例已导入: " + m.Name + "（联网后可补全文件）"
+			}
+			a.setToast(msg, 1)
+			a.switchPage(pageVersions)
+		} else {
+			a.setToast("实例已导出: "+filepath.Base(m.Path), 1)
 		}
 		return nil
 	case resourcesMsg:

@@ -127,6 +127,22 @@ func (a *App) openScreenshots() {
 	a.modal = modalState{Kind: modalScreenshots, Title: "截图管理", Items: items, Data: gameDir}
 }
 
+func (a *App) openExportInstance() {
+	cfg := a.store.Snapshot()
+	versionID := cfg.SelectedVersion
+	if strings.TrimSpace(versionID) == "" {
+		a.setToast("请先在版本页选择一个版本", 3)
+		return
+	}
+	dest := minecraft.DefaultInstanceExportPath(cfg.GameDir, versionID)
+	a.openInput("导出实例", "导出到 zip 文件", dest, dest, "export-instance")
+	a.modal.Data = versionID
+}
+
+func (a *App) openImportInstance() {
+	a.openInput("导入实例", "MCTL 实例 zip 文件路径", "", `C:\Users\Alex\Downloads\instance.zip`, "import-instance")
+}
+
 func (a *App) openServers() {
 	gameDir := a.worldGameDir()
 	servers, err := minecraft.ListServers(gameDir)
@@ -283,6 +299,24 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		}
 		a.setToast("已删除: "+d.Name, 1)
 		a.openResourceFiles(d.Kind)
+	case action == "export-instance":
+		versionID, _ := data.(string)
+		dest := strings.TrimSpace(value)
+		if dest == "" {
+			a.setToast("请填写导出路径", 3)
+			return nil
+		}
+		a.modal = modalState{Kind: modalProgress, Title: "导出实例", Stage: "正在打包", Action: "instance-op"}
+		a.setToast("正在导出实例…", 0)
+		a.rt.ExportInstance(versionID, dest)
+	case action == "import-instance":
+		path := strings.TrimSpace(value)
+		if path == "" {
+			a.setToast("请填写实例压缩包路径", 3)
+			return nil
+		}
+		a.modal = modalState{Kind: modalProgress, Title: "导入实例", Stage: "正在解压", Action: "instance-op"}
+		a.rt.ImportInstance(path)
 	case action == "delete-screenshot":
 		d, _ := data.(screenshotDeleteData)
 		if err := minecraft.DeleteScreenshot(d.GameDir, d.Name); err != nil {
@@ -421,6 +455,10 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openScreenshots()
 	case "cmd-servers":
 		a.openServers()
+	case "cmd-export-instance":
+		a.openExportInstance()
+	case "cmd-import-instance":
+		a.openImportInstance()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":
