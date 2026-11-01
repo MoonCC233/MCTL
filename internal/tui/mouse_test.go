@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -173,6 +175,73 @@ func TestMouseQuitButton(t *testing.T) {
 	})
 	if cmd == nil {
 		t.Fatal("quit button should return a command")
+	}
+}
+
+func TestMouseRightClickVersionMenu(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageVersions
+	h := findHit(t, a, "versions-row", 0)
+	a.handleMouse(tea.MouseMsg{
+		X: (h.x0 + h.x1) / 2, Y: (h.y0 + h.y1) / 2,
+		Action: tea.MouseActionPress, Button: tea.MouseButtonRight,
+	})
+	if a.modal.Action != "context-action" {
+		t.Fatalf("context menu = %#v", a.modal)
+	}
+	data, ok := a.modal.Data.(contextMenuData)
+	if !ok || data.Kind != "versions" || data.Index != 0 {
+		t.Fatalf("context data = %#v", a.modal.Data)
+	}
+	found := false
+	for _, it := range a.modal.Items {
+		if it.Value == "i" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("context items = %#v", a.modal.Items)
+	}
+	a.runAction("context-action", "", pickerItem{Label: "实例设置", Value: "i"}, data)
+	if a.modal.Kind != modalInstanceSettings {
+		t.Fatalf("context action should open instance settings: %#v", a.modal)
+	}
+}
+
+func TestMouseRightClickDownloadMenu(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageDownload
+	a.download.manifest = demoManifest(time.Now())
+	a.download.idx = 0
+	h := findHit(t, a, "download-row", 0)
+	a.handleMouse(tea.MouseMsg{
+		X: (h.x0 + h.x1) / 2, Y: (h.y0 + h.y1) / 2,
+		Action: tea.MouseActionPress, Button: tea.MouseButtonRight,
+	})
+	if a.modal.Action != "context-action" {
+		t.Fatalf("context menu = %#v", a.modal)
+	}
+	data, _ := a.modal.Data.(contextMenuData)
+	if data.Kind != "download" {
+		t.Fatalf("context data = %#v", a.modal.Data)
+	}
+	a.runAction("context-action", "", pickerItem{Label: "切换版本类型", Value: "mode"}, data)
+	if a.modal.Action != "context-download-mode" {
+		t.Fatalf("mode picker = %#v", a.modal)
+	}
+}
+
+func TestMouseHoverUpdatesFooter(t *testing.T) {
+	a := mouseApp(t)
+	a.page = pageVersions
+	h := findHit(t, a, "versions-row", 0)
+	a.handleMouse(tea.MouseMsg{
+		X: (h.x0 + h.x1) / 2, Y: (h.y0 + h.y1) / 2,
+		Action: tea.MouseActionMotion,
+	})
+	out := a.View()
+	if !strings.Contains(out, "右键更多") {
+		t.Fatal("footer should show the hover hint")
 	}
 }
 

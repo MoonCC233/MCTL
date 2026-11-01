@@ -62,16 +62,18 @@ type App struct {
 
 	demo bool
 
-	hits       []hitRegion
-	hitOriginX int
-	hitOriginY int
-	modalX     int
-	modalY     int
-	modalW     int
-	modalH     int
-	mouseX     int
-	mouseY     int
-	lastClick  clickStamp
+	hits        []hitRegion
+	hitOriginX  int
+	hitOriginY  int
+	modalX      int
+	modalY      int
+	modalW      int
+	modalH      int
+	mouseX      int
+	mouseY      int
+	hoverAction string
+	hoverData   any
+	lastClick   clickStamp
 }
 
 // New builds the application.
@@ -228,6 +230,9 @@ func ansiTruncate(s string, w int) string {
 
 func (a *App) renderFooter() string {
 	left := " " + styleMuted.Render(tr("单击选择 · 双击打开 · 滚轮滚动 · 顶部按钮帮助 / 退出"))
+	if h := a.hoverHint(); h != "" {
+		left = " " + styleAccent.Render(h)
+	}
 	var right string
 	if a.modal.Kind == modalProgress {
 		pct := int(a.modal.Percent * 100)

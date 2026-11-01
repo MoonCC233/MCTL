@@ -709,6 +709,42 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 	case action == "news":
 		a.setToast("正在获取更新日志…", 0)
 		a.rt.FetchNews()
+	case action == "context-action":
+		d, ok := data.(contextMenuData)
+		if !ok {
+			return nil
+		}
+		switch d.Kind {
+		case "versions":
+			list := a.filteredVersions()
+			if d.Index < 0 || d.Index >= len(list) {
+				return nil
+			}
+			a.versions.idx = d.Index
+			return a.versionsKey(keyMsg(item.Value))
+		case "download":
+			list := a.download.versions()
+			if d.Index < 0 || d.Index >= len(list) {
+				return nil
+			}
+			a.download.idx = d.Index
+			if item.Value == "mode" {
+				a.openDownloadModePicker()
+				return nil
+			}
+			return a.downloadKey(keyMsg(item.Value))
+		}
+	case action == "context-download-mode":
+		mode, err := strconv.Atoi(item.Value)
+		if err != nil || mode < 0 || mode >= len(loaderModeNames) {
+			return nil
+		}
+		a.download.mode = mode
+		a.download.idx = 0
+		a.download.loaderLoading = false
+		if a.download.manifest == nil && !a.download.loading {
+			a.rt.LoadManifest(false)
+		}
 	case action == "export-instance":
 		versionID, _ := data.(string)
 		dest := strings.TrimSpace(value)

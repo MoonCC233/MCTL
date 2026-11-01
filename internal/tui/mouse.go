@@ -86,9 +86,127 @@ func keyMsg(key string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
 }
 
+type contextMenuData struct {
+	Kind  string
+	Index int
+}
+
+func (a *App) handleRightClick(x, y int) (tea.Model, tea.Cmd) {
+	if a.modal.Kind != modalNone {
+		return a, nil
+	}
+	h, ok := a.hitAt(x, y)
+	if !ok {
+		return a, nil
+	}
+	switch h.action {
+	case "versions-row":
+		idx, _ := h.data.(int)
+		list := a.filteredVersions()
+		if idx < 0 || idx >= len(list) {
+			return a, nil
+		}
+		a.versions.idx = idx
+		items := []pickerItem{
+			{Label: "启动", Desc: "启动选中版本", Value: "enter"},
+			{Label: "删除版本", Desc: "移除版本目录", Value: "d"},
+			{Label: "打开版本目录", Desc: "在文件管理器中打开", Value: "o"},
+			{Label: "实例设置", Desc: "内存 / JVM / 自动进服", Value: "i"},
+			{Label: "实例安装 / 修复", Desc: "加载器 / 补全文件", Value: "l"},
+			{Label: "导出实例", Desc: "打包为 zip", Value: "x"},
+			{Label: "新建实例", Desc: "打开实例向导", Value: "+"},
+		}
+		a.modal = modalState{
+			Kind:   modalPicker,
+			Title:  tr("版本操作") + " · " + list[idx].ID,
+			Items:  items,
+			Data:   contextMenuData{Kind: "versions", Index: idx},
+			Action: "context-action",
+		}
+	case "download-row":
+		idx, _ := h.data.(int)
+		list := a.download.versions()
+		if idx < 0 || idx >= len(list) {
+			return a, nil
+		}
+		a.download.idx = idx
+		items := []pickerItem{
+			{Label: "安装 / 修复", Desc: "安装选中版本", Value: "enter"},
+			{Label: "切换版本类型", Desc: "原版 / Fabric / Forge / ...", Value: "mode"},
+			{Label: "刷新版本清单", Desc: "重新获取列表", Value: "r"},
+		}
+		a.modal = modalState{
+			Kind:   modalPicker,
+			Title:  tr("下载操作") + " · " + list[idx].ID,
+			Items:  items,
+			Data:   contextMenuData{Kind: "download", Index: idx},
+			Action: "context-action",
+		}
+	}
+	return a, nil
+}
+
+func (a *App) openDownloadModePicker() {
+	items := make([]pickerItem, 0, len(loaderModeNames))
+	for i, name := range loaderModeNames {
+		items = append(items, pickerItem{Label: tr(name), Desc: "", Value: fmt.Sprint(i)})
+	}
+	a.modal = modalState{Kind: modalPicker, Title: tr("版本类型"), Items: items, Action: "context-download-mode"}
+}
+
+func (a *App) hoverHint() string {
+	if a.modal.Kind != modalNone {
+		return ""
+	}
+	switch a.hoverAction {
+	case "page":
+		return tr("单击切换页面")
+	case "versions-row":
+		return tr("单击选中 · 双击启动 · 右键更多")
+	case "versions-action":
+		return tr("单击执行操作")
+	case "download-row":
+		return tr("单击选中 · 双击安装 · 右键更多")
+	case "download-tab":
+		return tr("单击切换类型")
+	case "download-action":
+		return tr("单击安装 / 选择加载器")
+	case "launch-version":
+		return tr("单击选择版本")
+	case "launch-account":
+		return tr("单击管理账户")
+	case "launch-start":
+		return tr("单击启动 / 停止")
+	case "launch-news":
+		return tr("单击查看更新日志")
+	case "settings-row":
+		return tr("单击编辑或切换")
+	case "tool-row":
+		return tr("单击执行")
+	case "modal-item":
+		return tr("单击选择")
+	case "help":
+		return tr("单击打开帮助")
+	case "quit":
+		return tr("单击退出")
+	}
+	return ""
+}
+
 func (a *App) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	a.mouseX, a.mouseY = msg.X, msg.Y
 	if msg.Action == tea.MouseActionMotion {
+		if h, ok := a.hitAt(msg.X, msg.Y); ok {
+			a.hoverAction, a.hoverData = h.action, h.data
+		} else {
+			a.hoverAction, a.hoverData = "", nil
+		}
+		return a, nil
+	}
+	if msg.Button == tea.MouseButtonRight {
+		if msg.Action == tea.MouseActionPress {
+			return a.handleRightClick(msg.X, msg.Y)
+		}
 		return a, nil
 	}
 	if msg.Button == tea.MouseButtonWheelUp {

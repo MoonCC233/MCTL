@@ -1224,6 +1224,8 @@ func helpLines() []string {
 		"  " + accent("单击列表项") + muted("     选中"),
 		"  " + accent("双击列表项") + muted("     启动 / 打开 / 安装"),
 		"  " + accent("滚轮") + muted("           滚动列表与页面"),
+		"  " + accent("右键列表项") + muted("     更多操作"),
+		"  " + accent("悬停") + muted("           底部显示可执行操作"),
 		"  " + accent("单击顶部 [?]") + muted("    帮助"),
 		"  " + accent("单击顶部 [×]") + muted("    退出"),
 		"  " + accent("单击弹窗外部") + muted("   关闭弹窗"),
