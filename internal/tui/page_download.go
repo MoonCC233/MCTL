@@ -314,7 +314,9 @@ func (a *App) downloadKey(msg tea.KeyMsg) tea.Cmd {
 	case "/":
 		a.modal = modalState{Kind: modalInput, Title: "搜索版本", Label: "版本号或类型", Value: []rune(p.filter), Placeholder: "例如 1.21 / snapshot", Action: "filter-download"}
 	case "i":
-		a.openInput("导入整合包", "Modrinth .mrpack 文件路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
+		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
+	case "o":
+		a.openOnlineModpacks()
 	case "r":
 		a.rt.LoadManifest(true)
 		a.setToast("正在刷新版本列表", 0)

@@ -96,7 +96,8 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "启动游戏", Desc: "启动当前选择的版本", Value: "cmd-launch"},
 		{Label: "版本管理", Desc: "查看已安装的版本", Value: "cmd-page-versions"},
 		{Label: "下载", Desc: "安装原版、Fabric、Forge 或 NeoForge", Value: "cmd-page-download"},
-		{Label: "导入整合包", Desc: "导入 Modrinth .mrpack 到独立实例", Value: "cmd-import-modpack"},
+		{Label: "导入整合包", Desc: "导入本地 Modrinth / CurseForge 整合包", Value: "cmd-import-modpack"},
+		{Label: "在线整合包", Desc: "搜索并安装 Modrinth 整合包", Value: "cmd-online-modpacks"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
 		{Label: "工具", Desc: "目录、Java、日志与整合包导入", Value: "cmd-page-tools"},
 		{Label: "关于 MCTL", Desc: "版本、路径与项目信息", Value: "cmd-page-about"},
@@ -550,11 +551,11 @@ func helpLines() []string {
 		"  " + accent("enter") + muted("            启动 / 安装原版或加载器"),
 		"  " + accent("d / o / / / r") + muted("    删除 / 目录 / 筛选 / 刷新"),
 		"  " + accent("m / p / s / h / f") + muted("  模组 / 资源包 / 存档 / 截图 / 配置"),
-		"  " + accent("i") + muted("                导入整合包"),
+		"  " + accent("i / o") + muted("            导入 / 在线整合包"),
 		"",
 		styleSection.Render("设置 / 工具 / 日志"),
 		"  " + accent("enter / ←→") + muted("       编辑 / 调整"),
-		"  " + accent("i / v / r") + muted("          导入 / Java / 刷新"),
+		"  " + accent("i / w / v / r") + muted("       导入 / 在线 / Java / 刷新"),
 		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),
 	}
 }

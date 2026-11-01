@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - ".github/workflows/live-check.yml"
+      - "internal/minecraft/live_test.go"
+      - "internal/minecraft/modrinth.go"
 
 permissions:
   contents: read

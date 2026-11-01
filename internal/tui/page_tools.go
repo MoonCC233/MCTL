@@ -21,7 +21,8 @@ type toolItem struct {
 
 func (a *App) toolItems() []toolItem {
 	return []toolItem{
-		{label: "导入整合包", desc: "导入 Modrinth .mrpack 或 CurseForge 整合包到独立实例。", action: "import"},
+		{label: "导入整合包", desc: "导入本地 Modrinth .mrpack 或 CurseForge 整合包到独立实例。", action: "import"},
+		{label: "在线整合包", desc: "搜索 Modrinth 并下载安装最新的稳定整合包版本。", action: "online-modpacks"},
 		{label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", action: "open-game"},
 		{label: "打开配置目录", desc: "打开 config.json 与日志文件所在目录。", action: "open-config"},
 		{label: "检测 Java", desc: "重新扫描系统与常见安装目录中的 Java 运行时。", action: "java"},
@@ -57,7 +58,7 @@ func (a *App) viewTools(w, h int) []string {
 	}
 	if hintH > 0 {
 		it := items[a.tools.idx]
-		hint := []string{"  " + styleMuted.Render(ansiTruncate(it.desc, max(w-10, 16))), "", "  " + keyHint("enter", "执行") + "  " + keyHint("↑↓", "选择") + "  " + keyHint("i", "导入整合包") + "  " + keyHint("v", "检测 Java")}
+		hint := []string{"  " + styleMuted.Render(ansiTruncate(it.desc, max(w-10, 16))), "", "  " + keyHint("enter", "执行") + "  " + keyHint("↑↓", "选择") + "  " + keyHint("i", "导入") + "  " + keyHint("w", "在线") + "  " + keyHint("v", "Java")}
 		p := panel("提示", w-4, hintH, false, hint)
 		lines = append(lines, "")
 		for _, l := range strings.Split(p, "\n") {
@@ -110,6 +111,8 @@ func (a *App) toolsKey(msg tea.KeyMsg) tea.Cmd {
 		return a.runTool(items[a.tools.idx].action)
 	case "i":
 		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
+	case "w":
+		a.openOnlineModpacks()
 	case "o":
 		a.openGameDir()
 	case "g":
@@ -138,6 +141,8 @@ func (a *App) runTool(action string) tea.Cmd {
 	switch action {
 	case "import":
 		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
+	case "online-modpacks":
+		a.openOnlineModpacks()
 	case "open-game":
 		a.openGameDir()
 	case "open-config":

@@ -18,6 +18,10 @@ type loaderPickerData struct {
 	MC   string
 }
 
+func (a *App) openOnlineModpacks() {
+	a.openInput("在线整合包", "搜索 Modrinth 整合包", "", "例如 Create / Cobblemon", "search-modpacks")
+}
+
 func (a *App) openMicrosoftLogin() {
 	cfg := a.store.Snapshot()
 	if strings.TrimSpace(cfg.MicrosoftClientID) == "" {
@@ -83,6 +87,12 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		a.startInstall(d.Kind, id, d.MC, item.Value, nil)
 	case action == "import-modpack":
 		a.startModpackImport(strings.TrimSpace(value))
+	case action == "search-modpacks":
+		query := strings.TrimSpace(value)
+		a.setToast("正在搜索在线整合包…", 0)
+		a.rt.SearchModpacks(query)
+	case action == "install-online-modpack":
+		a.startOnlineModpack(item.Value, item.Label)
 	case action == "filter-versions":
 		a.versions.filter = strings.TrimSpace(value)
 		a.versions.idx = 0
@@ -168,6 +178,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.setToast("正在刷新版本与列表…", 0)
 	case "cmd-import-modpack":
 		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
+	case "cmd-online-modpacks":
+		a.openOnlineModpacks()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":

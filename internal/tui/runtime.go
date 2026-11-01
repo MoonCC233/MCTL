@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -16,7 +18,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.6"
+var Version = "1.0.7"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -78,6 +80,11 @@ type launchStartedMsg struct {
 type launchExitMsg struct {
 	Err     error
 	Stopped bool
+}
+
+type modpacksMsg struct {
+	Projects []minecraft.ModrinthProject
+	Err      error
 }
 
 type microsoftCodeMsg struct {
@@ -343,6 +350,91 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 		r.installCancel = nil
 		r.mu.Unlock()
 		r.Emit(installDoneMsg{Kind: kind, ID: actualID, Err: err, Canceled: canceled})
+		r.ScanVersions()
+	}()
+}
+
+// SearchModpacks searches the online Modrinth catalogue.
+func (r *Runtime) SearchModpacks(query string) {
+	cfg := r.Store.Snapshot()
+	src := minecraft.GetSource(cfg.DownloadSource)
+	go func() {
+		hc := minecraft.NewHTTPClient(src)
+		projects, err := minecraft.SearchModpacks(context.Background(), hc, query, 20)
+		if err != nil {
+			r.Logf("搜索在线整合包失败: %v", err)
+		}
+		r.Emit(modpacksMsg{Projects: projects, Err: err})
+	}()
+}
+
+// InstallOnlineModpack downloads and imports the latest release of a Modrinth
+// modpack into an isolated instance.
+func (r *Runtime) InstallOnlineModpack(projectID, name string) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "modpack", Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	ctx, cancel := context.WithCancel(context.Background())
+	r.installCancel = cancel
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		inst := minecraft.NewInstaller(cfg.GameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
+			r.Emit(progressMsg{Scope: "install", P: p})
+		})
+		hc := minecraft.NewHTTPClient(src)
+		id := ""
+		var err error
+		r.Logf("获取在线整合包 %s 的最新版本", name)
+		var version *minecraft.ModrinthVersion
+		version, err = minecraft.FetchLatestModpackVersion(ctx, hc, projectID)
+		var file minecraft.ModrinthFile
+		if err == nil {
+			file, err = minecraft.PrimaryModrinthFile(version)
+		}
+		var tmpDir string
+		if err == nil {
+			tmpDir, err = os.MkdirTemp("", "mctl-modpack-*")
+		}
+		if err == nil {
+			defer os.RemoveAll(tmpDir)
+			dest := filepath.Join(tmpDir, filepath.Base(file.Filename))
+			sha := ""
+			if file.Hashes != nil {
+				sha = file.Hashes["sha1"]
+			}
+			r.Emit(progressMsg{Scope: "install", P: minecraft.Progress{Stage: "下载整合包", Current: file.Filename}})
+			err = hc.DownloadFile(ctx, file.URL, dest, sha, func(done, total int64) {
+				r.Emit(progressMsg{Scope: "install", P: minecraft.Progress{
+					Stage: "下载整合包", Current: file.Filename, Bytes: done, TotalBytes: total,
+				}})
+			})
+			if err == nil {
+				id, err = inst.ImportModpack(ctx, dest, cfg.JavaPath, cfg.AutoJava, cfg.CurseForgeAPIKey)
+			}
+		}
+		canceled := ctx.Err() != nil
+		if err == nil {
+			_ = r.Store.Update(func(c *config.Config) {
+				c.SelectedVersion = id
+			})
+			r.Logf("在线整合包安装完成: %s", id)
+		} else if canceled {
+			r.Logf("在线整合包安装已取消")
+		} else {
+			r.Logf("在线整合包安装失败: %v", err)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "modpack", ID: id, Err: err, Canceled: canceled})
 		r.ScanVersions()
 	}()
 }

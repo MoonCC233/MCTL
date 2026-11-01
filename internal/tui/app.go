@@ -189,11 +189,11 @@ func (a *App) renderFooter() string {
 	case pageVersions:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("d", "删除"), keyHint("o", "版本目录"), keyHint("m", "模组"), keyHint("p", "资源包"), keyHint("s", "存档"), keyHint("/", "筛选"), keyHint("r", "刷新")}
 	case pageDownload:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "安装"), keyHint("[ ]", "类型"), keyHint("i", "导入整合包"), keyHint("m", "筛选"), keyHint("/", "搜索"), keyHint("r", "刷新")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "安装"), keyHint("[ ]", "类型"), keyHint("i", "导入"), keyHint("o", "在线整合包"), keyHint("m", "筛选"), keyHint("/", "搜索"), keyHint("r", "刷新")}
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
 	case pageTools:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("i", "导入整合包"), keyHint("v", "检测 Java")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("i", "导入整合包"), keyHint("w", "在线整合包"), keyHint("v", "检测 Java")}
 	case pageAbout:
 		parts = []string{keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
 	case pageLogs:
@@ -551,6 +551,25 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			Selected: 0,
 		}
 		return nil
+	case modpacksMsg:
+		if m.Err != nil {
+			a.openError("搜索在线整合包失败", m.Err)
+			return nil
+		}
+		if len(m.Projects) == 0 {
+			a.setToast("没有找到匹配的整合包", 3)
+			return nil
+		}
+		items := make([]pickerItem, 0, len(m.Projects))
+		for _, p := range m.Projects {
+			desc := fmt.Sprintf("%d 次下载", p.Downloads)
+			if p.Author != "" {
+				desc = p.Author + " · " + desc
+			}
+			items = append(items, pickerItem{Label: p.Title, Desc: desc, Value: p.ID})
+		}
+		a.modal = modalState{Kind: modalPicker, Title: "在线整合包 · Modrinth", Items: items, Action: "install-online-modpack"}
+		return nil
 	case microsoftCodeMsg:
 		if a.modal.Kind == modalProgress && a.modal.Action == "cancel-auth" {
 			a.modal.Stage = "等待 Microsoft 授权"
@@ -693,6 +712,25 @@ func (a *App) startLaunch(versionID string) {
 		}
 	}
 	a.rt.Launch(versionID, gameDir)
+}
+
+func (a *App) startOnlineModpack(projectID, name string) {
+	if projectID == "" {
+		a.setToast("无效的整合包", 3)
+		return
+	}
+	if a.rt.Busy() {
+		a.setToast("已有任务正在进行", 3)
+		return
+	}
+	a.modal = modalState{
+		Kind:    modalProgress,
+		Title:   "在线整合包 · " + name,
+		Stage:   "获取版本",
+		Percent: 0,
+		Action:  "cancel-install",
+	}
+	a.rt.InstallOnlineModpack(projectID, name)
 }
 
 func (a *App) startModpackImport(path string) {

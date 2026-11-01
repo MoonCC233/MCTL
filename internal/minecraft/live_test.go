@@ -28,6 +28,26 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		{"LegacyFabric", "legacyfabric", "1.8.9"},
 		{"OptiFine", "optifine", "1.20.1"},
 	}
+	t.Run("ModrinthSearch", func(t *testing.T) {
+		projects, err := SearchModpacks(ctx, hc, "create", 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(projects) == 0 {
+			t.Fatal("Modrinth returned no modpacks")
+		}
+		t.Logf("Modrinth: %d projects, first=%q", len(projects), projects[0].Title)
+		version, err := FetchLatestModpackVersion(ctx, hc, projects[0].ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		file, err := PrimaryModrinthFile(version)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Modrinth latest: %s (%s)", version.VersionNumber, file.Filename)
+	})
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var builds []LoaderBuild
