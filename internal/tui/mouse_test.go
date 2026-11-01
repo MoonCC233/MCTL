@@ -357,6 +357,22 @@ func TestVersionsPageShowsScrollbar(t *testing.T) {
 	}
 }
 
+func TestMouseOSKCursorAndInsert(t *testing.T) {
+	a := testApp(t, config.Config{GameDir: t.TempDir()})
+	a.modal = modalState{Kind: modalInput, Title: "测试", Label: "名称", Action: "test-input", Value: []rune("ab c"), Cursor: 4}
+	clickRegion(a, findHit(t, a, "open-osk", nil))
+	for _, key := range []string{"left", "left", "x", "home", "symbols", ">", "end", "!"} {
+		clickRegion(a, findHit(t, a, "osk-key", key))
+	}
+	clickRegion(a, findHit(t, a, "osk-done", nil))
+	if got := string(a.modal.Value); got != ">abx c!" {
+		t.Fatalf("value = %q", got)
+	}
+	if a.modal.Cursor != len([]rune(">abx c!")) {
+		t.Fatalf("cursor = %d", a.modal.Cursor)
+	}
+}
+
 func TestKeyboardNavigationDisabled(t *testing.T) {
 	a := mouseApp(t)
 	for _, key := range []string{"3", "tab", "q", "?"} {

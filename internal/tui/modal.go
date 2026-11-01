@@ -835,6 +835,26 @@ func (a *App) renderModal() string {
 		lineIdx = len(content)
 		line = "  "
 		x = 2
+		for _, s := range []struct {
+			label string
+			key   string
+			w     int
+		}{
+			{"左移", "left", 9},
+			{"右移", "right", 9},
+			{"行首", "home", 9},
+			{"行尾", "end", 9},
+		} {
+			cell := "[" + padRight(tr(s.label), s.w-2) + "]"
+			line += styleMuted.Render(cell) + " "
+			a.addHit(x, 1+lineIdx, x+s.w-1, 1+lineIdx, "osk-key", s.key)
+			x += s.w + 1
+		}
+		add(line)
+		add("")
+		lineIdx = len(content)
+		line = "  "
+		x = 2
 		for _, b := range []struct {
 			label  string
 			action string
@@ -1338,7 +1358,7 @@ func helpLines() []string {
 		"",
 		styleSection.Render("文本输入"),
 		"  " + muted("单击输入框或「屏幕键盘」按钮，可用鼠标输入文字与符号。"),
-		"  " + muted("键盘输入仍可用，但不是必需。"),
+		"  " + muted("支持光标左移 / 右移 / 行首 / 行尾；键盘输入仍可用，但不是必需。"),
 		styleSection.Render("说明"),
 		"  " + muted("只有文本输入框需要键盘，其余操作全部使用鼠标。"),
 	}

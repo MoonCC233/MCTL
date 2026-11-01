@@ -233,6 +233,18 @@ func (a *App) pressOSK(key string) {
 			m.Value = append(m.Value[:m.Cursor-1], m.Value[m.Cursor:]...)
 			m.Cursor--
 		}
+	case "left":
+		if m.Cursor > 0 {
+			m.Cursor--
+		}
+	case "right":
+		if m.Cursor < len(m.Value) {
+			m.Cursor++
+		}
+	case "home":
+		m.Cursor = 0
+	case "end":
+		m.Cursor = len(m.Value)
 	case "clear":
 		m.Value = nil
 		m.Cursor = 0
