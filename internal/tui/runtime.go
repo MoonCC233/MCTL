@@ -16,7 +16,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.5"
+var Version = "1.0.6"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -294,6 +294,20 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 				}
 				err = inst.InstallProfile(ctx, actualID, profile)
 			}
+		} else if kind == "legacyfabric" {
+			r.Logf("获取 Legacy Fabric %s 配置", loader)
+			var profile []byte
+			profile, err = minecraft.FetchLegacyFabricProfile(ctx, inst.HTTP, mcVersion, loader)
+			if err == nil {
+				var v minecraft.VersionJSON
+				if json.Unmarshal(profile, &v) == nil && v.ID != "" {
+					actualID = v.ID
+				}
+				err = inst.InstallProfile(ctx, actualID, profile)
+			}
+		} else if kind == "optifine" {
+			r.Logf("安装 OptiFine %s", loader)
+			actualID, err = inst.InstallOptiFine(ctx, mcVersion, loader)
 		} else if kind == "forge" || kind == "neoforge" {
 			required := minecraft.InferJavaMajor(mcVersion)
 			r.Logf("准备 %s 安装器（Java %d）", kind, required)
@@ -405,9 +419,14 @@ func (r *Runtime) FetchLoaderVersions(kind, mcVersion string) {
 		hc := minecraft.NewHTTPClient(src)
 		var builds []minecraft.LoaderBuild
 		var err error
-		if kind == "quilt" {
+		switch kind {
+		case "quilt":
 			builds, err = minecraft.FetchQuiltLoaders(context.Background(), hc, mcVersion)
-		} else {
+		case "legacyfabric":
+			builds, err = minecraft.FetchLegacyFabricLoaders(context.Background(), hc, mcVersion)
+		case "optifine":
+			builds, err = minecraft.FetchOptiFineBuilds(context.Background(), hc, mcVersion)
+		default:
 			builds, err = minecraft.FetchLoaderBuilds(context.Background(), hc, kind, mcVersion)
 		}
 		if err != nil {

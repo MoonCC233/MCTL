@@ -20,6 +20,7 @@ type LoaderBuild struct {
 	MCVersion string
 	Kind      string
 	Stable    bool
+	Filename  string
 }
 
 var (

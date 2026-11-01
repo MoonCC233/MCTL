@@ -1,0 +1,26 @@
+name: Live loader check
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/live-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Query official loader endpoints
+        run: go test -tags live -v ./internal/minecraft -run TestLiveLoaderMetadata -count=1

@@ -578,6 +578,10 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			name = "NeoForge"
 		case "quilt":
 			name = "Quilt"
+		case "legacyfabric":
+			name = "Legacy Fabric"
+		case "optifine":
+			name = "OptiFine"
 		}
 		if m.Err != nil {
 			a.openError("获取 "+name+" 版本失败", m.Err)
@@ -593,7 +597,11 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			if b.Stable {
 				desc = "稳定版"
 			}
-			items = append(items, pickerItem{Label: b.Version, Desc: desc, Value: b.Version})
+			value := b.Version
+			if m.Kind == "optifine" {
+				value = b.Filename
+			}
+			items = append(items, pickerItem{Label: b.Version, Desc: desc, Value: value})
 		}
 		a.modal = modalState{
 			Kind:     modalPicker,
@@ -717,6 +725,10 @@ func (a *App) startInstall(kind, id, mc, loader string, entry *minecraft.Version
 		title = fmt.Sprintf("安装 Fabric %s · %s", loader, mc)
 	case "quilt":
 		title = fmt.Sprintf("安装 Quilt %s · %s", loader, mc)
+	case "legacyfabric":
+		title = fmt.Sprintf("安装 Legacy Fabric %s · %s", loader, mc)
+	case "optifine":
+		title = fmt.Sprintf("安装 OptiFine · %s", mc)
 	case "forge":
 		title = fmt.Sprintf("安装 Forge %s · %s", loader, mc)
 	case "neoforge":

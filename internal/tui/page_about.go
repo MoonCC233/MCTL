@@ -27,7 +27,7 @@ func (a *App) viewAbout(w, h int) []string {
 	}
 	rows = append(rows, "", "  "+sectionLabel("支持"))
 	features := []string{
-		"原版 / Fabric / Quilt / Forge / NeoForge 安装",
+		"原版 / Fabric / Quilt / Legacy Fabric / Forge / NeoForge / OptiFine",
 		"Modrinth 与 CurseForge 整合包导入",
 		"离线账户与 Microsoft 设备代码登录",
 		"Java 检测、Adoptium 自动下载与启动参数",
