@@ -181,6 +181,26 @@ func (a *App) openWorlds() {
 	a.modal = modalState{Kind: modalWorlds, Title: "存档管理", Items: items, Data: gameDir}
 }
 
+func (a *App) openCurseForgeSearch() {
+	cfg := a.store.Snapshot()
+	if strings.TrimSpace(cfg.CurseForgeAPIKey) == "" {
+		a.openError("CurseForge", fmt.Errorf("请先在设置中填写 CurseForge API Key"))
+		return
+	}
+	mcVersion := ""
+	for _, v := range a.launch.versions {
+		if v.ID == cfg.SelectedVersion {
+			mcVersion = v.MCVersion
+			break
+		}
+	}
+	if mcVersion == "" && a.download.manifest != nil {
+		mcVersion = a.download.manifest.Latest.Release
+	}
+	a.openInput("CurseForge 整合包", "搜索关键词", "", "例如 Better MC", "search-curseforge")
+	a.modal.Data = mcVersion
+}
+
 func (a *App) openOnlineModpacks() {
 	cfg := a.store.Snapshot()
 	mcVersion := ""
@@ -325,6 +345,21 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		a.rt.SearchModpacks(query, filter)
 	case action == "online-modpack-version":
 		a.openModpackLoaderPicker(strings.TrimSpace(value))
+	case action == "search-curseforge":
+		mcVersion, _ := data.(string)
+		query := strings.TrimSpace(value)
+		a.setToast("正在搜索 CurseForge…", 0)
+		a.rt.SearchCurseForgeModpacks(query, mcVersion)
+	case action == "install-curseforge":
+		mods, _ := data.([]minecraft.CurseForgeMod)
+		id := item.Value
+		for _, mod := range mods {
+			if fmt.Sprint(mod.ID) == id {
+				a.startCurseForgeInstall(mod)
+				return nil
+			}
+		}
+		a.setToast("无效的 CurseForge 项目", 3)
 	case action == "online-modpack-loader":
 		mcVersion, _ := data.(string)
 		filter := minecraft.ModpackFilter{GameVersion: mcVersion, Loader: item.Value}
@@ -407,6 +442,12 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 				value = string(runes[:64])
 			}
 			settings.Name = value
+		case "icon":
+			if runes := []rune(value); len(runes) > 4 {
+				a.openError("图标无效", fmt.Errorf("实例图标最多 4 个字符"))
+				return nil
+			}
+			settings.Icon = value
 		case "link":
 			if value != "" && !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://") {
 				a.openError("链接无效", fmt.Errorf("链接需要以 http:// 或 https:// 开头"))
@@ -637,6 +678,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
 	case "cmd-online-modpacks":
 		a.openOnlineModpacks()
+	case "cmd-curseforge":
+		a.openCurseForgeSearch()
 	case "cmd-favorites":
 		a.openFavorites()
 	case "cmd-online-resources":

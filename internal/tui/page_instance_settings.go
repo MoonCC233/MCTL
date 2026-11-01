@@ -59,6 +59,7 @@ func (a *App) showInstanceSettings(gameDir, versionID, focus string) {
 	}
 	items := []pickerItem{
 		{Label: "实例名称", Desc: valueOr(settings.Name, "未设置"), Value: "name"},
+		{Label: "实例图标", Desc: valueOr(settings.Icon, "未设置"), Value: "icon"},
 		{Label: "主页链接", Desc: valueOr(settings.Link, "未设置"), Value: "link"},
 		{Label: "最大内存", Desc: memory(settings.MaxMemory, cfg.MaxMemory), Value: "max"},
 		{Label: "最小内存", Desc: memory(settings.MinMemory, cfg.MinMemory), Value: "min"},
@@ -68,9 +69,13 @@ func (a *App) showInstanceSettings(gameDir, versionID, focus string) {
 		{Label: "单独 Java", Desc: valueOr(settings.JavaPath, "跟随全局"), Value: "java"},
 	}
 	sel := instanceSettingIndex(focus)
+	title := "实例设置 · " + instanceDisplayName(settings.Name, versionID)
+	if settings.Icon != "" {
+		title = settings.Icon + " " + title
+	}
 	a.modal = modalState{
 		Kind:     modalInstanceSettings,
-		Title:    "实例设置 · " + instanceDisplayName(settings.Name, versionID),
+		Title:    title,
 		Items:    items,
 		Selected: sel,
 		Data: instanceSettingsData{
@@ -91,7 +96,7 @@ func instanceDisplayName(name, versionID string) string {
 }
 
 func instanceSettingIndex(key string) int {
-	for i, k := range []string{"name", "link", "max", "min", "jvm", "game", "server", "java"} {
+	for i, k := range []string{"name", "icon", "link", "max", "min", "jvm", "game", "server", "java"} {
 		if k == key {
 			return i
 		}
@@ -103,6 +108,8 @@ func instanceSettingLabel(key string) string {
 	switch key {
 	case "name":
 		return "实例名称"
+	case "icon":
+		return "实例图标"
 	case "link":
 		return "主页链接"
 	case "max":
@@ -125,6 +132,8 @@ func instanceSettingValue(settings minecraft.InstanceSettings, key string) strin
 	switch key {
 	case "name":
 		return settings.Name
+	case "icon":
+		return settings.Icon
 	case "link":
 		return settings.Link
 	case "max":
@@ -151,6 +160,8 @@ func instanceSettingPlaceholder(key string) string {
 	switch key {
 	case "name":
 		return "例如 生存整合包"
+	case "icon":
+		return "例如 🧱（最多 4 个字符）"
 	case "link":
 		return "https://example.com/pack"
 	case "max", "min":

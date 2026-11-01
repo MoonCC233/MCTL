@@ -92,10 +92,14 @@ func (a *App) renderVersionList(w, h int, list []minecraft.InstalledVersion) str
 			if !v.Complete {
 				nameW--
 			}
-			name := middleEllipsis(v.ID, nameW)
+			label := v.ID
 			if v.Name != "" {
-				name = middleEllipsis(v.Name+" · "+v.ID, nameW)
+				label = v.Name + " · " + v.ID
 			}
+			if v.Icon != "" {
+				label = v.Icon + " " + label
+			}
+			name := middleEllipsis(label, nameW)
 			loader := ansiTruncate(v.Loader, 9)
 			mc := ansiTruncate(v.MCVersion, 9)
 			marker := " "
@@ -146,6 +150,9 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 		)
 		if v.Name != "" {
 			rows = append(rows, kv("名称", v.Name, inner))
+		}
+		if v.Icon != "" {
+			rows = append(rows, kv("图标", v.Icon, inner))
 		}
 		if v.Link != "" {
 			rows = append(rows, kv("主页", v.Link, inner))

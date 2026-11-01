@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.24"
+var Version = "1.0.25"
 
 // Repository used for release checks and download links.
 const (
@@ -133,6 +133,11 @@ type newsMsg struct {
 
 type speedTestMsg struct {
 	Results []minecraft.SpeedResult
+}
+
+type curseForgeModsMsg struct {
+	Mods []minecraft.CurseForgeMod
+	Err  error
 }
 
 type microsoftCodeMsg struct {
@@ -616,6 +621,81 @@ func (r *Runtime) RunDiagnose() {
 			r.Logf("自检 %s [%s]: %s", c.Name, c.Status, c.Detail)
 		}
 		r.Emit(diagnoseDoneMsg{Checks: checks})
+	}()
+}
+
+// SearchCurseForgeModpacks searches the CurseForge modpack catalogue.
+func (r *Runtime) SearchCurseForgeModpacks(query, gameVersion string) {
+	cfg := r.Store.Snapshot()
+	src := minecraft.GetSource(cfg.DownloadSource)
+	go func() {
+		hc := minecraft.NewHTTPClient(src)
+		mods, err := minecraft.SearchCurseForgeModpacks(context.Background(), hc, cfg.CurseForgeAPIKey, query, gameVersion, 20)
+		if err != nil {
+			r.Logf("搜索 CurseForge 整合包失败: %v", err)
+		}
+		r.Emit(curseForgeModsMsg{Mods: mods, Err: err})
+	}()
+}
+
+// InstallCurseForgeModpack downloads a CurseForge pack archive and imports it.
+func (r *Runtime) InstallCurseForgeModpack(mod minecraft.CurseForgeMod) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "modpack", Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	ctx, cancel := context.WithCancel(context.Background())
+	r.installCancel = cancel
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		hc := minecraft.NewHTTPClient(src)
+		inst := minecraft.NewInstaller(cfg.GameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
+			r.Emit(progressMsg{Scope: "install", P: p})
+		})
+		r.Logf("从 CurseForge 安装 %s", mod.Name)
+		tmpDir, err := os.MkdirTemp("", "mctl-cf-*")
+		if err != nil {
+			r.mu.Lock()
+			r.installing = false
+			r.installCancel = nil
+			r.mu.Unlock()
+			r.Emit(installDoneMsg{Kind: "modpack", Err: err})
+			return
+		}
+		defer os.RemoveAll(tmpDir)
+
+		var id string
+		path, _, err := minecraft.DownloadCurseForgeModpack(ctx, hc, cfg.CurseForgeAPIKey, mod, tmpDir, func(done, total int64) {
+			r.Emit(progressMsg{Scope: "install", P: minecraft.Progress{
+				Stage: "下载整合包", Current: mod.Name, Bytes: done, TotalBytes: total,
+			}})
+		})
+		if err == nil {
+			id, err = inst.ImportModpack(ctx, path, cfg.JavaPath, cfg.AutoJava, cfg.CurseForgeAPIKey)
+		}
+		canceled := ctx.Err() != nil
+		if err == nil {
+			_ = r.Store.Update(func(c *config.Config) {
+				c.SelectedVersion = id
+			})
+			r.Logf("CurseForge 整合包安装完成: %s", id)
+		} else if canceled {
+			r.Logf("CurseForge 整合包安装已取消")
+		} else {
+			r.Logf("CurseForge 整合包安装失败: %v", err)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(installDoneMsg{Kind: "modpack", ID: id, Err: err, Canceled: canceled})
+		r.ScanVersions()
 	}()
 }
 

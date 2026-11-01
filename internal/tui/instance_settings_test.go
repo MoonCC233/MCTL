@@ -30,11 +30,11 @@ func TestInstanceSettingsModal(t *testing.T) {
 	if a.modal.Kind != modalInstanceSettings {
 		t.Fatalf("modal = %#v", a.modal)
 	}
-	if len(a.modal.Items) != 8 {
+	if len(a.modal.Items) != 9 {
 		t.Fatalf("items = %#v", a.modal.Items)
 	}
 	out := a.View()
-	for _, want := range []string{"实例设置", "实例名称", "最大内存", "自动进入服务器"} {
+	for _, want := range []string{"实例设置", "实例名称", "实例图标", "最大内存", "自动进入服务器"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("modal output missing %q", want)
 		}
@@ -59,13 +59,14 @@ func TestSaveInstanceSetting(t *testing.T) {
 		a.runAction("save-instance-setting", value, pickerItem{}, instanceSettingEdit{GameDir: dir, VersionID: "1.20.1", Key: key})
 	}
 	edit("name", "生存实例")
+	edit("icon", "🧱")
 	edit("server", "play.example.com:25566")
 	edit("jvm", "-XX:+UseG1GC")
 	settings, err = minecraft.LoadInstanceSettings(dir, "1.20.1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.Name != "生存实例" || settings.Server != "play.example.com:25566" || settings.JVMArgs != "-XX:+UseG1GC" {
+	if settings.Name != "生存实例" || settings.Icon != "🧱" || settings.Server != "play.example.com:25566" || settings.JVMArgs != "-XX:+UseG1GC" {
 		t.Fatalf("settings = %#v", settings)
 	}
 }
@@ -81,6 +82,7 @@ func TestSaveInstanceSettingRejectsInvalidValues(t *testing.T) {
 		{"max", "128"},
 		{"server", "bad address"},
 		{"min", "8192"},
+		{"icon", "🧱🧱🧱🧱🧱"},
 	} {
 		edit(tc.key, tc.value)
 		if a.modal.Kind != modalError {

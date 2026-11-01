@@ -39,6 +39,7 @@ func (a *App) toolItems() []toolItem {
 	return []toolItem{
 		{label: "导入整合包", desc: "导入本地 Modrinth .mrpack 或 CurseForge 整合包到独立实例。", action: "import"},
 		{label: "在线整合包", desc: "按游戏版本与加载器筛选，搜索并安装 Modrinth 整合包。", action: "online-modpacks"},
+		{label: "CurseForge 整合包", desc: "使用 CurseForge API Key 搜索并安装整合包。", action: "curseforge-modpacks"},
 		{label: "收藏", desc: "查看已收藏的整合包、资源包、光影和模组。", action: "favorites"},
 		{label: "在线资源", desc: "搜索 Modrinth 资源包、光影或模组并安装到当前实例。", action: "online-resources"},
 		{label: "存档管理", desc: "查看、打开、备份、导入或删除当前实例的存档。", action: "worlds"},
@@ -212,6 +213,8 @@ func (a *App) runTool(action string) tea.Cmd {
 		a.openInput("导入整合包", "Modrinth .mrpack 或 CurseForge 压缩包路径", "", `C:\Users\Alex\Downloads\pack.mrpack`, "import-modpack")
 	case "online-modpacks":
 		a.openOnlineModpacks()
+	case "curseforge-modpacks":
+		a.openCurseForgeSearch()
 	case "favorites":
 		a.openFavorites()
 	case "online-resources":

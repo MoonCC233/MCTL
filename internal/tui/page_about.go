@@ -40,6 +40,8 @@ func (a *App) viewAbout(w, h int) []string {
 		"在线整合包筛选与收藏列表",
 		"三套终端主题与 HTTP 代理设置",
 		"中英双语界面切换",
+		"实例图标自定义",
+		"CurseForge 在线整合包浏览与安装",
 		"网络测速与延迟/吞吐展示",
 	}
 	for _, f := range features {

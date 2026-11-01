@@ -15,6 +15,8 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **收藏与筛选**：在线整合包可按游戏版本与加载器筛选；搜索结果可收藏，随时从收藏列表直接安装。
 - **主题与代理**：内置 OpenCode 暗色、午夜蓝、浅色三套主题；支持 HTTP / HTTPS / SOCKS5 代理。
 - **中英双语界面**：导航、页面标题、设置项、工具列表与命令面板支持中文 / English 即时切换。
+- **实例图标**：为实例设置最多 4 个字符的图标，显示在版本列表与详情中。
+- **CurseForge 在线浏览**：使用设置中的 API Key 搜索整合包，下载后直接导入独立实例。
 - **新闻 / 更新日志**：读取发布源并展示最近的版本说明，可直接打开发布页面。
 - **网络测速**：测试 BMCLAPI、Mojang、Modrinth、GitHub 与 Adoptium 的延迟和吞吐，显示 MB/s。
 - **在线资源**：搜索 Modrinth 资源包、光影和模组，按当前实例的 Minecraft 版本与加载器匹配后下载到 `resourcepacks/`、`shaderpacks/` 或 `mods/`。
@@ -275,7 +277,7 @@ go build ./...
 go test -tags live -v ./internal/minecraft -run TestLiveLoaderMetadata -count=1
 ```
 
-检查覆盖 Forge、NeoForge、Cleanroom、LabyMod、Quilt、Legacy Fabric、LiteLoader、OptiFine、Modrinth 在线整合包与资源接口，以及启动器发布源与更新日志。
+检查覆盖 Forge、NeoForge、Cleanroom、LabyMod、Quilt、Legacy Fabric、LiteLoader、OptiFine、Modrinth 在线整合包与资源接口，以及启动器发布源与更新日志。若在仓库 Secrets 中配置 `CURSEFORGE_API_KEY`，还会验证 CurseForge 搜索接口。
 
 GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
@@ -294,11 +296,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.24` 的标签会触发 Release 工作流：
+推送形如 `v1.0.25` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.24
-git push origin v1.0.24
+git tag v1.0.25
+git push origin v1.0.25
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

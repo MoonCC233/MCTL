@@ -668,6 +668,25 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			a.setToast("实例已导出: "+filepath.Base(m.Path), 1)
 		}
 		return nil
+	case curseForgeModsMsg:
+		if m.Err != nil {
+			a.openError("CurseForge 搜索失败", m.Err)
+			return nil
+		}
+		if len(m.Mods) == 0 {
+			a.setToast("没有找到匹配的 CurseForge 整合包", 3)
+			return nil
+		}
+		items := make([]pickerItem, 0, len(m.Mods))
+		for _, mod := range m.Mods {
+			desc := fmt.Sprintf("%d 次下载", mod.DownloadCount)
+			if len(mod.Authors) > 0 && mod.Authors[0].Name != "" {
+				desc = mod.Authors[0].Name + " · " + desc
+			}
+			items = append(items, pickerItem{Label: mod.Name, Desc: desc, Value: fmt.Sprint(mod.ID)})
+		}
+		a.modal = modalState{Kind: modalPicker, Title: "CurseForge 整合包", Items: items, Action: "install-curseforge", Data: m.Mods}
+		return nil
 	case resourcesMsg:
 		a.resources.kind = m.Kind
 		if m.Err != nil {
@@ -893,6 +912,15 @@ func (a *App) startResourceInstall(kind, projectID, name string) {
 		Action:  "cancel-install",
 	}
 	a.rt.InstallResource(kind, projectID, name)
+}
+
+func (a *App) startCurseForgeInstall(mod minecraft.CurseForgeMod) {
+	if a.rt.Busy() {
+		a.setToast("已有任务正在进行", 3)
+		return
+	}
+	a.modal = modalState{Kind: modalProgress, Title: "CurseForge · " + mod.Name, Stage: "获取文件", Action: "cancel-install"}
+	a.rt.InstallCurseForgeModpack(mod)
 }
 
 func (a *App) startOnlineModpack(projectID, name string) {

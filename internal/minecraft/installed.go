@@ -25,6 +25,7 @@ type InstalledVersion struct {
 	Complete    bool
 	MainClass   string
 	Name        string
+	Icon        string
 	Link        string
 }
 
@@ -96,6 +97,7 @@ func scanVersionRoot(root, gameRoot string, packOnly bool) ([]InstalledVersion, 
 		}
 		if settings, err := LoadInstanceSettings(root, id); err == nil {
 			iv.Name = settings.Name
+			iv.Icon = settings.Icon
 			iv.Link = settings.Link
 		}
 		if rv, err := ResolveVersion(root, id); err == nil {

@@ -83,6 +83,24 @@ func TestInstanceSettingsPath(t *testing.T) {
 	}
 }
 
+func TestInstanceSettingsIcon(t *testing.T) {
+	dir := t.TempDir()
+	writeJSON(t, VersionJSONPath(dir, "1.20.1"), map[string]any{"id": "1.20.1", "mainClass": "net.minecraft.client.main.Main"})
+	if err := SaveInstanceSettings(dir, "1.20.1", &InstanceSettings{Name: "Pack", Icon: "🧱"}); err != nil {
+		t.Fatal(err)
+	}
+	list, err := ScanVersions(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].Icon != "🧱" {
+		t.Fatalf("scan = %#v", list)
+	}
+	if err := SaveInstanceSettings(dir, "1.20.1", &InstanceSettings{Icon: "🧱🧱🧱🧱🧱"}); err == nil {
+		t.Fatal("expected icon length error")
+	}
+}
+
 func TestInstanceSettingsAppearInScan(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, VersionJSONPath(dir, "1.20.1"), map[string]any{

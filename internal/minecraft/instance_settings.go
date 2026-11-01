@@ -14,6 +14,7 @@ import (
 // the global launcher configuration.
 type InstanceSettings struct {
 	Name      string `json:"name,omitempty"`
+	Icon      string `json:"icon,omitempty"`
 	Link      string `json:"link,omitempty"`
 	MinMemory int    `json:"minMemory,omitempty"`
 	MaxMemory int    `json:"maxMemory,omitempty"`
@@ -60,6 +61,7 @@ func SaveInstanceSettings(gameDir, versionID string, settings *InstanceSettings)
 		settings = &InstanceSettings{}
 	}
 	settings.Name = strings.TrimSpace(settings.Name)
+	settings.Icon = strings.TrimSpace(settings.Icon)
 	settings.Link = strings.TrimSpace(settings.Link)
 	settings.Server = strings.TrimSpace(settings.Server)
 	settings.JVMArgs = strings.TrimSpace(settings.JVMArgs)
@@ -70,6 +72,9 @@ func SaveInstanceSettings(gameDir, versionID string, settings *InstanceSettings)
 	}
 	if settings.MinMemory > 0 && settings.MaxMemory > 0 && settings.MinMemory > settings.MaxMemory {
 		return fmt.Errorf("最小内存不能大于最大内存")
+	}
+	if runes := []rune(settings.Icon); len(runes) > 4 {
+		return fmt.Errorf("实例图标最多 4 个字符")
 	}
 	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {

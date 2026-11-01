@@ -110,6 +110,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "下载", Desc: "安装原版、Fabric、Forge 或 NeoForge", Value: "cmd-page-download"},
 		{Label: "导入整合包", Desc: "导入本地 Modrinth / CurseForge 整合包", Value: "cmd-import-modpack"},
 		{Label: "在线整合包", Desc: "搜索并安装 Modrinth 整合包", Value: "cmd-online-modpacks"},
+		{Label: "CurseForge 整合包", Desc: "使用 API Key 搜索并安装整合包", Value: "cmd-curseforge"},
 		{Label: "收藏", Desc: "查看收藏的整合包与资源", Value: "cmd-favorites"},
 		{Label: "在线资源", Desc: "搜索 Modrinth 资源包、光影或模组", Value: "cmd-online-resources"},
 		{Label: "存档管理", Desc: "打开、备份、导入或删除存档", Value: "cmd-worlds"},

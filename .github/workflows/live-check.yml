@@ -7,6 +7,7 @@ on:
       - ".github/workflows/live-check.yml"
       - "internal/minecraft/live_test.go"
       - "internal/minecraft/modrinth.go"
+      - "internal/minecraft/curseforge.go"
 
 permissions:
   contents: read
@@ -25,4 +26,6 @@ jobs:
           cache: true
 
       - name: Query official loader endpoints
+        env:
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
         run: go test -tags live -v ./internal/minecraft -run TestLiveLoaderMetadata -count=1

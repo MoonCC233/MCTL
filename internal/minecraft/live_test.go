@@ -4,6 +4,8 @@ package minecraft
 
 import (
 	"context"
+	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -89,6 +91,21 @@ func TestLiveLoaderMetadata(t *testing.T) {
 			t.Fatalf("releases = %#v", releases)
 		}
 		t.Logf("News feed: %d releases, latest=%s", len(releases), releases[0].TagName)
+	})
+
+	t.Run("CurseForgeSearch", func(t *testing.T) {
+		key := strings.TrimSpace(os.Getenv("CURSEFORGE_API_KEY"))
+		if key == "" {
+			t.Skip("CURSEFORGE_API_KEY not configured")
+		}
+		mods, err := SearchCurseForgeModpacks(ctx, hc, key, "better", "1.20.1", 5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(mods) == 0 {
+			t.Fatal("CurseForge returned no modpacks")
+		}
+		t.Logf("CurseForge: %d modpacks, first=%q", len(mods), mods[0].Name)
 	})
 
 	t.Run("ModrinthFiltered", func(t *testing.T) {
