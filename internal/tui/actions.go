@@ -23,6 +23,29 @@ type worldDeleteData struct {
 	Name    string
 }
 
+type resourceModalData struct {
+	Kind    string
+	GameDir string
+}
+
+type resourceDeleteData struct {
+	Kind    string
+	GameDir string
+	Name    string
+}
+
+func localResourceLabel(kind string) string {
+	switch kind {
+	case "mod":
+		return "模组"
+	case "resourcepack":
+		return "资源包"
+	case "shader":
+		return "光影"
+	}
+	return kind
+}
+
 func (a *App) worldGameDir() string {
 	cfg := a.store.Snapshot()
 	for _, v := range a.launch.versions {
@@ -31,6 +54,42 @@ func (a *App) worldGameDir() string {
 		}
 	}
 	return cfg.GameDir
+}
+
+func (a *App) openLocalResourceTypePicker() {
+	items := []pickerItem{
+		{Label: "模组", Desc: "Mods", Value: "mod"},
+		{Label: "资源包", Desc: "Resource Packs", Value: "resourcepack"},
+		{Label: "光影", Desc: "Shaders", Value: "shader"},
+	}
+	a.modal = modalState{Kind: modalPicker, Title: "本地资源", Items: items, Action: "choose-local-resource-kind"}
+}
+
+func (a *App) openResourceFiles(kind string) {
+	gameDir := a.worldGameDir()
+	resources, err := minecraft.ListResources(gameDir, kind)
+	if err != nil {
+		a.openError("读取本地资源失败", err)
+		return
+	}
+	items := make([]pickerItem, 0, len(resources))
+	for _, r := range resources {
+		status := "已启用"
+		if r.Disabled {
+			status = "已禁用"
+		}
+		items = append(items, pickerItem{
+			Label: r.Name,
+			Desc:  formatBytes(r.Size) + " · " + status,
+			Value: r.Name,
+		})
+	}
+	a.modal = modalState{
+		Kind:  modalResources,
+		Title: "本地资源 · " + localResourceLabel(kind),
+		Items: items,
+		Data:  resourceModalData{Kind: kind, GameDir: gameDir},
+	}
 }
 
 func (a *App) openWorlds() {
@@ -160,6 +219,16 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		}
 		a.rt.ImportWorld(a.worldGameDir(), path)
 		a.setToast("正在导入存档…", 0)
+	case action == "choose-local-resource-kind":
+		a.openResourceFiles(item.Value)
+	case action == "delete-resource":
+		d, _ := data.(resourceDeleteData)
+		if err := minecraft.DeleteResource(d.GameDir, d.Kind, d.Name); err != nil {
+			a.openError("删除资源失败", err)
+			return nil
+		}
+		a.setToast("已删除: "+d.Name, 1)
+		a.openResourceFiles(d.Kind)
 	case action == "filter-versions":
 		a.versions.filter = strings.TrimSpace(value)
 		a.versions.idx = 0
@@ -251,6 +320,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openResourceTypePicker()
 	case "cmd-worlds":
 		a.openWorlds()
+	case "cmd-local-resources":
+		a.openLocalResourceTypePicker()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":

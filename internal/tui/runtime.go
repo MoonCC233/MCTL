@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.13"
+var Version = "1.0.14"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }

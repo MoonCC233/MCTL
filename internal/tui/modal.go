@@ -24,6 +24,7 @@ const (
 	modalPalette
 	modalError
 	modalWorlds
+	modalResources
 )
 
 type pickerItem struct {
@@ -102,6 +103,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "在线整合包", Desc: "搜索并安装 Modrinth 整合包", Value: "cmd-online-modpacks"},
 		{Label: "在线资源", Desc: "搜索 Modrinth 资源包、光影或模组", Value: "cmd-online-resources"},
 		{Label: "存档管理", Desc: "打开、备份、导入或删除存档", Value: "cmd-worlds"},
+		{Label: "本地资源", Desc: "启用、停用或删除模组/资源包/光影", Value: "cmd-local-resources"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
 		{Label: "工具", Desc: "目录、Java、日志与整合包导入", Value: "cmd-page-tools"},
 		{Label: "关于 MCTL", Desc: "版本、路径与项目信息", Value: "cmd-page-about"},
@@ -209,6 +211,53 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			action, data := m.Action, m.Data
 			a.modal = modalState{}
 			return a, a.runAction(action, "", it, data)
+		}
+	case modalResources:
+		switch key {
+		case "esc":
+			a.modal = modalState{}
+		case "up", "k":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected - 1 + len(m.Items)) % len(m.Items)
+			}
+		case "down", "j":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected + 1) % len(m.Items)
+			}
+		case "enter":
+			if d, ok := m.Data.(resourceModalData); ok {
+				if err := openPath(filepath.Join(d.GameDir, minecraft.ResourceSubdir(d.Kind))); err != nil {
+					a.setToast("打开资源目录失败: "+err.Error(), 2)
+				}
+			}
+		case "t":
+			if len(m.Items) > 0 {
+				d, ok := m.Data.(resourceModalData)
+				if !ok {
+					return a, nil
+				}
+				name := m.Items[m.Selected].Value
+				next, err := minecraft.ToggleResource(d.GameDir, d.Kind, name)
+				if err != nil {
+					a.openError("切换资源状态失败", err)
+					return a, nil
+				}
+				a.setToast("已更新: "+next, 1)
+				a.openResourceFiles(d.Kind)
+			}
+		case "d":
+			if len(m.Items) > 0 {
+				d, ok := m.Data.(resourceModalData)
+				if !ok {
+					return a, nil
+				}
+				name := m.Items[m.Selected].Value
+				a.openConfirm("删除资源", fmt.Sprintf("确定删除 %s 吗？此操作无法撤销。", name), "delete-resource", resourceDeleteData{Kind: d.Kind, GameDir: d.GameDir, Name: name})
+			}
+		case "r":
+			if d, ok := m.Data.(resourceModalData); ok {
+				a.openResourceFiles(d.Kind)
+			}
 		}
 	case modalWorlds:
 		switch key {
@@ -410,6 +459,8 @@ func (a *App) renderModal() string {
 		boxW = 68
 	case modalWorlds:
 		boxW = 72
+	case modalResources:
+		boxW = 72
 	case modalPicker:
 		boxW = 66
 	case modalProgress:
@@ -487,6 +538,31 @@ func (a *App) renderModal() string {
 		}
 		add("")
 		add("  " + keyHint("enter", "打开") + "  " + keyHint("b", "备份") + "  " + keyHint("d", "删除") + "  " + keyHint("i", "导入") + "  " + keyHint("esc", "关闭"))
+	case modalResources:
+		add("")
+		visible := min(10, max(maxH-12, 3))
+		start := 0
+		if m.Selected >= visible {
+			start = m.Selected - visible + 1
+		}
+		if start > len(m.Items)-visible {
+			start = max(len(m.Items)-visible, 0)
+		}
+		end := min(start+visible, len(m.Items))
+		if len(m.Items) == 0 {
+			add("  " + styleFaint.Render("当前实例没有本地资源"))
+		}
+		for i := start; i < end; i++ {
+			it := m.Items[i]
+			line := "  " + styleText.Render(padRight(it.Label, 28)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-34, 10)))
+			if i == m.Selected {
+				add(lipglossRow("  ▸ "+padRight(it.Label, 28)+"  "+ansiTruncate(it.Desc, max(inner-34, 10)), inner))
+			} else {
+				add(line)
+			}
+		}
+		add("")
+		add("  " + keyHint("enter", "打开目录") + "  " + keyHint("t", "启用/停用") + "  " + keyHint("d", "删除") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
 	case modalAccounts:
 		add("")
 		for i, it := range m.Items {
@@ -624,7 +700,7 @@ func helpLines() []string {
 		"",
 		styleSection.Render("设置 / 工具 / 日志"),
 		"  " + accent("enter / ←→") + muted("       编辑 / 调整"),
-		"  " + accent("i / w / e / s") + muted("       导入 / 整合包 / 资源 / 存档"),
+		"  " + accent("w / e / m / s") + muted("       整合包 / 在线 / 本地 / 存档"),
 		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),
 	}
 }

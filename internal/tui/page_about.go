@@ -31,7 +31,7 @@ func (a *App) viewAbout(w, h int) []string {
 		"本地整合包导入、在线整合包与资源搜索",
 		"离线账户与 Microsoft 设备代码登录",
 		"Java 检测、Adoptium 自动下载与启动参数",
-		"实时日志、命令面板、存档备份与演示模式",
+		"实时日志、命令面板、存档与本地资源管理",
 	}
 	for _, f := range features {
 		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(f))
