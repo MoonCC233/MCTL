@@ -35,6 +35,7 @@ func (a *App) viewAbout(w, h int) []string {
 		"截图浏览与多人服务器列表编辑",
 		"实例 zip 导出与导入",
 		"环境自检、更新检查与下载源连通性测试",
+		"模组元数据与内嵌 jar 查看",
 	}
 	for _, f := range features {
 		rows = append(rows, "  "+styleGreen.Render("•")+" "+styleText.Render(f))

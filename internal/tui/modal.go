@@ -29,6 +29,8 @@ const (
 	modalServers
 	modalDiagnostics
 	modalInstanceSettings
+	modalMods
+	modalModDetail
 )
 
 type pickerItem struct {
@@ -108,6 +110,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "在线资源", Desc: "搜索 Modrinth 资源包、光影或模组", Value: "cmd-online-resources"},
 		{Label: "存档管理", Desc: "打开、备份、导入或删除存档", Value: "cmd-worlds"},
 		{Label: "本地资源", Desc: "启用、停用或删除模组/资源包/光影", Value: "cmd-local-resources"},
+		{Label: "模组信息", Desc: "查看模组元数据与内嵌 jar", Value: "cmd-mods-info"},
 		{Label: "截图管理", Desc: "查看或删除 Minecraft 截图", Value: "cmd-screenshots"},
 		{Label: "服务器列表", Desc: "添加、编辑或删除多人服务器", Value: "cmd-servers"},
 		{Label: "导出实例", Desc: "打包当前版本或整合包为 zip", Value: "cmd-export-instance"},
@@ -296,6 +299,41 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		case "r":
 			a.openScreenshots()
+		}
+	case modalMods:
+		d, ok := m.Data.(modsInspectorData)
+		switch key {
+		case "esc", "q":
+			a.modal = modalState{}
+		case "up", "k":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected - 1 + len(m.Items)) % len(m.Items)
+			}
+		case "down", "j":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected + 1) % len(m.Items)
+			}
+		case "enter":
+			if ok && len(m.Items) > 0 && m.Selected < len(d.Mods) {
+				a.openModDetail(d.Mods[m.Selected])
+			}
+		case "o":
+			if ok {
+				if err := openPath(filepath.Join(d.GameDir, "mods")); err != nil {
+					a.setToast("打开模组目录失败: "+err.Error(), 2)
+				}
+			}
+		case "r":
+			a.openModsInfo()
+		}
+	case modalModDetail:
+		switch key {
+		case "esc", "q":
+			a.openModsInfo()
+		case "o":
+			if err := openPath(filepath.Join(a.worldGameDir(), "mods")); err != nil {
+				a.setToast("打开模组目录失败: "+err.Error(), 2)
+			}
 		}
 	case modalInstanceSettings:
 		d, ok := m.Data.(instanceSettingsData)
@@ -588,6 +626,10 @@ func (a *App) renderModal() string {
 		boxW = 80
 	case modalInstanceSettings:
 		boxW = 80
+	case modalMods:
+		boxW = 84
+	case modalModDetail:
+		boxW = 80
 	case modalPicker:
 		boxW = 66
 	case modalProgress:
@@ -769,6 +811,69 @@ func (a *App) renderModal() string {
 		}
 		add("")
 		add("  " + keyHint("enter", "编辑") + "  " + keyHint("l", "打开链接") + "  " + keyHint("o", "实例目录") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
+	case modalMods:
+		add("")
+		visible := min(10, max(maxH-12, 3))
+		start := 0
+		if m.Selected >= visible {
+			start = m.Selected - visible + 1
+		}
+		if start > len(m.Items)-visible {
+			start = max(len(m.Items)-visible, 0)
+		}
+		end := min(start+visible, len(m.Items))
+		if len(m.Items) == 0 {
+			add("  " + styleFaint.Render("当前实例没有模组"))
+		}
+		for i := start; i < end; i++ {
+			it := m.Items[i]
+			labelW := max(inner-38, 12)
+			line := "  " + styleText.Render(padRight(ansiTruncate(it.Label, labelW), labelW)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, 22))
+			if i == m.Selected {
+				add(lipglossRow("  ▸ "+padRight(ansiTruncate(it.Label, labelW), labelW)+"  "+ansiTruncate(it.Desc, 22), inner))
+			} else {
+				add(line)
+			}
+		}
+		add("")
+		add("  " + keyHint("enter", "详情") + "  " + keyHint("o", "模组目录") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
+	case modalModDetail:
+		mod, ok := m.Data.(minecraft.ModInfo)
+		add("")
+		if !ok {
+			add("  " + styleFaint.Render("没有模组信息"))
+		} else {
+			add("  " + styleText.Render(padRight("文件", 10)) + " " + styleFaint.Render(ansiTruncate(mod.File, max(inner-14, 10))))
+			add("  " + styleText.Render(padRight("名称", 10)) + " " + styleFaint.Render(ansiTruncate(orDash(mod.Name), max(inner-14, 10))))
+			add("  " + styleText.Render(padRight("ID", 10)) + " " + styleFaint.Render(ansiTruncate(orDash(mod.ID), max(inner-14, 10))))
+			add("  " + styleText.Render(padRight("版本", 10)) + " " + styleFaint.Render(ansiTruncate(orDash(mod.Version), max(inner-14, 10))))
+			add("  " + styleText.Render(padRight("加载器", 10)) + " " + styleFaint.Render(orDash(mod.Loader)))
+			add("  " + styleText.Render(padRight("状态", 10)) + " " + styleFaint.Render(modStatusLabel(mod)))
+			if mod.Err != "" {
+				add("")
+				for _, l := range wrapText("读取失败: "+mod.Err, max(inner-4, 12)) {
+					add("  " + styleRed.Render(l))
+				}
+			} else if mod.Description != "" {
+				add("")
+				for _, l := range wrapText(mod.Description, max(inner-4, 12)) {
+					add("  " + styleMuted.Render(l))
+				}
+			}
+			if len(mod.Nested) > 0 {
+				add("")
+				add("  " + styleMuted.Render(fmt.Sprintf("内嵌 jar · %d", len(mod.Nested))))
+				show := min(len(mod.Nested), 6)
+				for _, n := range mod.Nested[:show] {
+					add("  " + styleFaint.Render(ansiTruncate(n, max(inner-4, 12))))
+				}
+				if len(mod.Nested) > show {
+					add("  " + styleFaint.Render(fmt.Sprintf("…还有 %d 个", len(mod.Nested)-show)))
+				}
+			}
+		}
+		add("")
+		add("  " + keyHint("esc", "返回") + "  " + keyHint("o", "模组目录"))
 	case modalAccounts:
 		add("")
 		for i, it := range m.Items {
@@ -910,6 +1015,7 @@ func helpLines() []string {
 		"  " + accent("n") + muted("                服务器列表"),
 		"  " + accent("x / u") + muted("            导出 / 导入实例"),
 		"  " + accent("d / t") + muted("            环境自检 / 检查更新"),
+		"  " + accent("b") + muted("                模组信息（元数据 / 内嵌 jar）"),
 		"  " + accent("i") + muted("                版本页：实例设置（内存 / JVM / 自动进服）"),
 		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),
 	}

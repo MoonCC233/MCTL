@@ -22,6 +22,7 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **实例导出/导入**：把版本或整合包连同模组、配置、存档与截图打包为 zip；导入时创建独立实例并补全缺失文件。
 - **环境自检与更新检查**：检查游戏目录、Java、版本、资源与下载源；查询最新发布版本并在有更新时打开下载页面。
 - **单实例启动覆盖**：为实例单独设置名称、主页链接、最小/最大内存、JVM/游戏参数、Java 路径和启动后自动进入的服务器。
+- **模组信息**：读取 Fabric、Quilt、Forge、NeoForge 与旧版模组元数据，显示版本、加载器、启用状态和内嵌 jar。
 - **离线账户**：添加、切换和删除离线账户，自动生成与 Minecraft 一致的离线 UUID。
 - **Java 管理**：扫描常见安装位置与 `JAVA_HOME`，检查版本兼容性；缺少 Java 时可从 Adoptium 下载 JRE。
 - **双下载源**：BMCLAPI 镜像与 Mojang 官方源，可在设置中即时切换。
@@ -209,6 +210,7 @@ CurseForge 整合包使用其 API 解析文件下载地址，需要先在设置�
 | `u` | 导入实例 zip |
 | `d` | 运行环境自检 |
 | `t` | 检查启动器更新 |
+| `b` | 查看模组元数据与内嵌 jar |
 | `o` | 打开游戏目录 |
 | `g` | 打开配置目录 |
 | `v` | 检测 Java |
@@ -282,11 +284,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.18` 的标签会触发 Release 工作流：
+推送形如 `v1.0.19` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.18
-git push origin v1.0.18
+git tag v1.0.19
+git push origin v1.0.19
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

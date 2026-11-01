@@ -42,6 +42,7 @@ func (a *App) toolItems() []toolItem {
 		{label: "在线资源", desc: "搜索 Modrinth 资源包、光影或模组并安装到当前实例。", action: "online-resources"},
 		{label: "存档管理", desc: "查看、打开、备份、导入或删除当前实例的存档。", action: "worlds"},
 		{label: "本地资源", desc: "启用、停用或删除当前实例的模组、资源包和光影。", action: "local-resources"},
+		{label: "模组信息", desc: "读取模组元数据、加载器、启用状态与内嵌 jar。", action: "mods-info"},
 		{label: "截图管理", desc: "查看或删除当前实例的 Minecraft 截图。", action: "screenshots"},
 		{label: "服务器列表", desc: "添加、编辑或删除当前实例保存的多人服务器。", action: "servers"},
 		{label: "导出实例", desc: "把当前版本或整合包连同模组、存档与截图打包为 zip。", action: "export-instance"},
@@ -87,7 +88,7 @@ func (a *App) viewTools(w, h int) []string {
 		hint := []string{
 			"  " + styleMuted.Render(ansiTruncate(it.desc, max(w-10, 16))),
 			"  " + keyHint("enter", "执行") + "  " + keyHint("x", "导出") + "  " + keyHint("u", "导入") + "  " + keyHint("w", "在线"),
-			"  " + keyHint("d", "自检") + "  " + keyHint("t", "更新") + "  " + keyHint("m", "本地") + "  " + keyHint("s", "存档"),
+			"  " + keyHint("d", "自检") + "  " + keyHint("t", "更新") + "  " + keyHint("b", "模组") + "  " + keyHint("m", "本地"),
 		}
 		p := panel("提示", w-4, hintH, false, hint)
 		lines = append(lines, "")
@@ -149,6 +150,8 @@ func (a *App) toolsKey(msg tea.KeyMsg) tea.Cmd {
 		a.openWorlds()
 	case "m":
 		a.openLocalResourceTypePicker()
+	case "b":
+		a.openModsInfo()
 	case "p":
 		a.openScreenshots()
 	case "n":
@@ -199,6 +202,8 @@ func (a *App) runTool(action string) tea.Cmd {
 		a.openWorlds()
 	case "local-resources":
 		a.openLocalResourceTypePicker()
+	case "mods-info":
+		a.openModsInfo()
 	case "screenshots":
 		a.openScreenshots()
 	case "servers":

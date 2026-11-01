@@ -558,6 +558,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.rt.CheckUpdate()
 	case "cmd-instance-settings":
 		a.openInstanceSettings()
+	case "cmd-mods-info":
+		a.openModsInfo()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":

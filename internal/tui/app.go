@@ -195,7 +195,7 @@ func (a *App) renderFooter() string {
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
 	case pageTools:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("x", "导出"), keyHint("u", "导入"), keyHint("d", "自检"), keyHint("t", "更新")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("x", "导出"), keyHint("u", "导入"), keyHint("b", "模组"), keyHint("t", "更新")}
 	case pageAbout:
 		parts = []string{keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
 	case pageLogs:
