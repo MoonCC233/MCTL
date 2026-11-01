@@ -271,8 +271,8 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 			rows = append(rows, "  "+styleFaint.Render("再运行 Cleanroom 安装器（需要 Java 25）"))
 		case 9:
 			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 LabyMod 通道"))
-			rows = append(rows, "", "  "+styleFaint.Render("将下载官方 LabyMod 安装器到"))
-			rows = append(rows, "  "+styleFaint.Render("游戏目录/mctl-installers/，需运行安装器完成安装"))
+			rows = append(rows, "", "  "+styleFaint.Render("将从官方自定义清单和依赖库生成"))
+			rows = append(rows, "  "+styleFaint.Render("可直接启动的 LabyMod 版本"))
 		}
 	}
 	for len(rows) < panelContentHeight(h) {

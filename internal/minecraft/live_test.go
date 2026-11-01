@@ -70,6 +70,27 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		t.Logf("Modrinth resource pack: %q, version=%s", projects[0].Title, version.VersionNumber)
 	})
 
+	t.Run("LabyModProfile", func(t *testing.T) {
+		builds, err := FetchLabyModBuilds(ctx, hc, "1.20.1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(builds) == 0 || builds[0].ManifestURL == "" {
+			t.Fatal("no LabyMod profile")
+		}
+		if _, err := hc.Get(ctx, builds[0].ManifestURL); err != nil {
+			t.Fatal(err)
+		}
+		libs, err := FetchLabyModLibraries(ctx, hc, builds[0].Channel)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(libs) == 0 {
+			t.Fatal("no LabyMod libraries")
+		}
+		t.Logf("LabyMod profile: %s, libraries=%d", builds[0].Version, len(libs))
+	})
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var builds []LoaderBuild

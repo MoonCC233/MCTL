@@ -223,6 +223,7 @@ type VersionJSON struct {
 	MinecraftArguments string              `json:"minecraftArguments,omitempty"`
 	Logging            *Logging            `json:"logging,omitempty"`
 	Jar                string              `json:"jar,omitempty"`
+	MinecraftVersion   string              `json:"_minecraftVersion,omitempty"`
 	ReleaseTime        string              `json:"releaseTime"`
 	Time               string              `json:"time"`
 	ComplianceLevel    int                 `json:"complianceLevel"`

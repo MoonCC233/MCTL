@@ -106,6 +106,9 @@ func scanVersionRoot(root, gameRoot string, packOnly bool) ([]InstalledVersion, 
 			iv.Loader = detectLoader(id, raw.MainClass)
 			iv.MCVersion = mcVersionFallback(id, iv.Loader)
 		}
+		if raw.MinecraftVersion != "" {
+			iv.MCVersion = raw.MinecraftVersion
+		}
 		if iv.MCVersion == "" {
 			iv.MCVersion = mcVersionFallback(id, iv.Loader)
 		}
@@ -147,6 +150,8 @@ func sortInstalledVersions(out []InstalledVersion) {
 func detectLoader(id, mainClass string) string {
 	s := strings.ToLower(id + " " + mainClass)
 	switch {
+	case strings.Contains(s, "labymod"):
+		return "LabyMod"
 	case strings.Contains(s, "neoforge"):
 		return "NeoForge"
 	case strings.Contains(s, "fabric"):

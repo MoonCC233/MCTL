@@ -522,7 +522,7 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			} else if m.Kind == "resource" {
 				label = "资源安装完成"
 			} else if m.Kind == "labymod" {
-				label = "LabyMod 安装器已下载"
+				label = "LabyMod 安装完成"
 			}
 			a.setToast(label+": "+m.ID, 1)
 			a.launch.stage = ""
@@ -831,7 +831,7 @@ func (a *App) startInstall(kind, id, mc, loader string, entry *minecraft.Version
 	case "cleanroom":
 		title = fmt.Sprintf("安装 Cleanroom %s · %s", loader, mc)
 	case "labymod":
-		title = fmt.Sprintf("下载 LabyMod 安装器 · %s", loader)
+		title = fmt.Sprintf("安装 LabyMod %s · %s", loader, mc)
 	case "forge":
 		title = fmt.Sprintf("安装 Forge %s · %s", loader, mc)
 	case "neoforge":
