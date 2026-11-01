@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.43"
+var Version = "1.0.44"
 
 // Repository used for release checks and download links.
 const (
@@ -158,6 +158,12 @@ type curseForgeProjectMsg struct {
 type skinMsg struct {
 	Profile *minecraft.SkinProfile
 	Err     error
+}
+
+type skinTextureMsg struct {
+	Skin []string
+	Cape []string
+	Err  error
 }
 
 type microsoftCodeMsg struct {
@@ -845,6 +851,38 @@ func (r *Runtime) FetchSkin() {
 			r.Logf("获取皮肤失败: %v", err)
 		}
 		r.Emit(skinMsg{Profile: profile, Err: err})
+	}()
+}
+
+// FetchSkinTextures downloads skin and cape textures and renders terminal
+// previews for the skin dialog.
+func (r *Runtime) FetchSkinTextures(profile *minecraft.SkinProfile) {
+	if profile == nil {
+		return
+	}
+	cfg := r.Store.Snapshot()
+	src := minecraft.GetSource(cfg.DownloadSource)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+		defer cancel()
+		hc := minecraft.NewHTTPClient(src)
+		var msg skinTextureMsg
+		img, err := minecraft.FetchTextureImage(ctx, hc, profile.SkinURL)
+		if err != nil {
+			msg.Err = err
+			r.Logf("下载皮肤纹理失败: %v", err)
+			r.Emit(msg)
+			return
+		}
+		msg.Skin = renderSkinRows(img, profile.Slim)
+		if profile.CapeURL != "" {
+			if cape, err := minecraft.FetchTextureImage(ctx, hc, profile.CapeURL); err == nil {
+				msg.Cape = renderCapeRows(cape)
+			} else {
+				r.Logf("下载披风纹理失败: %v", err)
+			}
+		}
+		r.Emit(msg)
 	}()
 }
 

@@ -128,7 +128,14 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		if profile.Name == "" || profile.SkinURL == "" {
 			t.Fatalf("profile = %#v", profile)
 		}
-		t.Logf("Skin: %s, model=%s, cape=%v", profile.Name, profile.SkinModel(), profile.CapeURL != "")
+		img, err := FetchTextureImage(ctx, hc, profile.SkinURL)
+		if err != nil {
+			skipIfUnreachable(t, err)
+		}
+		if img.Bounds().Dx() < 64 || img.Bounds().Dy() < 32 {
+			t.Fatalf("skin texture bounds = %v", img.Bounds())
+		}
+		t.Logf("Skin: %s, model=%s, cape=%v, texture=%dx%d", profile.Name, profile.SkinModel(), profile.CapeURL != "", img.Bounds().Dx(), img.Bounds().Dy())
 	})
 
 	t.Run("CurseForgeSearch", func(t *testing.T) {

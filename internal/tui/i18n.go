@@ -337,6 +337,8 @@ var english = map[string]string{
 	"例如 285109 或 .../modpacks/rlcraft": "e.g. 285109 or .../modpacks/rlcraft",
 	"按项目 ID 或链接读取文件列表并安装，适用于搜索接口受限的 Key。": "Resolve files by project ID or link; useful when the key cannot use search.",
 	"正在读取 CurseForge 项目…":                "Loading the CurseForge project…",
+	"预览":                                 "Preview",
+	"正在渲染预览…":                            "Rendering preview…",
 	"最新动态、快捷入口与运行状态":                     "News, shortcuts and runtime status",
 	"已安装 %d 个版本 · 最新发布与常用操作":             "%d versions installed · latest release and common actions",
 	"新闻获取失败":                             "Failed to load news",

@@ -63,6 +63,8 @@ type modalState struct {
 	Query       []rune
 	Shift       bool
 	Symbols     bool
+	SkinPreview []string
+	CapePreview []string
 }
 
 func (a *App) openConfirm(title, body, action string, data any) {
@@ -1134,6 +1136,24 @@ func (a *App) renderModal() string {
 		if !ok || profile == nil {
 			add("  " + styleFaint.Render("没有皮肤数据"))
 		} else {
+			if len(m.SkinPreview) > 0 {
+				add("  " + styleSection.Render(tr("预览")))
+				if len(m.CapePreview) > 0 {
+					left := strings.Join(m.SkinPreview, "\n")
+					right := strings.Join(m.CapePreview, "\n")
+					for _, l := range joinColumns(left, right, 2) {
+						add("  " + l)
+					}
+				} else {
+					for _, l := range m.SkinPreview {
+						add("  " + l)
+					}
+				}
+				add("")
+			} else {
+				add("  " + styleFaint.Render(tr("正在渲染预览…")))
+				add("")
+			}
 			add("  " + styleText.Render(padRight(tr("名称"), 8)) + " " + styleFaint.Render(profile.Name))
 			add("  " + styleText.Render(padRight("UUID", 8)) + " " + styleFaint.Render(profile.UUID))
 			add("  " + styleText.Render(padRight(tr("模型"), 8)) + " " + styleFaint.Render(profile.SkinModel()))

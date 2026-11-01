@@ -729,6 +729,16 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			return nil
 		}
 		a.modal = modalState{Kind: modalSkin, Title: "皮肤 / 披风 · " + m.Profile.Name, Data: m.Profile}
+		a.rt.FetchSkinTextures(m.Profile)
+		return nil
+	case skinTextureMsg:
+		if a.modal.Kind == modalSkin {
+			a.modal.SkinPreview = m.Skin
+			a.modal.CapePreview = m.Cape
+			if m.Err != nil {
+				a.setToast("皮肤预览不可用: "+m.Err.Error(), 3)
+			}
+		}
 		return nil
 	case curseForgeModsMsg:
 		if m.Err != nil {
