@@ -23,7 +23,7 @@ type downloadPage struct {
 	installed     map[string]bool
 }
 
-var loaderModeNames = []string{"Minecraft 原版", "Fabric", "Quilt", "Legacy Fabric", "LiteLoader", "Forge", "NeoForge", "OptiFine", "Cleanroom"}
+var loaderModeNames = []string{"Minecraft 原版", "Fabric", "Quilt", "Legacy Fabric", "LiteLoader", "Forge", "NeoForge", "OptiFine", "Cleanroom", "LabyMod"}
 
 func (p *downloadPage) applyManifest(m *minecraft.VersionManifest, err error) {
 	p.loading = false
@@ -80,7 +80,7 @@ func (a *App) viewDownload(w, h int) []string {
 		sub += " · 搜索：" + p.filter
 	}
 	lines := pageHeader("下载", sub, w)
-	lines = append(lines, "  "+a.renderDownloadTabs())
+	lines = append(lines, "  "+a.renderDownloadTabs(w))
 	contentH := h - len(lines)
 	if contentH < 5 {
 		return fitLines(lines, h, w)
@@ -119,8 +119,11 @@ func (a *App) viewDownload(w, h int) []string {
 	return fitLines(lines, h, w)
 }
 
-func (a *App) renderDownloadTabs() string {
+func (a *App) renderDownloadTabs(width int) string {
 	p := &a.download
+	if width < 74 {
+		return styleMuted.Render("类型: ") + styleAccent.Render(loaderModeNames[p.mode]) + "  " + styleFaint.Render("←→ 切换")
+	}
 	tab := func(label string, selected bool) string {
 		if selected {
 			return lipgloss.NewStyle().Foreground(colorAccent).Background(colorPanel2).Bold(true).Padding(0, 1).Render(label)
@@ -135,7 +138,8 @@ func (a *App) renderDownloadTabs() string {
 		tab("Forge", p.mode == 5) + " " +
 		tab("Neo", p.mode == 6) + " " +
 		tab("Opti", p.mode == 7) + " " +
-		tab("Clean", p.mode == 8)
+		tab("Clean", p.mode == 8) + " " +
+		tab("Laby", p.mode == 9)
 }
 
 func (a *App) renderDownloadList(w, h int, list []minecraft.VersionEntry) string {
@@ -265,6 +269,10 @@ func (a *App) renderDownloadDetail(w, h int, list []minecraft.VersionEntry) stri
 			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 Cleanroom 版本"))
 			rows = append(rows, "", "  "+styleFaint.Render("将先安装原版 1.12.2，"))
 			rows = append(rows, "  "+styleFaint.Render("再运行 Cleanroom 安装器（需要 Java 25）"))
+		case 9:
+			rows = append(rows, "  "+styleAccent.Render("enter")+" "+styleMuted.Render("选择 LabyMod 通道"))
+			rows = append(rows, "", "  "+styleFaint.Render("将下载官方 LabyMod 安装器到"))
+			rows = append(rows, "  "+styleFaint.Render("游戏目录/mctl-installers/，需运行安装器完成安装"))
 		}
 	}
 	for len(rows) < panelContentHeight(h) {
@@ -366,6 +374,9 @@ func (a *App) downloadKey(msg tea.KeyMsg) tea.Cmd {
 			case 8:
 				a.setToast("正在获取 Cleanroom 版本…", 0)
 				a.rt.FetchLoaderVersions("cleanroom", v.ID)
+			case 9:
+				a.setToast("正在获取 LabyMod 版本…", 0)
+				a.rt.FetchLoaderVersions("labymod", v.ID)
 			}
 			return nil
 		}

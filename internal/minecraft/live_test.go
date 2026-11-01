@@ -28,6 +28,7 @@ func TestLiveLoaderMetadata(t *testing.T) {
 		{"LegacyFabric", "legacyfabric", "1.8.9"},
 		{"LiteLoader", "liteloader", "1.12.2"},
 		{"Cleanroom", "cleanroom", "1.12.2"},
+		{"LabyMod", "labymod", "1.20.1"},
 		{"OptiFine", "optifine", "1.20.1"},
 	}
 	t.Run("ModrinthSearch", func(t *testing.T) {
@@ -84,6 +85,8 @@ func TestLiveLoaderMetadata(t *testing.T) {
 				builds, err = FetchLiteLoaderBuilds(ctx, hc, tc.mc)
 			case "cleanroom":
 				builds, err = FetchCleanroomBuilds(ctx, hc, tc.mc)
+			case "labymod":
+				builds, err = FetchLabyModBuilds(ctx, hc, tc.mc)
 			default:
 				builds, err = FetchLoaderBuilds(ctx, hc, tc.kind, tc.mc)
 			}

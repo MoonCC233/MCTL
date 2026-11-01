@@ -16,14 +16,17 @@ import (
 
 // LoaderBuild is one Forge or NeoForge build for a Minecraft version.
 type LoaderBuild struct {
-	Version    string
-	MCVersion  string
-	Kind       string
-	Stable     bool
-	Filename   string
-	RepoURL    string
-	TweakClass string
-	Libraries  []Library
+	Version      string
+	MCVersion    string
+	Kind         string
+	Stable       bool
+	Filename     string
+	RepoURL      string
+	TweakClass   string
+	Libraries    []Library
+	Channel      string
+	ManifestURL  string
+	RuntimeMajor int
 }
 
 var (

@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.10"
+var Version = "1.0.11"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -325,6 +325,9 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 		} else if kind == "liteloader" {
 			r.Logf("安装 LiteLoader %s", loader)
 			actualID, err = inst.InstallLiteLoader(ctx, mcVersion, loader)
+		} else if kind == "labymod" {
+			r.Logf("下载 LabyMod %s 安装器", loader)
+			actualID, err = inst.InstallLabyMod(ctx, loader)
 		} else if kind == "forge" || kind == "neoforge" || kind == "cleanroom" {
 			required := minecraft.InferJavaMajor(mcVersion)
 			if kind == "cleanroom" {
@@ -349,9 +352,11 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 		}
 		canceled := ctx.Err() != nil
 		if err == nil {
-			_ = r.Store.Update(func(c *config.Config) {
-				c.SelectedVersion = actualID
-			})
+			if kind != "labymod" {
+				_ = r.Store.Update(func(c *config.Config) {
+					c.SelectedVersion = actualID
+				})
+			}
 			r.Logf("安装完成: %s", actualID)
 		} else if canceled {
 			r.Logf("安装已取消: %s", actualID)
@@ -362,7 +367,11 @@ func (r *Runtime) Install(kind, id, mcVersion, loader string, entry *minecraft.V
 		r.installing = false
 		r.installCancel = nil
 		r.mu.Unlock()
-		r.Emit(installDoneMsg{Kind: kind, ID: actualID, Err: err, Canceled: canceled})
+		emitID := actualID
+		if kind == "labymod" && actualID != "" {
+			emitID = filepath.Base(actualID)
+		}
+		r.Emit(installDoneMsg{Kind: kind, ID: emitID, Err: err, Canceled: canceled})
 		r.ScanVersions()
 	}()
 }
@@ -614,6 +623,8 @@ func (r *Runtime) FetchLoaderVersions(kind, mcVersion string) {
 			builds, err = minecraft.FetchLiteLoaderBuilds(context.Background(), hc, mcVersion)
 		case "cleanroom":
 			builds, err = minecraft.FetchCleanroomBuilds(context.Background(), hc, mcVersion)
+		case "labymod":
+			builds, err = minecraft.FetchLabyModBuilds(context.Background(), hc, mcVersion)
 		default:
 			builds, err = minecraft.FetchLoaderBuilds(context.Background(), hc, kind, mcVersion)
 		}

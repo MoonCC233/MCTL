@@ -521,6 +521,8 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 				label = "整合包导入完成"
 			} else if m.Kind == "resource" {
 				label = "资源安装完成"
+			} else if m.Kind == "labymod" {
+				label = "LabyMod 安装器已下载"
 			}
 			a.setToast(label+": "+m.ID, 1)
 			a.launch.stage = ""
@@ -628,6 +630,8 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			name = "LiteLoader"
 		case "cleanroom":
 			name = "Cleanroom"
+		case "labymod":
+			name = "LabyMod"
 		}
 		if m.Err != nil {
 			a.openError("获取 "+name+" 版本失败", m.Err)
@@ -644,10 +648,15 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 				desc = "稳定版"
 			}
 			value := b.Version
+			label := b.Version
 			if m.Kind == "optifine" {
 				value = b.Filename
 			}
-			items = append(items, pickerItem{Label: b.Version, Desc: desc, Value: value})
+			if m.Kind == "labymod" {
+				value = b.Channel
+				label = b.Version + " · " + b.Channel
+			}
+			items = append(items, pickerItem{Label: label, Desc: desc, Value: value})
 		}
 		a.modal = modalState{
 			Kind:     modalPicker,
@@ -821,6 +830,8 @@ func (a *App) startInstall(kind, id, mc, loader string, entry *minecraft.Version
 		title = fmt.Sprintf("安装 LiteLoader %s · %s", loader, mc)
 	case "cleanroom":
 		title = fmt.Sprintf("安装 Cleanroom %s · %s", loader, mc)
+	case "labymod":
+		title = fmt.Sprintf("下载 LabyMod 安装器 · %s", loader)
 	case "forge":
 		title = fmt.Sprintf("安装 Forge %s · %s", loader, mc)
 	case "neoforge":
