@@ -39,6 +39,24 @@ func TestRenderDemoAllPages(t *testing.T) {
 	}
 }
 
+func TestVersionSubdirMapping(t *testing.T) {
+	cases := map[string]string{
+		"m": "mods",
+		"p": "resourcepacks",
+		"s": "saves",
+		"h": "screenshots",
+		"f": "config",
+	}
+	for key, want := range cases {
+		if got := versionSubdir(key); got != want {
+			t.Fatalf("versionSubdir(%q) = %q, want %q", key, got, want)
+		}
+	}
+	if versionSubdir("x") != "" {
+		t.Fatal("unknown key should not map to a directory")
+	}
+}
+
 func TestDemoUsesExpectedTheme(t *testing.T) {
 	out := RenderDemo("launch", 118, 34)
 	if !strings.Contains(out, "MCTL") {

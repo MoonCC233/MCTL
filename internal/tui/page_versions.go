@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -138,9 +140,15 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 			kv("模组", fmt.Sprintf("%d 个（共享）", v.Mods), inner),
 			kv("发布", shortDate(v.ReleaseTime), inner),
 			"",
-			"  "+styleMuted.Render("路径"),
+			"  "+styleMuted.Render("版本路径"),
 			"  "+styleFaint.Render(middleEllipsis(v.Dir, inner-4)),
 		)
+		if v.GameDir != "" {
+			rows = append(rows,
+				"  "+styleMuted.Render("实例路径"),
+				"  "+styleFaint.Render(middleEllipsis(v.GameDir, inner-4)),
+			)
+		}
 		if !v.Complete {
 			rows = append(rows, "", "  "+styleYellow.Render("⚠ 客户端文件不完整，启动时会自动补全"))
 		}
@@ -149,6 +157,11 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 			"  "+styleAccent.Render("enter")+" "+styleMuted.Render("启动游戏"),
 			"  "+styleAccent.Render("d")+"     "+styleMuted.Render("删除版本"),
 			"  "+styleAccent.Render("o")+"     "+styleMuted.Render("打开版本目录"),
+			"  "+styleAccent.Render("m")+"     "+styleMuted.Render("打开模组目录"),
+			"  "+styleAccent.Render("p")+"     "+styleMuted.Render("打开资源包目录"),
+			"  "+styleAccent.Render("s")+"     "+styleMuted.Render("打开存档目录"),
+			"  "+styleAccent.Render("h")+"     "+styleMuted.Render("打开截图目录"),
+			"  "+styleAccent.Render("f")+"     "+styleMuted.Render("打开配置目录"),
 		)
 	}
 	for len(rows) < panelContentHeight(h) {
@@ -158,6 +171,40 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 		rows = rows[:panelContentHeight(h)]
 	}
 	return panel("详情", w, h, false, rows)
+}
+
+func versionSubdir(key string) string {
+	switch key {
+	case "m":
+		return "mods"
+	case "p":
+		return "resourcepacks"
+	case "s":
+		return "saves"
+	case "h":
+		return "screenshots"
+	case "f":
+		return "config"
+	}
+	return ""
+}
+
+func (a *App) openVersionSubdir(v minecraft.InstalledVersion, sub string) {
+	if sub == "" {
+		return
+	}
+	root := v.GameDir
+	if root == "" {
+		root = a.store.Snapshot().GameDir
+	}
+	dir := filepath.Join(root, sub)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		a.setToast("无法创建目录: "+err.Error(), 2)
+		return
+	}
+	if err := openPath(dir); err != nil {
+		a.setToast("打开目录失败: "+err.Error(), 2)
+	}
 }
 
 func kv(k, v string, w int) string {
@@ -233,6 +280,10 @@ func (a *App) versionsKey(msg tea.KeyMsg) tea.Cmd {
 			}
 		} else {
 			a.openGameDir()
+		}
+	case "m", "p", "s", "h", "f":
+		if len(list) > 0 {
+			a.openVersionSubdir(list[a.versions.idx], versionSubdir(msg.String()))
 		}
 	case "n":
 		a.switchPage(pageDownload)
