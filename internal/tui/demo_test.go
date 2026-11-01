@@ -57,6 +57,15 @@ func TestVersionSubdirMapping(t *testing.T) {
 	}
 }
 
+func TestToolsDemoListsInstanceTools(t *testing.T) {
+	out := RenderDemo("tools", 118, 34)
+	for _, want := range []string{"服务器列表", "截图管理", "本地资源", "存档管理"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("tools demo is missing %q", want)
+		}
+	}
+}
+
 func TestDemoUsesExpectedTheme(t *testing.T) {
 	out := RenderDemo("launch", 118, 34)
 	if !strings.Contains(out, "MCTL") {

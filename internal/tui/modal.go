@@ -25,6 +25,8 @@ const (
 	modalError
 	modalWorlds
 	modalResources
+	modalScreenshots
+	modalServers
 )
 
 type pickerItem struct {
@@ -104,6 +106,8 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "在线资源", Desc: "搜索 Modrinth 资源包、光影或模组", Value: "cmd-online-resources"},
 		{Label: "存档管理", Desc: "打开、备份、导入或删除存档", Value: "cmd-worlds"},
 		{Label: "本地资源", Desc: "启用、停用或删除模组/资源包/光影", Value: "cmd-local-resources"},
+		{Label: "截图管理", Desc: "查看或删除 Minecraft 截图", Value: "cmd-screenshots"},
+		{Label: "服务器列表", Desc: "添加、编辑或删除多人服务器", Value: "cmd-servers"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
 		{Label: "工具", Desc: "目录、Java、日志与整合包导入", Value: "cmd-page-tools"},
 		{Label: "关于 MCTL", Desc: "版本、路径与项目信息", Value: "cmd-page-about"},
@@ -175,9 +179,9 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.modal = modalState{}
 		case "enter":
 			value := string(m.Value)
-			action := m.Action
+			action, data := m.Action, m.Data
 			a.modal = modalState{}
-			return a, a.runAction(action, value, pickerItem{}, nil)
+			return a, a.runAction(action, value, pickerItem{}, data)
 		default:
 			a.editInput(m, msg)
 		}
@@ -258,6 +262,61 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if d, ok := m.Data.(resourceModalData); ok {
 				a.openResourceFiles(d.Kind)
 			}
+		}
+	case modalScreenshots:
+		switch key {
+		case "esc":
+			a.modal = modalState{}
+		case "up", "k":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected - 1 + len(m.Items)) % len(m.Items)
+			}
+		case "down", "j":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected + 1) % len(m.Items)
+			}
+		case "enter":
+			if d, ok := m.Data.(string); ok {
+				if err := openPath(filepath.Join(d, "screenshots")); err != nil {
+					a.setToast("打开截图目录失败: "+err.Error(), 2)
+				}
+			}
+		case "d":
+			if len(m.Items) > 0 {
+				d, _ := m.Data.(string)
+				name := m.Items[m.Selected].Value
+				a.openConfirm("删除截图", fmt.Sprintf("确定删除截图 %s 吗？", name), "delete-screenshot", screenshotDeleteData{GameDir: d, Name: name})
+			}
+		case "r":
+			a.openScreenshots()
+		}
+	case modalServers:
+		switch key {
+		case "esc":
+			a.modal = modalState{}
+		case "up", "k":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected - 1 + len(m.Items)) % len(m.Items)
+			}
+		case "down", "j":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected + 1) % len(m.Items)
+			}
+		case "a":
+			a.openInput("添加服务器", "服务器名称", "", "我的服务器", "add-server-name")
+		case "e":
+			if d, ok := m.Data.(serverListData); ok && len(d.Servers) > 0 && m.Selected < len(d.Servers) {
+				s := d.Servers[m.Selected]
+				a.openInput("编辑服务器 · "+s.Name, "服务器地址", s.IP, "play.example.com", "edit-server")
+				a.modal.Data = serverEditData{GameDir: d.GameDir, Index: m.Selected, Name: s.Name, Server: s}
+			}
+		case "d":
+			if d, ok := m.Data.(serverListData); ok && len(d.Servers) > 0 && m.Selected < len(d.Servers) {
+				s := d.Servers[m.Selected]
+				a.openConfirm("删除服务器", fmt.Sprintf("确定从列表中删除 %s 吗？", s.Name), "delete-server", serverEditData{GameDir: d.GameDir, Index: m.Selected, Name: s.Name})
+			}
+		case "r":
+			a.openServers()
 		}
 	case modalWorlds:
 		switch key {
@@ -461,6 +520,10 @@ func (a *App) renderModal() string {
 		boxW = 72
 	case modalResources:
 		boxW = 72
+	case modalScreenshots:
+		boxW = 72
+	case modalServers:
+		boxW = 76
 	case modalPicker:
 		boxW = 66
 	case modalProgress:
@@ -563,6 +626,56 @@ func (a *App) renderModal() string {
 		}
 		add("")
 		add("  " + keyHint("enter", "打开目录") + "  " + keyHint("t", "启用/停用") + "  " + keyHint("d", "删除") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
+	case modalScreenshots:
+		add("")
+		visible := min(10, max(maxH-12, 3))
+		start := 0
+		if m.Selected >= visible {
+			start = m.Selected - visible + 1
+		}
+		if start > len(m.Items)-visible {
+			start = max(len(m.Items)-visible, 0)
+		}
+		end := min(start+visible, len(m.Items))
+		if len(m.Items) == 0 {
+			add("  " + styleFaint.Render("当前实例没有截图"))
+		}
+		for i := start; i < end; i++ {
+			it := m.Items[i]
+			line := "  " + styleText.Render(padRight(it.Label, 32)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-38, 10)))
+			if i == m.Selected {
+				add(lipglossRow("  ▸ "+padRight(it.Label, 32)+"  "+ansiTruncate(it.Desc, max(inner-38, 10)), inner))
+			} else {
+				add(line)
+			}
+		}
+		add("")
+		add("  " + keyHint("enter", "打开目录") + "  " + keyHint("d", "删除") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
+	case modalServers:
+		add("")
+		visible := min(10, max(maxH-12, 3))
+		start := 0
+		if m.Selected >= visible {
+			start = m.Selected - visible + 1
+		}
+		if start > len(m.Items)-visible {
+			start = max(len(m.Items)-visible, 0)
+		}
+		end := min(start+visible, len(m.Items))
+		if len(m.Items) == 0 {
+			add("  " + styleFaint.Render("当前实例没有保存的服务器"))
+		}
+		for i := start; i < end; i++ {
+			it := m.Items[i]
+			line := "  " + styleText.Render(padRight(it.Label, 22)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-28, 10)))
+			if i == m.Selected {
+				add(lipglossRow("  ▸ "+padRight(it.Label, 22)+"  "+ansiTruncate(it.Desc, max(inner-28, 10)), inner))
+			} else {
+				add(line)
+			}
+		}
+		add("")
+		add("  " + keyHint("a", "添加") + "  " + keyHint("e", "编辑") + "  " + keyHint("d", "删除") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
 	case modalAccounts:
 		add("")
 		for i, it := range m.Items {
@@ -700,7 +813,8 @@ func helpLines() []string {
 		"",
 		styleSection.Render("设置 / 工具 / 日志"),
 		"  " + accent("enter / ←→") + muted("       编辑 / 调整"),
-		"  " + accent("w / e / m / s") + muted("       整合包 / 在线 / 本地 / 存档"),
+		"  " + accent("w / e / m / s / p") + muted("  整合包 / 在线 / 本地 / 存档 / 截图"),
+		"  " + accent("n") + muted("                服务器列表"),
 		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),
 	}
 }

@@ -34,6 +34,23 @@ type resourceDeleteData struct {
 	Name    string
 }
 
+type screenshotDeleteData struct {
+	GameDir string
+	Name    string
+}
+
+type serverListData struct {
+	GameDir string
+	Servers []minecraft.Server
+}
+
+type serverEditData struct {
+	GameDir string
+	Index   int
+	Name    string
+	Server  minecraft.Server
+}
+
 func localResourceLabel(kind string) string {
 	switch kind {
 	case "mod":
@@ -89,6 +106,43 @@ func (a *App) openResourceFiles(kind string) {
 		Title: "本地资源 · " + localResourceLabel(kind),
 		Items: items,
 		Data:  resourceModalData{Kind: kind, GameDir: gameDir},
+	}
+}
+
+func (a *App) openScreenshots() {
+	gameDir := a.worldGameDir()
+	shots, err := minecraft.ListScreenshots(gameDir)
+	if err != nil {
+		a.openError("读取截图失败", err)
+		return
+	}
+	items := make([]pickerItem, 0, len(shots))
+	for _, s := range shots {
+		items = append(items, pickerItem{
+			Label: s.Name,
+			Desc:  formatBytes(s.Size) + " · " + s.Updated.Format("2006-01-02 15:04"),
+			Value: s.Name,
+		})
+	}
+	a.modal = modalState{Kind: modalScreenshots, Title: "截图管理", Items: items, Data: gameDir}
+}
+
+func (a *App) openServers() {
+	gameDir := a.worldGameDir()
+	servers, err := minecraft.ListServers(gameDir)
+	if err != nil {
+		a.openError("读取服务器列表失败", err)
+		return
+	}
+	items := make([]pickerItem, 0, len(servers))
+	for _, s := range servers {
+		items = append(items, pickerItem{Label: s.Name, Desc: s.IP, Value: s.IP})
+	}
+	a.modal = modalState{
+		Kind:  modalServers,
+		Title: "服务器列表",
+		Items: items,
+		Data:  serverListData{GameDir: gameDir, Servers: servers},
 	}
 }
 
@@ -229,6 +283,47 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		}
 		a.setToast("已删除: "+d.Name, 1)
 		a.openResourceFiles(d.Kind)
+	case action == "delete-screenshot":
+		d, _ := data.(screenshotDeleteData)
+		if err := minecraft.DeleteScreenshot(d.GameDir, d.Name); err != nil {
+			a.openError("删除截图失败", err)
+			return nil
+		}
+		a.setToast("已删除截图 "+d.Name, 1)
+		a.openScreenshots()
+	case action == "add-server-name":
+		name := strings.TrimSpace(value)
+		a.openInput("添加服务器 · "+name, "服务器地址", "", "play.example.com", "add-server-address")
+		a.modal.Data = name
+	case action == "add-server-address":
+		name, _ := data.(string)
+		gameDir := a.worldGameDir()
+		address := strings.TrimSpace(value)
+		if err := minecraft.AddServer(gameDir, minecraft.Server{Name: name, IP: address, AcceptTextures: true}); err != nil {
+			a.openError("添加服务器失败", err)
+			return nil
+		}
+		a.setToast("已添加服务器 "+address, 1)
+		a.openServers()
+	case action == "edit-server":
+		d, _ := data.(serverEditData)
+		address := strings.TrimSpace(value)
+		server := d.Server
+		server.IP = address
+		if err := minecraft.UpdateServer(d.GameDir, d.Index, server); err != nil {
+			a.openError("更新服务器失败", err)
+			return nil
+		}
+		a.setToast("已更新服务器 "+d.Name, 1)
+		a.openServers()
+	case action == "delete-server":
+		d, _ := data.(serverEditData)
+		if err := minecraft.DeleteServer(d.GameDir, d.Index); err != nil {
+			a.openError("删除服务器失败", err)
+			return nil
+		}
+		a.setToast("已移除服务器 "+d.Name, 1)
+		a.openServers()
 	case action == "filter-versions":
 		a.versions.filter = strings.TrimSpace(value)
 		a.versions.idx = 0
@@ -322,6 +417,10 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openWorlds()
 	case "cmd-local-resources":
 		a.openLocalResourceTypePicker()
+	case "cmd-screenshots":
+		a.openScreenshots()
+	case "cmd-servers":
+		a.openServers()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":
