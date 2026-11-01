@@ -35,6 +35,7 @@ func run() error {
 		demoW       = flag.Int("demo-width", 118, "演示界面宽度")
 		demoH       = flag.Int("demo-height", 34, "演示界面高度")
 		printConfig = flag.Bool("print-config", false, "打印配置路径与内容")
+		listJava    = flag.Bool("list-java", false, "列出检测到的 Java 运行时并退出")
 	)
 	flag.Usage = printHelp
 	args, positionalPage := splitDemoArgs(os.Args[1:])
@@ -77,6 +78,17 @@ func run() error {
 		cfg := store.Snapshot()
 		data, _ := json.MarshalIndent(cfg, "", "  ")
 		fmt.Printf("配置文件: %s\n%s\n", store.Path, data)
+		return nil
+	}
+	if *listJava {
+		list := minecraft.ListJava(store.Cfg.JavaPath)
+		if len(list) == 0 {
+			fmt.Println("未检测到 Java 运行时")
+			return nil
+		}
+		for _, j := range list {
+			fmt.Printf("Java %-3d %-14s %s\n", j.Major, j.Version, j.Path)
+		}
 		return nil
 	}
 
@@ -172,6 +184,7 @@ func printHelp() {
   --dir <路径>          指定游戏目录（仅本次运行）
   --source <名称>       下载源: bmclapi | official
   --print-config        打印配置路径与内容
+  --list-java           列出检测到的 Java 运行时并退出
   --demo                渲染演示界面并退出
   --demo-page <页面>    launch | versions | download | settings | tools | about | logs | all
   --demo-width <列数>   演示界面宽度（默认 118）
@@ -179,7 +192,7 @@ func printHelp() {
   --version             显示版本号
   -h, --help            显示本帮助
 
-快捷键:
-  tab 切换页面 · 1-7 快速跳转 · : 命令面板 · ? 帮助 · q 退出
+鼠标操作:
+  单击选择 · 双击打开 · 右键更多 · 滚轮滚动 · 顶部 [?] 帮助 / [×] 退出
 `, tui.Version)
 }

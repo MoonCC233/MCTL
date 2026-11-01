@@ -109,6 +109,7 @@ mctl
 | `--dir <路径>` | 本次运行使用指定的游戏目录 |
 | `--source <名称>` | 下载源：`bmclapi` 或 `official` |
 | `--print-config` | 打印配置文件路径与当前配置 |
+| `--list-java` | 列出所有检测到的 Java 运行时与路径 |
 | `--demo [页面]` | 渲染演示界面并退出 |
 | `--demo-page <页面>` | 演示页面：`launch`、`versions`、`download`、`settings`、`logs`、`all` |
 | `--demo-width <列数>` | 演示界面宽度，默认 `118` |
@@ -277,11 +278,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.41` 的标签会触发 Release 工作流：
+推送形如 `v1.0.42` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.41
-git push origin v1.0.41
+git tag v1.0.42
+git push origin v1.0.42
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。
