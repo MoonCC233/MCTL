@@ -18,6 +18,39 @@ type loaderPickerData struct {
 	MC   string
 }
 
+type worldDeleteData struct {
+	GameDir string
+	Name    string
+}
+
+func (a *App) worldGameDir() string {
+	cfg := a.store.Snapshot()
+	for _, v := range a.launch.versions {
+		if v.ID == cfg.SelectedVersion && v.GameDir != "" {
+			return v.GameDir
+		}
+	}
+	return cfg.GameDir
+}
+
+func (a *App) openWorlds() {
+	gameDir := a.worldGameDir()
+	worlds, err := minecraft.ListWorlds(gameDir)
+	if err != nil {
+		a.openError("读取存档失败", err)
+		return
+	}
+	items := make([]pickerItem, 0, len(worlds))
+	for _, w := range worlds {
+		items = append(items, pickerItem{
+			Label: w.Name,
+			Desc:  formatBytes(w.Size) + " · " + w.Updated.Format("2006-01-02 15:04"),
+			Value: w.Name,
+		})
+	}
+	a.modal = modalState{Kind: modalWorlds, Title: "存档管理", Items: items, Data: gameDir}
+}
+
 func (a *App) openOnlineModpacks() {
 	a.openInput("在线整合包", "搜索 Modrinth 整合包", "", "例如 Create / Cobblemon", "search-modpacks")
 }
@@ -111,6 +144,22 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		a.rt.SearchResources(a.resources.kind, query)
 	case action == "install-resource":
 		a.startResourceInstall(a.resources.kind, item.Value, item.Label)
+	case action == "delete-world":
+		d, _ := data.(worldDeleteData)
+		if err := minecraft.DeleteWorld(d.GameDir, d.Name); err != nil {
+			a.openError("删除存档失败", err)
+			return nil
+		}
+		a.setToast("已删除存档 "+d.Name, 1)
+		a.openWorlds()
+	case action == "import-world":
+		path := strings.TrimSpace(value)
+		if path == "" {
+			a.setToast("请填写存档压缩包路径", 3)
+			return nil
+		}
+		a.rt.ImportWorld(a.worldGameDir(), path)
+		a.setToast("正在导入存档…", 0)
 	case action == "filter-versions":
 		a.versions.filter = strings.TrimSpace(value)
 		a.versions.idx = 0
@@ -200,6 +249,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openOnlineModpacks()
 	case "cmd-online-resources":
 		a.openResourceTypePicker()
+	case "cmd-worlds":
+		a.openWorlds()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":

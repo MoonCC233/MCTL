@@ -40,6 +40,7 @@ func (a *App) toolItems() []toolItem {
 		{label: "导入整合包", desc: "导入本地 Modrinth .mrpack 或 CurseForge 整合包到独立实例。", action: "import"},
 		{label: "在线整合包", desc: "搜索 Modrinth 并下载安装最新的稳定整合包版本。", action: "online-modpacks"},
 		{label: "在线资源", desc: "搜索 Modrinth 资源包、光影或模组并安装到当前实例。", action: "online-resources"},
+		{label: "存档管理", desc: "查看、打开、备份、导入或删除当前实例的存档。", action: "worlds"},
 		{label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", action: "open-game"},
 		{label: "打开配置目录", desc: "打开 config.json 与日志文件所在目录。", action: "open-config"},
 		{label: "检测 Java", desc: "重新扫描系统与常见安装目录中的 Java 运行时。", action: "java"},
@@ -75,7 +76,7 @@ func (a *App) viewTools(w, h int) []string {
 	}
 	if hintH > 0 {
 		it := items[a.tools.idx]
-		hint := []string{"  " + styleMuted.Render(ansiTruncate(it.desc, max(w-10, 16))), "", "  " + keyHint("enter", "执行") + "  " + keyHint("↑↓", "选择") + "  " + keyHint("i", "导入") + "  " + keyHint("w", "整合包") + "  " + keyHint("e", "资源")}
+		hint := []string{"  " + styleMuted.Render(ansiTruncate(it.desc, max(w-10, 16))), "", "  " + keyHint("enter", "执行") + "  " + keyHint("i", "导入") + "  " + keyHint("w", "整合包") + "  " + keyHint("e", "资源") + "  " + keyHint("s", "存档")}
 		p := panel("提示", w-4, hintH, false, hint)
 		lines = append(lines, "")
 		for _, l := range strings.Split(p, "\n") {
@@ -132,6 +133,8 @@ func (a *App) toolsKey(msg tea.KeyMsg) tea.Cmd {
 		a.openOnlineModpacks()
 	case "e":
 		a.openResourceTypePicker()
+	case "s":
+		a.openWorlds()
 	case "o":
 		a.openGameDir()
 	case "g":
@@ -164,6 +167,8 @@ func (a *App) runTool(action string) tea.Cmd {
 		a.openOnlineModpacks()
 	case "online-resources":
 		a.openResourceTypePicker()
+	case "worlds":
+		a.openWorlds()
 	case "open-game":
 		a.openGameDir()
 	case "open-config":

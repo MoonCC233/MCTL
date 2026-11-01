@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -194,7 +195,7 @@ func (a *App) renderFooter() string {
 	case pageSettings:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "编辑"), keyHint("←→", "调整"), keyHint("o", "打开游戏目录")}
 	case pageTools:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("i", "导入整合包"), keyHint("w", "在线整合包"), keyHint("e", "在线资源")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "执行"), keyHint("i", "导入整合包"), keyHint("w", "在线整合包"), keyHint("e", "在线资源"), keyHint("s", "存档")}
 	case pageAbout:
 		parts = []string{keyHint("o", "打开游戏目录"), keyHint("g", "打开配置目录")}
 	case pageLogs:
@@ -554,6 +555,18 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			Action:   "install-fabric-loader",
 			Data:     m.MC,
 			Selected: 0,
+		}
+		return nil
+	case worldDoneMsg:
+		if m.Err != nil {
+			a.openError("存档操作失败", m.Err)
+			return nil
+		}
+		if m.Action == "import" {
+			a.setToast("存档已导入: "+m.Name, 1)
+			a.openWorlds()
+		} else {
+			a.setToast("存档已备份: "+filepath.Base(m.Path), 1)
 		}
 		return nil
 	case resourcesMsg:

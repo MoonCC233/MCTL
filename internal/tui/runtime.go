@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.12"
+var Version = "1.0.13"
 
 // Messages flowing from background work into the Bubble Tea loop.
 type eventMsg struct{ Msg tea.Msg }
@@ -92,6 +92,13 @@ type resourcesMsg struct {
 	Kind     string
 	Projects []minecraft.ModrinthProject
 	Err      error
+}
+
+type worldDoneMsg struct {
+	Action string
+	Name   string
+	Path   string
+	Err    error
 }
 
 type microsoftCodeMsg struct {
@@ -532,6 +539,32 @@ func loaderKey(name string) string {
 		return "neoforge"
 	}
 	return ""
+}
+
+// BackupWorld creates a zip backup of a world.
+func (r *Runtime) BackupWorld(gameDir, name, dest string) {
+	go func() {
+		err := minecraft.BackupWorld(gameDir, name, dest)
+		if err != nil {
+			r.Logf("备份存档失败 %s: %v", name, err)
+		} else {
+			r.Logf("存档已备份: %s", dest)
+		}
+		r.Emit(worldDoneMsg{Action: "backup", Name: name, Path: dest, Err: err})
+	}()
+}
+
+// ImportWorld extracts a zipped world into the selected game directory.
+func (r *Runtime) ImportWorld(gameDir, zipPath string) {
+	go func() {
+		name, err := minecraft.ImportWorld(gameDir, zipPath)
+		if err != nil {
+			r.Logf("导入存档失败: %v", err)
+		} else {
+			r.Logf("存档已导入: %s", name)
+		}
+		r.Emit(worldDoneMsg{Action: "import", Name: name, Path: zipPath, Err: err})
+	}()
 }
 
 // ImportModpack installs a Modrinth pack into an isolated instance.
