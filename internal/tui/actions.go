@@ -60,6 +60,8 @@ func localResourceLabel(kind string) string {
 		return "资源包"
 	case "shader":
 		return "光影"
+	case "schematic":
+		return "投影"
 	}
 	return kind
 }
@@ -125,6 +127,87 @@ func (a *App) openResourceFiles(kind string) {
 		Title: "本地资源 · " + localResourceLabel(kind),
 		Items: items,
 		Data:  resourceModalData{Kind: kind, GameDir: gameDir},
+	}
+}
+
+type instanceInstallData struct {
+	GameDir   string
+	VersionID string
+	MCVersion string
+}
+
+func (a *App) openInstanceInstall() {
+	cfg := a.store.Snapshot()
+	versionID := cfg.SelectedVersion
+	if strings.TrimSpace(versionID) == "" {
+		a.setToast("请先在版本页选择一个版本", 3)
+		return
+	}
+	gameDir := cfg.GameDir
+	for _, v := range a.launch.versions {
+		if v.ID == versionID {
+			if v.GameDir != "" {
+				gameDir = v.GameDir
+			}
+			mcVersion := v.MCVersion
+			if mcVersion == "" {
+				mcVersion = versionID
+			}
+			a.showInstanceInstallPicker(gameDir, versionID, mcVersion)
+			return
+		}
+	}
+	if list, err := minecraft.ScanVersions(cfg.GameDir); err == nil {
+		for _, v := range list {
+			if v.ID != versionID {
+				continue
+			}
+			if v.GameDir != "" {
+				gameDir = v.GameDir
+			}
+			mcVersion := v.MCVersion
+			if mcVersion == "" {
+				mcVersion = versionID
+			}
+			a.showInstanceInstallPicker(gameDir, versionID, mcVersion)
+			return
+		}
+	}
+	a.setToast("请先在版本页选择一个版本", 3)
+}
+
+func (a *App) showInstanceInstallPicker(gameDir, versionID, mcVersion string) {
+	label := func(kind string) string {
+		switch kind {
+		case "fabric":
+			return "Fabric"
+		case "quilt":
+			return "Quilt"
+		case "legacyfabric":
+			return "Legacy Fabric"
+		case "forge":
+			return "Forge"
+		case "neoforge":
+			return "NeoForge"
+		}
+		return kind
+	}
+	items := []pickerItem{
+		{Label: "补全 / 修复文件", Desc: "重新校验客户端、依赖库与资源文件", Value: "repair"},
+	}
+	prefix := "安装 "
+	if language == "en" {
+		prefix = "Install "
+	}
+	for _, kind := range []string{"fabric", "quilt", "legacyfabric", "forge", "neoforge"} {
+		items = append(items, pickerItem{Label: prefix + label(kind), Desc: "自动选择最新构建", Value: kind})
+	}
+	a.modal = modalState{
+		Kind:   modalPicker,
+		Title:  "实例安装 · " + versionID,
+		Items:  items,
+		Data:   instanceInstallData{GameDir: gameDir, VersionID: versionID, MCVersion: mcVersion},
+		Action: "instance-install",
 	}
 }
 
@@ -225,6 +308,7 @@ func (a *App) openCommunityResources() {
 		{Label: "资源包", Desc: "Resource Packs", Value: "resourcepack"},
 		{Label: "光影", Desc: "Shaders", Value: "shader"},
 		{Label: "数据包", Desc: "Data Packs", Value: "datapack"},
+		{Label: "世界", Desc: "Worlds", Value: "world"},
 		{Label: "整合包", Desc: "Modpacks", Value: "modpacks"},
 		{Label: "收藏", Desc: "Favorites", Value: "favorites"},
 	}
@@ -382,6 +466,8 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		case "mod", "resourcepack", "shader":
 			a.resources.kind = item.Value
 			a.openInput("在线资源 · "+resourceKindLabel(item.Value), "搜索 Modrinth "+resourceKindLabel(item.Value), "", "输入关键词", "search-resources")
+		case "world":
+			a.openInput("下载世界", "世界压缩包（zip）地址", "", "https://example.com/world.zip", "download-world-url")
 		case "datapack":
 			a.openDatapackWorldPicker()
 		case "modpacks":
@@ -406,6 +492,20 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 	case action == "install-datapack":
 		worldDir, _ := data.(string)
 		a.startDatapackInstall(item.Value, strings.TrimPrefix(item.Label, "★ "), worldDir)
+	case action == "instance-install":
+		d, ok := data.(instanceInstallData)
+		if !ok {
+			return nil
+		}
+		if item.Value == "repair" {
+			a.modal = modalState{Kind: modalProgress, Title: "修复实例 · " + d.VersionID, Stage: "校验文件", Action: "cancel-install"}
+			a.rt.RepairInstance(d.GameDir, d.VersionID)
+			return nil
+		}
+		a.modal = modalState{Kind: modalProgress, Title: "安装加载器 · " + item.Label, Stage: "准备安装", Action: "cancel-install"}
+		a.rt.AddLoader(d.GameDir, item.Value, d.MCVersion, d.VersionID)
+	case action == "download-world-url":
+		a.startWorldDownload(strings.TrimSpace(value))
 	case action == "community-pack-source":
 		if item.Value == "curseforge" {
 			a.openCurseForgeSearch()
@@ -765,6 +865,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.openWorlds()
 	case "cmd-local-resources":
 		a.openLocalResourceTypePicker()
+	case "cmd-schematics":
+		a.openResourceFiles("schematic")
 	case "cmd-screenshots":
 		a.openScreenshots()
 	case "cmd-servers":
@@ -784,6 +886,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 		a.rt.CheckUpdate()
 	case "cmd-instance-settings":
 		a.openInstanceSettings()
+	case "cmd-instance-install":
+		a.openInstanceInstall()
 	case "cmd-mods-info":
 		a.openModsInfo()
 	case "cmd-new-instance":

@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.29"
+var Version = "1.0.30"
 
 // Repository used for release checks and download links.
 const (
@@ -630,6 +630,33 @@ func loaderKey(name string) string {
 	return ""
 }
 
+// DownloadWorld downloads a zipped world URL into the selected instance's saves.
+func (r *Runtime) DownloadWorld(rawURL string) {
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		gameDir := cfg.GameDir
+		if list, err := minecraft.ScanVersions(cfg.GameDir); err == nil {
+			for _, v := range list {
+				if v.ID == cfg.SelectedVersion && v.GameDir != "" {
+					gameDir = v.GameDir
+					break
+				}
+			}
+		}
+		hc := minecraft.NewHTTPClient(src)
+		res, err := minecraft.DownloadWorldURL(context.Background(), hc, rawURL, gameDir)
+		name := ""
+		if err == nil {
+			name = res.Name
+			r.Logf("世界已下载: %s", res.Path)
+		} else {
+			r.Logf("下载世界失败: %v", err)
+		}
+		r.Emit(worldDoneMsg{Action: "download", Name: name, Path: gameDir, Err: err})
+	}()
+}
+
 // BackupWorld creates a zip backup of a world.
 func (r *Runtime) BackupWorld(gameDir, name, dest string) {
 	go func() {
@@ -852,6 +879,85 @@ func (r *Runtime) CreateInstance(opts minecraft.InstanceWizardOptions) {
 		r.installCancel = nil
 		r.mu.Unlock()
 		r.Emit(instanceDoneMsg{Action: "create", Name: name, Path: root, Err: err, Canceled: canceled})
+		r.ScanVersions()
+	}()
+}
+
+// RepairInstance verifies and completes an installed instance.
+func (r *Runtime) RepairInstance(gameDir, versionID string) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "repair", Name: versionID, Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	ctx, cancel := context.WithCancel(context.Background())
+	r.installCancel = cancel
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		inst := minecraft.NewInstaller(gameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
+			r.Emit(progressMsg{Scope: "install", P: p})
+		})
+		r.Logf("修复实例: %s", versionID)
+		err := inst.EnsureInstalled(ctx, versionID)
+		canceled := ctx.Err() != nil
+		if err == nil {
+			r.Logf("实例文件已补全: %s", versionID)
+		} else if canceled {
+			r.Logf("修复实例已取消")
+		} else {
+			r.Logf("修复实例失败: %v", err)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "repair", Name: versionID, Err: err, Canceled: canceled})
+		r.ScanVersions()
+	}()
+}
+
+// AddLoader installs a loader into an existing instance.
+func (r *Runtime) AddLoader(gameDir, kind, mcVersion, versionID string) {
+	r.mu.Lock()
+	if r.installing || r.launching || r.authing {
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "add-loader", Name: versionID, Err: fmt.Errorf("已有任务正在进行")})
+		return
+	}
+	r.installing = true
+	ctx, cancel := context.WithCancel(context.Background())
+	r.installCancel = cancel
+	r.mu.Unlock()
+
+	go func() {
+		cfg := r.Store.Snapshot()
+		src := minecraft.GetSource(cfg.DownloadSource)
+		inst := minecraft.NewInstaller(gameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
+			r.Emit(progressMsg{Scope: "install", P: p})
+		})
+		r.Logf("为实例 %s 安装加载器 %s（Minecraft %s）", versionID, kind, mcVersion)
+		id, err := inst.AddLoader(ctx, kind, mcVersion, "", cfg.JavaPath, cfg.AutoJava)
+		canceled := ctx.Err() != nil
+		if err == nil {
+			_ = r.Store.Update(func(c *config.Config) {
+				c.SelectedVersion = id
+			})
+			r.Logf("加载器安装完成: %s", id)
+		} else if canceled {
+			r.Logf("加载器安装已取消")
+		} else {
+			r.Logf("加载器安装失败: %v", err)
+		}
+		r.mu.Lock()
+		r.installing = false
+		r.installCancel = nil
+		r.mu.Unlock()
+		r.Emit(instanceDoneMsg{Action: "add-loader", Name: id, Path: gameDir, Err: err, Canceled: canceled})
 		r.ScanVersions()
 	}()
 }

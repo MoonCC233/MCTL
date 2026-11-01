@@ -62,9 +62,23 @@ func TestVersionSubdirMapping(t *testing.T) {
 
 func TestToolsDemoListsInstanceTools(t *testing.T) {
 	out := RenderDemo("tools", 118, 34)
-	for _, want := range []string{"服务器列表", "截图管理", "本地资源", "模组信息", "存档管理", "导出实例", "导入实例", "新建实例", "实例设置", "收藏", "CurseForge 整合包", "环境自检", "检查更新", "新闻", "网络测速", "皮肤 / 披风"} {
+	for _, want := range []string{"导入整合包", "在线整合包", "CurseForge 整合包", "收藏", "在线资源"} {
 		if !strings.Contains(out, want) {
-			t.Fatalf("tools demo is missing %q", want)
+			t.Fatalf("tools demo is missing visible entry %q", want)
+		}
+	}
+	a := testApp(t, config.Config{})
+	labels := map[string]bool{}
+	for _, it := range a.toolItems() {
+		labels[it.label] = true
+	}
+	for _, want := range []string{
+		"服务器列表", "截图管理", "本地资源", "模组信息", "存档管理", "导出实例", "导入实例",
+		"新建实例", "实例设置", "实例安装", "投影管理", "收藏", "CurseForge 整合包",
+		"环境自检", "检查更新", "新闻 / 更新日志", "网络测速", "皮肤 / 披风",
+	} {
+		if !labels[want] {
+			t.Fatalf("tools are missing %q", want)
 		}
 	}
 }

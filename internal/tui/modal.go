@@ -116,6 +116,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "在线资源", Desc: "搜索 Modrinth 资源包、光影或模组", Value: "cmd-online-resources"},
 		{Label: "存档管理", Desc: "打开、备份、导入或删除存档", Value: "cmd-worlds"},
 		{Label: "本地资源", Desc: "启用、停用或删除模组/资源包/光影", Value: "cmd-local-resources"},
+		{Label: "投影管理", Desc: "查看或删除投影文件", Value: "cmd-schematics"},
 		{Label: "模组信息", Desc: "查看模组元数据与内嵌 jar", Value: "cmd-mods-info"},
 		{Label: "截图管理", Desc: "查看或删除 Minecraft 截图", Value: "cmd-screenshots"},
 		{Label: "服务器列表", Desc: "添加、编辑或删除多人服务器", Value: "cmd-servers"},
@@ -127,6 +128,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "新闻 / 更新日志", Desc: "查看最近的版本发布说明", Value: "cmd-news"},
 		{Label: "网络测速", Desc: "测试下载源与常用服务的延迟和吞吐", Value: "cmd-speedtest"},
 		{Label: "实例设置", Desc: "内存、JVM 参数、自动进入服务器", Value: "cmd-instance-settings"},
+		{Label: "实例安装", Desc: "安装加载器或补全游戏文件", Value: "cmd-instance-install"},
 		{Label: "新建实例", Desc: "名称、目录、版本、加载器与 Java 一步创建", Value: "cmd-new-instance"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
 		{Label: "工具", Desc: "目录、Java、日志与整合包导入", Value: "cmd-page-tools"},
@@ -292,7 +294,7 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "t":
 			if len(m.Items) > 0 {
 				d, ok := m.Data.(resourceModalData)
-				if !ok {
+				if !ok || d.Kind == "schematic" {
 					return a, nil
 				}
 				name := m.Items[m.Selected].Value
@@ -857,7 +859,11 @@ func (a *App) renderModal() string {
 			}
 		}
 		add("")
-		add("  " + keyHint("enter", "打开目录") + "  " + keyHint("t", "启用/停用") + "  " + keyHint("d", "删除") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
+		if d, ok := m.Data.(resourceModalData); ok && d.Kind == "schematic" {
+			add("  " + keyHint("enter", "打开目录") + "  " + keyHint("d", "删除") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
+		} else {
+			add("  " + keyHint("enter", "打开目录") + "  " + keyHint("t", "启用/停用") + "  " + keyHint("d", "删除") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
+		}
 	case modalScreenshots:
 		add("")
 		visible := min(10, max(maxH-12, 3))

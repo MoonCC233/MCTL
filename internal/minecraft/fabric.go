@@ -16,7 +16,7 @@ type FabricLoader struct {
 }
 
 // FabricMeta is the public Fabric loader metadata endpoint.
-const FabricMeta = "https://meta.fabricmc.net"
+var FabricMeta = "https://meta.fabricmc.net"
 
 type fabricLoaderResponse struct {
 	Loader struct {

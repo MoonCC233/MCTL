@@ -30,6 +30,8 @@ func resourceKindLabel(kind string) string {
 		return "模组"
 	case "datapack":
 		return "数据包"
+	case "world":
+		return "世界"
 	}
 	return kind
 }
@@ -49,6 +51,7 @@ func (a *App) toolItems() []toolItem {
 		{label: "在线资源", desc: "搜索 Modrinth 资源包、光影、模组或数据包并安装到当前实例。", action: "online-resources"},
 		{label: "存档管理", desc: "查看、打开、备份、导入或删除当前实例的存档。", action: "worlds"},
 		{label: "本地资源", desc: "启用、停用或删除当前实例的模组、资源包和光影。", action: "local-resources"},
+		{label: "投影管理", desc: "查看、打开或删除当前实例的投影文件。", action: "schematics"},
 		{label: "模组信息", desc: "读取模组元数据、加载器、启用状态与内嵌 jar。", action: "mods-info"},
 		{label: "截图管理", desc: "查看或删除当前实例的 Minecraft 截图。", action: "screenshots"},
 		{label: "服务器列表", desc: "添加、编辑或删除当前实例保存的多人服务器。", action: "servers"},
@@ -57,6 +60,7 @@ func (a *App) toolItems() []toolItem {
 		{label: "导入实例", desc: "从 MCTL 实例 zip 创建独立实例并补全缺失文件。", action: "import-instance"},
 		{label: "新建实例", desc: "按名称、目录、版本、加载器与 Java 创建独立实例。", action: "new-instance"},
 		{label: "实例设置", desc: "为当前实例设置名称、主页、内存、JVM 参数与自动进入服务器。", action: "instance-settings"},
+		{label: "实例安装", desc: "为当前实例安装加载器或补全游戏文件。", action: "instance-install"},
 		{label: "环境自检", desc: "检查游戏目录、Java、版本、资源与下载源。", action: "diagnose"},
 		{label: "检查更新", desc: "查询最新发布版本，有新版本时打开下载页面。", action: "update"},
 		{label: "新闻 / 更新日志", desc: "查看最近的版本发布说明。", action: "news"},
@@ -163,6 +167,8 @@ func (a *App) toolsKey(msg tea.KeyMsg) tea.Cmd {
 		a.openWorlds()
 	case "m":
 		a.openLocalResourceTypePicker()
+	case "z":
+		a.openResourceFiles("schematic")
 	case "b":
 		a.openModsInfo()
 	case "f":
@@ -229,6 +235,8 @@ func (a *App) runTool(action string) tea.Cmd {
 		a.openWorlds()
 	case "local-resources":
 		a.openLocalResourceTypePicker()
+	case "schematics":
+		a.openResourceFiles("schematic")
 	case "mods-info":
 		a.openModsInfo()
 	case "screenshots":
@@ -244,6 +252,8 @@ func (a *App) runTool(action string) tea.Cmd {
 		a.openImportInstance()
 	case "instance-settings":
 		a.openInstanceSettings()
+	case "instance-install":
+		a.openInstanceInstall()
 	case "new-instance":
 		a.openInstanceWizard()
 	case "diagnose":

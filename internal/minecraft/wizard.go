@@ -88,65 +88,9 @@ func (i *Installer) CreateInstance(ctx context.Context, opts InstanceWizardOptio
 	}
 
 	loaderID := mcVersion
-	switch kind {
-	case "vanilla":
-	case "fabric", "quilt", "legacyfabric":
-		version := strings.TrimSpace(opts.LoaderVersion)
-		if version == "" {
-			version, err = i.resolveLoaderVersion(ctx, kind, mcVersion)
-			if err != nil {
-				cleanup()
-				return "", "", err
-			}
-			i.logf("已选择 %s %s", kind, version)
-		}
-		profile, err := fetchLoaderProfile(ctx, i.HTTP, kind, mcVersion, version)
-		if err != nil {
-			cleanup()
-			return "", "", err
-		}
-		var p VersionJSON
-		if err := json.Unmarshal(profile, &p); err != nil {
-			cleanup()
-			return "", "", fmt.Errorf("解析 %s 配置: %w", kind, err)
-		}
-		if p.ID == "" {
-			cleanup()
-			return "", "", fmt.Errorf("%s 配置缺少版本 ID", kind)
-		}
-		target.report(Progress{Stage: "安装 " + kind, Current: version}, true)
-		if err := target.InstallProfile(ctx, p.ID, profile); err != nil {
-			cleanup()
-			return "", "", err
-		}
-		loaderID = p.ID
-	case "forge", "neoforge":
-		version := strings.TrimSpace(opts.LoaderVersion)
-		if version == "" {
-			builds, err := FetchLoaderBuilds(ctx, i.HTTP, kind, mcVersion)
-			if err != nil {
-				cleanup()
-				return "", "", err
-			}
-			if len(builds) == 0 {
-				cleanup()
-				return "", "", fmt.Errorf("%s 没有适用于 %s 的构建", kind, mcVersion)
-			}
-			version = builds[0].Version
-			i.logf("已选择 %s %s", kind, version)
-		}
-		required := InferJavaMajor(mcVersion)
-		var javaInfo *JavaInfo
-		if opts.AutoJava {
-			javaInfo, err = i.EnsureJava(ctx, required, opts.JavaPath)
-		} else {
-			javaInfo, err = FindJavaFor(required, opts.JavaPath)
-		}
-		if err != nil {
-			cleanup()
-			return "", "", fmt.Errorf("需要 Java %d 运行 %s 安装器: %w", required, kind, err)
-		}
-		loaderID, err = target.InstallLoader(ctx, kind, mcVersion, version, javaInfo)
+	if kind != "vanilla" {
+		var err error
+		loaderID, err = i.installLoaderInto(ctx, target, kind, mcVersion, opts.LoaderVersion, opts.JavaPath, opts.AutoJava)
 		if err != nil {
 			cleanup()
 			return "", "", err
@@ -191,6 +135,144 @@ func wizardLoaderAllowed(kind string) bool {
 		}
 	}
 	return false
+}
+
+// installLoaderInto installs a loader profile or runs a loader installer in
+// target's game directory. An empty loaderVersion picks the newest stable
+// build. It returns the resulting version ID.
+func (i *Installer) installLoaderInto(ctx context.Context, target *Installer, kind, mcVersion, loaderVersion, javaPath string, autoJava bool) (string, error) {
+	version := strings.TrimSpace(loaderVersion)
+	switch kind {
+	case "fabric", "quilt", "legacyfabric":
+		if version == "" {
+			var err error
+			version, err = i.resolveLoaderVersion(ctx, kind, mcVersion)
+			if err != nil {
+				return "", err
+			}
+			i.logf("已选择 %s %s", kind, version)
+		}
+		profile, err := fetchLoaderProfile(ctx, i.HTTP, kind, mcVersion, version)
+		if err != nil {
+			return "", err
+		}
+		var p VersionJSON
+		if err := json.Unmarshal(profile, &p); err != nil {
+			return "", fmt.Errorf("解析 %s 配置: %w", kind, err)
+		}
+		if p.ID == "" {
+			return "", fmt.Errorf("%s 配置缺少版本 ID", kind)
+		}
+		target.report(Progress{Stage: "安装 " + kind, Current: version}, true)
+		if err := target.InstallProfile(ctx, p.ID, profile); err != nil {
+			return "", err
+		}
+		return p.ID, nil
+	case "forge", "neoforge":
+		if version == "" {
+			builds, err := FetchLoaderBuilds(ctx, i.HTTP, kind, mcVersion)
+			if err != nil {
+				return "", err
+			}
+			if len(builds) == 0 {
+				return "", fmt.Errorf("%s 没有适用于 %s 的构建", kind, mcVersion)
+			}
+			version = builds[0].Version
+			i.logf("已选择 %s %s", kind, version)
+		}
+		required := InferJavaMajor(mcVersion)
+		var javaInfo *JavaInfo
+		var err error
+		if autoJava {
+			javaInfo, err = i.EnsureJava(ctx, required, javaPath)
+		} else {
+			javaInfo, err = FindJavaFor(required, javaPath)
+		}
+		if err != nil {
+			return "", fmt.Errorf("需要 Java %d 运行 %s 安装器: %w", required, kind, err)
+		}
+		return target.InstallLoader(ctx, kind, mcVersion, version, javaInfo)
+	}
+	return "", fmt.Errorf("不支持的加载器: %s", kind)
+}
+
+// AddLoader installs an additional loader into an existing instance, repairs
+// its files and keeps the pack marker in sync.
+func (i *Installer) AddLoader(ctx context.Context, kind, mcVersion, loaderVersion, javaPath string, autoJava bool) (string, error) {
+	kind = strings.ToLower(strings.TrimSpace(kind))
+	mcVersion = strings.TrimSpace(mcVersion)
+	if mcVersion == "" {
+		return "", fmt.Errorf("缺少 Minecraft 版本")
+	}
+	if kind == "" || kind == "vanilla" {
+		return "", fmt.Errorf("请选择要安装的加载器")
+	}
+	if !wizardLoaderAllowed(kind) {
+		return "", fmt.Errorf("不支持的加载器: %s", kind)
+	}
+	if _, err := ResolveVersion(i.GameDir, mcVersion); err != nil {
+		return "", fmt.Errorf("实例缺少基础版本 %s: %w", mcVersion, err)
+	}
+	id, err := i.installLoaderInto(ctx, i, kind, mcVersion, loaderVersion, javaPath, autoJava)
+	if err != nil {
+		return "", err
+	}
+	if err := i.EnsureInstalled(ctx, id); err != nil {
+		return "", fmt.Errorf("补全加载器文件: %w", err)
+	}
+	i.updatePackMarker(mcVersion, id)
+	if settings, err := LoadInstanceSettings(i.GameDir, id); err == nil && settings.Name == "" {
+		if marker, _, err := findPackMarker(i.GameDir); err == nil && marker != nil && marker.Name != "" {
+			settings.Name = marker.Name
+			_ = SaveInstanceSettings(i.GameDir, id, settings)
+		}
+	}
+	i.logf("加载器安装完成: %s", id)
+	return id, nil
+}
+
+// updatePackMarker rewrites the pack marker so the new loader profile stays
+// visible under instances/, and removes the stale marker.
+func (i *Installer) updatePackMarker(mcVersion, loaderID string) {
+	marker, oldID, err := findPackMarker(i.GameDir)
+	if err != nil || marker == nil {
+		return
+	}
+	marker.VersionID = loaderID
+	marker.MCVersion = mcVersion
+	marker.Loader = loaderID
+	data, err := json.Marshal(marker)
+	if err != nil {
+		return
+	}
+	if err := os.WriteFile(filepath.Join(VersionPath(i.GameDir, loaderID), "mctl-pack.json"), data, 0o644); err != nil {
+		return
+	}
+	if oldID != "" && oldID != loaderID {
+		_ = os.Remove(filepath.Join(VersionPath(i.GameDir, oldID), "mctl-pack.json"))
+	}
+}
+
+func findPackMarker(root string) (*packMarkerFile, string, error) {
+	entries, err := os.ReadDir(filepath.Join(root, "versions"))
+	if err != nil {
+		return nil, "", err
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(root, "versions", e.Name(), "mctl-pack.json"))
+		if err != nil {
+			continue
+		}
+		var marker packMarkerFile
+		if err := json.Unmarshal(data, &marker); err != nil {
+			continue
+		}
+		return &marker, e.Name(), nil
+	}
+	return nil, "", nil
 }
 
 func fetchLoaderProfile(ctx context.Context, hc *HTTPClient, kind, mcVersion, loaderVersion string) ([]byte, error) {

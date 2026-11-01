@@ -181,6 +181,7 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 			"  "+styleAccent.Render("h")+"     "+styleMuted.Render("打开截图目录"),
 			"  "+styleAccent.Render("f")+"     "+styleMuted.Render("打开配置目录"),
 			"  "+styleAccent.Render("i")+"     "+styleMuted.Render("实例设置"),
+			"  "+styleAccent.Render("l")+"     "+styleMuted.Render("实例安装 / 修复"),
 			"  "+styleAccent.Render("x")+"     "+styleMuted.Render("导出实例"),
 			"  "+styleAccent.Render("+")+"     "+styleMuted.Render("新建实例"),
 		)
@@ -302,6 +303,11 @@ func (a *App) versionsKey(msg tea.KeyMsg) tea.Cmd {
 				gameDir = a.store.Snapshot().GameDir
 			}
 			a.showInstanceSettings(gameDir, v.ID, "")
+		}
+	case "l":
+		if len(list) > 0 {
+			a.saveCfg(func(c *config.Config) { c.SelectedVersion = list[a.versions.idx].ID })
+			a.openInstanceInstall()
 		}
 	case "x":
 		if len(list) > 0 {

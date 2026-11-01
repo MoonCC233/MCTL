@@ -190,6 +190,8 @@ func ResourceSubdir(kind string) string {
 		return "shaderpacks"
 	case "mod":
 		return "mods"
+	case "schematic":
+		return "schematics"
 	}
 	return ""
 }
@@ -268,6 +270,44 @@ func InstallDatapack(ctx context.Context, hc *HTTPClient, projectID, gameVersion
 		return nil, fmt.Errorf("下载 %s: %w", name, err)
 	}
 	return &ResourceInstall{Kind: "datapack", Name: name, Path: dest, Version: version.VersionNumber}, nil
+}
+
+// DownloadWorldURL downloads a zipped world from an HTTP(S) URL and extracts
+// it into the instance's saves folder.
+func DownloadWorldURL(ctx context.Context, hc *HTTPClient, rawURL, gameDir string) (*ResourceInstall, error) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return nil, fmt.Errorf("请填写世界压缩包地址")
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return nil, fmt.Errorf("世界地址需要是 http 或 https 链接")
+	}
+	if hc == nil {
+		return nil, fmt.Errorf("缺少 HTTP 客户端")
+	}
+	tmp, err := os.CreateTemp("", "mctl-world-*.zip")
+	if err != nil {
+		return nil, err
+	}
+	tmpName := tmp.Name()
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpName)
+		return nil, err
+	}
+	defer os.Remove(tmpName)
+	if err := hc.DownloadFile(ctx, rawURL, tmpName, "", nil); err != nil {
+		return nil, fmt.Errorf("下载世界: %w", err)
+	}
+	name, err := ImportWorld(gameDir, tmpName)
+	if err != nil {
+		return nil, err
+	}
+	return &ResourceInstall{
+		Kind: "world",
+		Name: name,
+		Path: filepath.Join(gameDir, "saves", name),
+	}, nil
 }
 
 // PrimaryModrinthFile returns the primary file of a version, or the first.

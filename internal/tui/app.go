@@ -565,14 +565,21 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 		}
 		return nil
 	case worldDoneMsg:
+		if a.modal.Kind == modalProgress && a.modal.Action == "cancel-install" {
+			a.modal = modalState{}
+		}
 		if m.Err != nil {
 			a.openError("存档操作失败", m.Err)
 			return nil
 		}
-		if m.Action == "import" {
+		switch m.Action {
+		case "import":
 			a.setToast("存档已导入: "+m.Name, 1)
 			a.openWorlds()
-		} else {
+		case "download":
+			a.setToast("世界已下载: "+m.Name, 1)
+			a.openWorlds()
+		default:
 			a.setToast("存档已备份: "+filepath.Base(m.Path), 1)
 		}
 		return nil
@@ -666,6 +673,12 @@ func (a *App) handleEvent(msg tea.Msg) tea.Cmd {
 			a.setToast("实例已创建: "+m.Name, 1)
 			a.launch.stage = ""
 			a.launch.percent = 0
+			a.switchPage(pageVersions)
+		case "repair":
+			a.setToast("实例文件已修复: "+m.Name, 1)
+			a.switchPage(pageVersions)
+		case "add-loader":
+			a.setToast("加载器已安装: "+m.Name, 1)
 			a.switchPage(pageVersions)
 		default:
 			a.setToast("实例已导出: "+filepath.Base(m.Path), 1)
@@ -932,6 +945,24 @@ func (a *App) startResourceInstall(kind, projectID, name string) {
 		Action:  "cancel-install",
 	}
 	a.rt.InstallResource(kind, projectID, name)
+}
+
+func (a *App) startWorldDownload(rawURL string) {
+	if strings.TrimSpace(rawURL) == "" {
+		a.setToast("请填写世界压缩包地址", 3)
+		return
+	}
+	if a.rt.Busy() {
+		a.setToast("已有任务正在进行", 3)
+		return
+	}
+	a.modal = modalState{
+		Kind:   modalProgress,
+		Title:  "下载世界",
+		Stage:  "获取文件",
+		Action: "cancel-install",
+	}
+	a.rt.DownloadWorld(rawURL)
 }
 
 func (a *App) startDatapackInstall(projectID, name, worldDir string) {

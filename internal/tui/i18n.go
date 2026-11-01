@@ -208,6 +208,8 @@ var english = map[string]string{
 	"CurseForge 在线整合包浏览与安装":                                                                         "CurseForge online modpack browsing",
 	"皮肤 / 披风纹理查询":                                                                                   "Skin and cape texture lookup",
 	"数据包按存档安装":                                                                                      "Data packs installed into a chosen world",
+	"世界 zip 下载与投影管理":                                                                                "World zip downloads and schematic management",
+	"实例加载器安装与文件修复":                                                                                  "Instance loader install and file repair",
 	"网络测速与延迟/吞吐展示":                                                                                  "Network speed test with latency and throughput",
 
 	// Launch.
@@ -250,7 +252,15 @@ var english = map[string]string{
 	// Misc.
 	"数据包":   "Data packs",
 	"在线数据包": "Online data packs",
-	"选择存档":  "Choose world",
+	"世界":    "Worlds",
+	"在线世界":  "Online worlds",
+	"投影管理":  "Schematics",
+	"投影":    "Schematics",
+	"查看、打开或删除当前实例的投影文件。": "Browse or delete schematic files in this instance.",
+	"实例安装": "Instance install",
+	"为当前实例安装加载器或补全游戏文件。":     "Install a loader or repair files for this instance.",
+	"补全 / 修复文件":              "Repair files",
+	"选择存档":                   "Choose world",
 	"请先在存档管理中创建或导入一个存档":      "Create or import a world first",
 	"已安装 %d 个版本":             "Installed %d versions",
 	" · 筛选：%s":               " · filter: %s",
