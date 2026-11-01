@@ -26,7 +26,7 @@ func (a *App) filteredVersions() []minecraft.InstalledVersion {
 	}
 	var out []minecraft.InstalledVersion
 	for _, v := range a.versions.list {
-		hay := strings.ToLower(v.ID + " " + v.Loader + " " + v.MCVersion + " " + v.Type)
+		hay := strings.ToLower(v.ID + " " + v.Name + " " + v.Loader + " " + v.MCVersion + " " + v.Type)
 		if strings.Contains(hay, f) {
 			out = append(out, v)
 		}
@@ -93,6 +93,9 @@ func (a *App) renderVersionList(w, h int, list []minecraft.InstalledVersion) str
 				nameW--
 			}
 			name := middleEllipsis(v.ID, nameW)
+			if v.Name != "" {
+				name = middleEllipsis(v.Name+" · "+v.ID, nameW)
+			}
 			loader := ansiTruncate(v.Loader, 9)
 			mc := ansiTruncate(v.MCVersion, 9)
 			marker := " "
@@ -140,6 +143,14 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 			kv("模组", fmt.Sprintf("%d 个（共享）", v.Mods), inner),
 			kv("发布", shortDate(v.ReleaseTime), inner),
 			"",
+		)
+		if v.Name != "" {
+			rows = append(rows, kv("名称", v.Name, inner))
+		}
+		if v.Link != "" {
+			rows = append(rows, kv("主页", v.Link, inner))
+		}
+		rows = append(rows,
 			"  "+styleMuted.Render("版本路径"),
 			"  "+styleFaint.Render(middleEllipsis(v.Dir, inner-4)),
 		)
@@ -162,6 +173,7 @@ func (a *App) renderVersionDetail(w, h int, list []minecraft.InstalledVersion) s
 			"  "+styleAccent.Render("s")+"     "+styleMuted.Render("打开存档目录"),
 			"  "+styleAccent.Render("h")+"     "+styleMuted.Render("打开截图目录"),
 			"  "+styleAccent.Render("f")+"     "+styleMuted.Render("打开配置目录"),
+			"  "+styleAccent.Render("i")+"     "+styleMuted.Render("实例设置"),
 		)
 	}
 	for len(rows) < panelContentHeight(h) {
@@ -272,6 +284,15 @@ func (a *App) versionsKey(msg tea.KeyMsg) tea.Cmd {
 		if len(list) > 0 {
 			v := list[a.versions.idx]
 			a.openConfirm("删除版本", fmt.Sprintf("确定删除版本 %s 吗？此操作会移除版本目录，无法撤销。", v.ID), "delete-version", v.ID)
+		}
+	case "i":
+		if len(list) > 0 {
+			v := list[a.versions.idx]
+			gameDir := v.GameDir
+			if gameDir == "" {
+				gameDir = a.store.Snapshot().GameDir
+			}
+			a.showInstanceSettings(gameDir, v.ID, "")
 		}
 	case "o":
 		if len(list) > 0 {

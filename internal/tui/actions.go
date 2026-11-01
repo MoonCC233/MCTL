@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -299,6 +300,81 @@ func (a *App) runAction(action, value string, item pickerItem, data any) tea.Cmd
 		}
 		a.setToast("已删除: "+d.Name, 1)
 		a.openResourceFiles(d.Kind)
+	case action == "save-instance-setting":
+		d, ok := data.(instanceSettingEdit)
+		if !ok {
+			return nil
+		}
+		settings, err := minecraft.LoadInstanceSettings(d.GameDir, d.VersionID)
+		if err != nil {
+			a.openError("读取实例设置失败", err)
+			return nil
+		}
+		value = strings.TrimSpace(value)
+		switch d.Key {
+		case "name":
+			if runes := []rune(value); len(runes) > 64 {
+				value = string(runes[:64])
+			}
+			settings.Name = value
+		case "link":
+			if value != "" && !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://") {
+				a.openError("链接无效", fmt.Errorf("链接需要以 http:// 或 https:// 开头"))
+				return nil
+			}
+			settings.Link = value
+		case "max", "min":
+			n := 0
+			if value != "" {
+				n, err = strconv.Atoi(value)
+				if err != nil || n < 256 {
+					a.openError("内存无效", fmt.Errorf("请输入不小于 256 的整数（MB），留空表示跟随全局"))
+					return nil
+				}
+			}
+			if d.Key == "max" {
+				if n > 0 && settings.MinMemory > n {
+					a.openError("内存无效", fmt.Errorf("最大内存不能小于最小内存（%d MB）", settings.MinMemory))
+					return nil
+				}
+				settings.MaxMemory = n
+			} else {
+				effectiveMax := settings.MaxMemory
+				if effectiveMax == 0 {
+					effectiveMax = a.store.Snapshot().MaxMemory
+				}
+				if n > 0 && effectiveMax > 0 && n > effectiveMax {
+					a.openError("内存无效", fmt.Errorf("最小内存不能大于最大内存（%d MB）", effectiveMax))
+					return nil
+				}
+				settings.MinMemory = n
+			}
+		case "jvm":
+			settings.JVMArgs = value
+		case "game":
+			settings.GameArgs = value
+		case "server":
+			if strings.ContainsAny(value, " \t") {
+				a.openError("服务器地址无效", fmt.Errorf("服务器地址不能包含空格"))
+				return nil
+			}
+			if value != "" {
+				if host, _ := minecraft.SplitServerAddress(value); host == "" {
+					a.openError("服务器地址无效", fmt.Errorf("请输入 host 或 host:port"))
+					return nil
+				}
+			}
+			settings.Server = value
+		case "java":
+			settings.JavaPath = value
+		}
+		if err := minecraft.SaveInstanceSettings(d.GameDir, d.VersionID, settings); err != nil {
+			a.openError("保存实例设置失败", err)
+			return nil
+		}
+		a.setToast("实例设置已保存", 1)
+		a.showInstanceSettings(d.GameDir, d.VersionID, d.Key)
+		a.rt.ScanVersions()
 	case action == "diagnose":
 		a.setToast("正在检测运行环境…", 0)
 		a.rt.RunDiagnose()
@@ -480,6 +556,8 @@ func (a *App) runCommand(cmd string) tea.Cmd {
 	case "cmd-update":
 		a.setToast("正在检查更新…", 0)
 		a.rt.CheckUpdate()
+	case "cmd-instance-settings":
+		a.openInstanceSettings()
 	case "cmd-folder":
 		a.openGameDir()
 	case "cmd-help":

@@ -24,6 +24,8 @@ type InstalledVersion struct {
 	Mods        int
 	Complete    bool
 	MainClass   string
+	Name        string
+	Link        string
 }
 
 // ScanVersions lists every version directory with a JSON document. Pack
@@ -91,6 +93,10 @@ func scanVersionRoot(root, gameRoot string, packOnly bool) ([]InstalledVersion, 
 		}
 		if iv.Type == "" {
 			iv.Type = "release"
+		}
+		if settings, err := LoadInstanceSettings(root, id); err == nil {
+			iv.Name = settings.Name
+			iv.Link = settings.Link
 		}
 		if rv, err := ResolveVersion(root, id); err == nil {
 			iv.Loader = detectLoader(id, rv.MainClass)

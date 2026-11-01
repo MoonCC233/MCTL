@@ -28,6 +28,7 @@ const (
 	modalScreenshots
 	modalServers
 	modalDiagnostics
+	modalInstanceSettings
 )
 
 type pickerItem struct {
@@ -113,6 +114,7 @@ func (a *App) paletteItems() []pickerItem {
 		{Label: "导入实例", Desc: "从 MCTL 实例 zip 创建独立实例", Value: "cmd-import-instance"},
 		{Label: "环境自检", Desc: "检查 Java、目录、版本与下载源", Value: "cmd-diagnose"},
 		{Label: "检查更新", Desc: "查询最新发布版本", Value: "cmd-update"},
+		{Label: "实例设置", Desc: "内存、JVM 参数、自动进入服务器", Value: "cmd-instance-settings"},
 		{Label: "设置", Desc: "Java、内存与账户设置", Value: "cmd-page-settings"},
 		{Label: "工具", Desc: "目录、Java、日志与整合包导入", Value: "cmd-page-tools"},
 		{Label: "关于 MCTL", Desc: "版本、路径与项目信息", Value: "cmd-page-about"},
@@ -294,6 +296,50 @@ func (a *App) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		case "r":
 			a.openScreenshots()
+		}
+	case modalInstanceSettings:
+		d, ok := m.Data.(instanceSettingsData)
+		switch key {
+		case "esc", "q":
+			a.modal = modalState{}
+		case "up", "k":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected - 1 + len(m.Items)) % len(m.Items)
+			}
+		case "down", "j":
+			if len(m.Items) > 0 {
+				m.Selected = (m.Selected + 1) % len(m.Items)
+			}
+		case "enter":
+			if !ok || len(m.Items) == 0 {
+				return a, nil
+			}
+			it := m.Items[m.Selected]
+			field := it.Value
+			a.openInput("实例设置 · "+it.Label, instanceSettingLabel(field), instanceSettingValue(d.Settings, field), instanceSettingPlaceholder(field), "save-instance-setting")
+			a.modal.Data = instanceSettingEdit{GameDir: d.GameDir, VersionID: d.VersionID, Key: field}
+		case "l":
+			if ok && strings.TrimSpace(d.Settings.Link) != "" {
+				if err := openPath(d.Settings.Link); err != nil {
+					a.setToast("打开链接失败: "+err.Error(), 2)
+				}
+			} else {
+				a.setToast("尚未设置主页链接", 3)
+			}
+		case "o":
+			if ok {
+				if err := openPath(d.GameDir); err != nil {
+					a.setToast("打开实例目录失败: "+err.Error(), 2)
+				}
+			}
+		case "r":
+			if ok {
+				focus := ""
+				if len(m.Items) > 0 {
+					focus = m.Items[m.Selected].Value
+				}
+				a.showInstanceSettings(d.GameDir, d.VersionID, focus)
+			}
 		}
 	case modalDiagnostics:
 		switch key {
@@ -540,6 +586,8 @@ func (a *App) renderModal() string {
 		boxW = 76
 	case modalDiagnostics:
 		boxW = 80
+	case modalInstanceSettings:
+		boxW = 80
 	case modalPicker:
 		boxW = 66
 	case modalProgress:
@@ -709,6 +757,18 @@ func (a *App) renderModal() string {
 		}
 		add("")
 		add("  " + keyHint("r", "重新检测") + "  " + keyHint("esc", "关闭"))
+	case modalInstanceSettings:
+		add("")
+		for i, it := range m.Items {
+			line := "  " + styleText.Render(padRight(it.Label, 20)) + "  " + styleFaint.Render(ansiTruncate(it.Desc, max(inner-26, 10)))
+			if i == m.Selected {
+				add(lipglossRow("  ▸ "+padRight(it.Label, 20)+"  "+ansiTruncate(it.Desc, max(inner-26, 10)), inner))
+			} else {
+				add(line)
+			}
+		}
+		add("")
+		add("  " + keyHint("enter", "编辑") + "  " + keyHint("l", "打开链接") + "  " + keyHint("o", "实例目录") + "  " + keyHint("r", "刷新") + "  " + keyHint("esc", "关闭"))
 	case modalAccounts:
 		add("")
 		for i, it := range m.Items {
@@ -850,6 +910,7 @@ func helpLines() []string {
 		"  " + accent("n") + muted("                服务器列表"),
 		"  " + accent("x / u") + muted("            导出 / 导入实例"),
 		"  " + accent("d / t") + muted("            环境自检 / 检查更新"),
+		"  " + accent("i") + muted("                版本页：实例设置（内存 / JVM / 自动进服）"),
 		"  " + accent("↑↓ / f / c") + muted("       滚动 / 跟随 / 清空"),
 	}
 }

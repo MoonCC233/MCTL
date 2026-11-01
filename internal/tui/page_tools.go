@@ -46,6 +46,7 @@ func (a *App) toolItems() []toolItem {
 		{label: "服务器列表", desc: "添加、编辑或删除当前实例保存的多人服务器。", action: "servers"},
 		{label: "导出实例", desc: "把当前版本或整合包连同模组、存档与截图打包为 zip。", action: "export-instance"},
 		{label: "导入实例", desc: "从 MCTL 实例 zip 创建独立实例并补全缺失文件。", action: "import-instance"},
+		{label: "实例设置", desc: "为当前实例设置名称、主页、内存、JVM 参数与自动进入服务器。", action: "instance-settings"},
 		{label: "环境自检", desc: "检查游戏目录、Java、版本、资源与下载源。", action: "diagnose"},
 		{label: "检查更新", desc: "查询最新发布版本，有新版本时打开下载页面。", action: "update"},
 		{label: "打开游戏目录", desc: "在系统文件管理器中打开当前游戏目录。", action: "open-game"},
@@ -206,6 +207,8 @@ func (a *App) runTool(action string) tea.Cmd {
 		a.openExportInstance()
 	case "import-instance":
 		a.openImportInstance()
+	case "instance-settings":
+		a.openInstanceSettings()
 	case "diagnose":
 		a.setToast("正在检测运行环境…", 0)
 		a.rt.RunDiagnose()

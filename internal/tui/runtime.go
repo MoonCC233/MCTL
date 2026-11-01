@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the launcher version. Release builds override it with -ldflags.
-var Version = "1.0.17"
+var Version = "1.0.18"
 
 // Repository used for release checks and download links.
 const (
@@ -852,6 +852,18 @@ func (r *Runtime) CancelMicrosoftLogin() {
 	}
 }
 
+func joinArgs(base, extra string) string {
+	base = strings.TrimSpace(base)
+	extra = strings.TrimSpace(extra)
+	switch {
+	case base == "":
+		return extra
+	case extra == "":
+		return base
+	}
+	return base + " " + extra
+}
+
 // Launch prepares files and starts the game.
 func (r *Runtime) Launch(versionID, gameDir string) {
 	r.mu.Lock()
@@ -869,6 +881,11 @@ func (r *Runtime) Launch(versionID, gameDir string) {
 		account := cfg.Account()
 		if gameDir == "" {
 			gameDir = cfg.GameDir
+		}
+		settings, serr := minecraft.LoadInstanceSettings(gameDir, versionID)
+		if serr != nil {
+			r.Logf("读取实例设置失败: %v", serr)
+			settings = &minecraft.InstanceSettings{}
 		}
 		src := minecraft.GetSource(cfg.DownloadSource)
 		inst := minecraft.NewInstaller(gameDir, src, func(s string) { r.Logf("%s", s) }, func(p minecraft.Progress) {
@@ -923,11 +940,16 @@ func (r *Runtime) Launch(versionID, gameDir string) {
 			required = minecraft.InferJavaMajor(versionID)
 		}
 		r.Emit(launchStageMsg{Stage: fmt.Sprintf("检查 Java %d", required)})
+		javaPath := cfg.JavaPath
+		if strings.TrimSpace(settings.JavaPath) != "" {
+			javaPath = settings.JavaPath
+			r.Logf("使用实例指定的 Java: %s", javaPath)
+		}
 		var javaInfo *minecraft.JavaInfo
 		if cfg.AutoJava {
-			javaInfo, err = inst.EnsureJava(context.Background(), required, cfg.JavaPath)
+			javaInfo, err = inst.EnsureJava(context.Background(), required, javaPath)
 		} else {
-			javaInfo, err = minecraft.FindJavaFor(required, cfg.JavaPath)
+			javaInfo, err = minecraft.FindJavaFor(required, javaPath)
 		}
 		if err != nil {
 			fail(fmt.Errorf("需要 Java %d：%w", required, err))
@@ -950,6 +972,13 @@ func (r *Runtime) Launch(versionID, gameDir string) {
 		if account.Type == "microsoft" {
 			userType = "msa"
 		}
+		minMemory, maxMemory := cfg.MinMemory, cfg.MaxMemory
+		if settings.MinMemory > 0 {
+			minMemory = settings.MinMemory
+		}
+		if settings.MaxMemory > 0 {
+			maxMemory = settings.MaxMemory
+		}
 		plan, err := minecraft.BuildLaunchPlan(minecraft.LaunchOptions{
 			GameDir:         gameDir,
 			VersionID:       versionID,
@@ -959,13 +988,14 @@ func (r *Runtime) Launch(versionID, gameDir string) {
 			XUID:            account.XUID,
 			UserType:        userType,
 			Java:            javaInfo,
-			MinMemory:       cfg.MinMemory,
-			MaxMemory:       cfg.MaxMemory,
+			MinMemory:       minMemory,
+			MaxMemory:       maxMemory,
 			Width:           cfg.Width,
 			Height:          cfg.Height,
 			Fullscreen:      cfg.Fullscreen,
-			JVMArgs:         cfg.JVMArgs,
-			GameArgs:        cfg.GameArgs,
+			JVMArgs:         joinArgs(cfg.JVMArgs, settings.JVMArgs),
+			GameArgs:        joinArgs(cfg.GameArgs, settings.GameArgs),
+			Server:          settings.Server,
 			LauncherName:    "MCTL",
 			LauncherVersion: Version,
 		})

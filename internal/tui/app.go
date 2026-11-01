@@ -189,7 +189,7 @@ func (a *App) renderFooter() string {
 	case pageLaunch:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("←→", "切换"), keyHint("enter", "启动"), keyHint("a", "账户"), keyHint("l", "日志")}
 	case pageVersions:
-		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("d", "删除"), keyHint("o", "版本目录"), keyHint("m", "模组"), keyHint("p", "资源包"), keyHint("s", "存档"), keyHint("/", "筛选"), keyHint("r", "刷新")}
+		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "启动"), keyHint("i", "实例设置"), keyHint("d", "删除"), keyHint("o", "版本目录"), keyHint("/", "筛选"), keyHint("r", "刷新")}
 	case pageDownload:
 		parts = []string{keyHint("↑↓", "选择"), keyHint("enter", "安装"), keyHint("[ ]", "类型"), keyHint("i", "导入"), keyHint("o", "在线整合包"), keyHint("m", "筛选"), keyHint("/", "搜索"), keyHint("r", "刷新")}
 	case pageSettings:

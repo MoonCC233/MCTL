@@ -59,6 +59,7 @@ func TestBuildLaunchPlan(t *testing.T) {
 		Height:       720,
 		JVMArgs:      "-XX:+UseG1GC",
 		GameArgs:     "--demo",
+		Server:       "play.example.com:25566",
 		LauncherName: "MCTL",
 	})
 	if err != nil {
@@ -72,6 +73,7 @@ func TestBuildLaunchPlan(t *testing.T) {
 		"-Xms512M", "-Xmx2048M", "-Ddemo=true", "-Djava.library.path=",
 		"lib-1.0.jar", "1.20.1.jar", "-XX:+UseG1GC", "--username", "Alex",
 		"--width", "1280", "--height", "720", "--demo", "--assetIndex", "5",
+		"--server", "play.example.com", "--port", "25566",
 		"--xuid", "xuid-123", "--accessToken", "mc-token", "msa",
 	} {
 		if !strings.Contains(joined, want) {

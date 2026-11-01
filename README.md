@@ -21,6 +21,7 @@ MCTL 是一个用 Go 编写的 Minecraft 终端启动器。它把版本管理、
 - **服务器列表**：读写 `servers.dat`，支持添加、编辑、删除多人服务器。
 - **实例导出/导入**：把版本或整合包连同模组、配置、存档与截图打包为 zip；导入时创建独立实例并补全缺失文件。
 - **环境自检与更新检查**：检查游戏目录、Java、版本、资源与下载源；查询最新发布版本并在有更新时打开下载页面。
+- **单实例启动覆盖**：为实例单独设置名称、主页链接、最小/最大内存、JVM/游戏参数、Java 路径和启动后自动进入的服务器。
 - **离线账户**：添加、切换和删除离线账户，自动生成与 Minecraft 一致的离线 UUID。
 - **Java 管理**：扫描常见安装位置与 `JAVA_HOME`，检查版本兼容性；缺少 Java 时可从 Adoptium 下载 JRE。
 - **双下载源**：BMCLAPI 镜像与 Mojang 官方源，可在设置中即时切换。
@@ -142,6 +143,7 @@ mctl
 | `s` | 打开存档目录 |
 | `h` | 打开截图目录 |
 | `f` | 打开配置目录 |
+| `i` | 实例设置（名称 / 内存 / JVM / 自动进服） |
 | `/` | 按名称、加载器或版本号筛选 |
 | `c` | 清除筛选 |
 | `r` | 刷新 |
@@ -242,6 +244,7 @@ CurseForge 整合包使用其 API 解析文件下载地址，需要先在设置�
 主要文件：
 
 - `config.json`：游戏目录、Java 路径、内存、窗口、下载源、Microsoft 客户端 ID、账户与令牌等。Microsoft 刷新令牌只保存在本机配置文件中，请勿分享该文件。
+- `versions/<版本>/mctl-settings.json`：实例级名称、主页链接、内存、JVM/游戏参数、自动进入的服务器与单独 Java 路径。
 - `logs/mctl-YYYYMMDD.log`：启动器与游戏日志。
 
 配置采用原子写入；如果 `config.json` 损坏，会保留为 `config.json.broken` 并回退到默认配置。
@@ -279,11 +282,11 @@ GitHub Actions 中也提供了手动触发的 `Live loader check` 工作流。
 
 ## 发布
 
-推送形如 `v1.0.17` 的标签会触发 Release 工作流：
+推送形如 `v1.0.18` 的标签会触发 Release 工作流：
 
 ```bash
-git tag v1.0.17
-git push origin v1.0.17
+git tag v1.0.18
+git push origin v1.0.18
 ```
 
 工作流会为 Windows、Linux、macOS 的 amd64 与 arm64 构建二进制，生成压缩包和 `checksums.txt`，然后自动创建 GitHub Release。也可以在 Actions 页面手动运行 `Release` 工作流并填写版本号。

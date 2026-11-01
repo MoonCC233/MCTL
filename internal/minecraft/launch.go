@@ -30,6 +30,7 @@ type LaunchOptions struct {
 	Fullscreen      bool
 	JVMArgs         string
 	GameArgs        string
+	Server          string
 	LauncherName    string
 	LauncherVersion string
 }
@@ -230,6 +231,11 @@ func BuildLaunchPlan(opts LaunchOptions) (*LaunchPlan, error) {
 		}
 	}
 	game = append(game, SplitArgs(opts.GameArgs)...)
+	if strings.TrimSpace(opts.Server) != "" && !hasFlag(game, "--server") {
+		if host, port := SplitServerAddress(opts.Server); host != "" {
+			game = append(game, "--server", host, "--port", port)
+		}
+	}
 
 	args := append(jvm, rv.MainClass)
 	args = append(args, game...)
